@@ -40,6 +40,19 @@ both tracked diffs without changing files or requiring a clean working tree.
    similar names are user-defined commands, not guarantees about side effects.
    Follow the user's authorization and repository instructions for execution.
 
+For an explicitly new project, run `dotask --init` from its intended root. This
+creates missing `.dotasks.yaml` and `.tasks/` entries without replacing existing
+files. It uses the current directory, not upward discovery; do not run it from a
+source subdirectory expecting it to find a parent root. It runs offline with no
+language SDK and does not create sample tasks, a lock file, or caches. Edit shared
+settings explicitly before adding/running tasks; no language is auto-detected.
+`--init --help` is read-only. Handle legacy/invalid configuration diagnostics by
+reviewing the existing files, never deleting them to make initialization pass.
+With `--init --use-dir PATH`, choose a subdirectory within the current root and
+keep passing that override on later commands; it is not saved in YAML. Use the
+installed command when initializing a consumer project because the source
+bootstrap launchers always change to their own checkout.
+
 With a custom task directory, include `--use-dir PATH` consistently. Relative
 paths resolve from where the CLI was invoked. The nearest root `.dotasks.yaml` above the selected directory anchors the project;
 otherwise its parent is the root. Legacy directory-local configuration retains
@@ -172,7 +185,8 @@ public JSON installation interface remain deferred.
   null exit code and an error diagnostic. Handle `Failed`; do not silently skip
   malformed/ambiguous targets. Cancellation and CLI/transport failures still throw.
   Use optional execution directly rather than checking presence and then running.
-- No `init`, `validate`, JSON help API, automatic `ValidateAsync`
+- Use `--init` for project setup; bare `init` remains a task name. No built-in
+  `validate`, JSON help API, automatic `ValidateAsync`
   hook, service management, or generated configuration properties exist yet.
   `<capability>` is descriptive; it does not install features.
 

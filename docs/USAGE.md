@@ -46,7 +46,7 @@ See [target naming](TARGETS.md#target-names).
 
 Use `--use-dir PATH` to select a task directory explicitly, relative to the original
 invocation directory or by absolute path. There is no fallback for a missing
-explicit directory during help/execution. Shared-task `--add` may create it.
+explicit directory during help/execution. Shared-task `--add` or `--init` may create it.
 The nearest root `.dotasks.yaml` above the selected directory anchors the project;
 without it, the selected directory's parent is the root. A legacy directory with
 its own `config.yaml` retains its parent-root behavior during migration.
@@ -69,12 +69,64 @@ shared tasks. Review and relocate such files yourself before using `--add` at th
 same destination. Use the exact `.tasks` and `.dotasks.yaml` spelling on
 case-sensitive filesystems.
 
+## Initialize a project
+
+Run `dotask --init` in the existing directory that should become the project root.
+It creates `.dotasks.yaml` and an empty `.tasks/`, prints what it created or kept,
+and suggests editing settings and writing or adding tasks. Unlike normal project
+discovery, initialization uses exactly the current directory, even when a parent
+already contains a DoTask project. It does not initialize Git or detect a language.
+
+For a directory named `MyProject`, the initial configuration is:
+
+```yaml
+version: 1
+name: "MyProject"
+description: ''
+settings: {}
+```
+
+The name is quoted/escaped as a YAML string, including names such as `true` or
+`2026`. Initialization creates no sample targets, registrations, lock file, or
+cache. It does not download, restore, compile, or execute anything and needs no
+language SDK. Adding shared tasks later creates `.dotasks-lock.yaml`; `--add`
+also retains its existing ability to create a minimal missing configuration.
+Git records the empty task directory only after files are added to it.
+
+Repeating `--init` succeeds while preserving existing configuration bytes,
+comments, task files, and tracking. It creates only missing pieces. Invalid
+existing YAML, wrong entry types (such as a file named `.tasks`), and symbolic
+links/reparse points in initialization paths are errors. A selected task
+directory containing legacy `config.yaml` requires manual migration first;
+initialization will not create conflicting old/new configuration. These checks
+happen before initialization writes files. New configuration is published
+without replacing a destination that another initializer or editor created.
+
+For a custom task directory:
+
+```sh
+dotask --init --use-dir "build support/tasks"
+dotask --use-dir "build support/tasks"
+```
+
+The selected directory must be beneath the current directory; the configuration
+stays at the project root. Root/outside locations and paths overlapping the
+configuration or lock file are rejected. The override is not stored in YAML;
+continue passing `--use-dir` when listing, adding, or running tasks there.
+Relative and absolute paths beneath the current root are accepted.
+
+`dotask --init --help` (or `-h`) prints initialization help without reading project
+configuration or creating files. There are no positional arguments, `--force`,
+or initialization `--dry-run` options. Use the installed command in the intended
+directory: `build.sh`/`build.cmd` always change to the DoTask source checkout.
+
 ## Commands
 
 | Command                                                       | Behavior                                                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `dotask`, `dotask help`                                       | Show only project name, description, shared settings, targets, and combined target options |
 | `dotask --help`, `dotask -h`                                  | Show only CLI usage; no project directory is required or inspected                         |
+| `dotask --init`                                               | Create missing project configuration and a task directory in the current directory        |
 | `dotask help build`, `dotask build --help`, `dotask build -h` | Show one target's description, options, requirements, and examples                         |
 | `dotask build -c Release`                                     | Validate arguments and requirements, compile, then execute `build.cs`                      |
 | `dotask --version`                                            | Print the CLI version; no project directory is required                                    |
@@ -90,7 +142,8 @@ See [shared tasks](SHARED-TASKS.md) for private tasks, offline use, caches,
 
 `build` is an example target name. `build`, `test`, `check`, `verify`, `format`, `run`,
 `publish`, `deploy`, and `release` exist only when the project supplies those files.
-There is no built-in `init`, `validate`, or JSON help output. Management
+`--init` is built in; bare `init` is still a project-defined task name. There is
+no built-in `validate` or JSON help output. Management
 `--dry-run` applies to add/sync/remove; it does not preview arbitrary task execution. Run one target per invocation; use a C# orchestration
 target for a sequence of tasks.
 

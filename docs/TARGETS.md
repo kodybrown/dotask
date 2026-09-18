@@ -292,6 +292,12 @@ targets:
 1), `name`, `description`, `settings`, and `targets` with optional per-target
 `defaults`. Defining a target here is never required.
 
+`dotask --init` creates a starter configuration in the current directory with a
+directory-derived name, empty description, and `settings: {}`, plus an empty
+`.tasks/`. It preserves existing files. See the
+[initialization reference](USAGE.md#initialize-a-project) for reruns, conflicts,
+and custom task directories.
+
 `name` and `description` are optional strings displayed by `dotask` and
 `dotask help`. Leading/trailing whitespace is trimmed; missing, null, or blank
 values count as absent. The name falls back to the project root directory's name,

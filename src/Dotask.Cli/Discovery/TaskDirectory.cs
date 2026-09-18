@@ -23,7 +23,7 @@ public sealed record TaskDirectory( string DirectoryPath, string RootDirectory, 
     if (allowMissing) {
       return Create(Path.Combine(invocation, ".tasks"), invocation);
     }
-    throw new TaskException("No .dotasks.yaml or .tasks directory found. Create a project configuration or use dotask --add TASK.");
+    throw new TaskException("No .dotasks.yaml or .tasks directory found. Run dotask --init here or use dotask --add TASK.");
   }
 
   private static string? FindConfigurationRoot( string invocation )

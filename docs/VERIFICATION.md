@@ -1,5 +1,29 @@
 # Verification
 
+## Project initialization (2026-09-18)
+
+`dotask --init` creates missing project configuration and a task directory in the
+invocation directory without upward discovery, SDK calls, or downloads. Existing
+configuration, task contents, and lock files are preserved. Custom task
+directories stay within the new project root. Initialization preflights legacy
+or invalid configuration, path-type conflicts, and symlink destinations, and
+publishes configuration without replacing an existing destination.
+
+On Linux with SDK 10.0.401, the full `./build.sh` gate passed **250 tests**, solution
+and task formatting, documentation/Git whitespace, catalog freshness, and shim
+hashes. The 24 initialization cases cover fresh/repeated setup, YAML-safe names,
+parent-project isolation, existing user files, custom/invalid paths, conflicts,
+symlinks, concurrent initializers, cancellation, read-only help/completion, and
+an unusable SDK host with unavailable shared-task sources.
+
+The published CLI also initialized and listed a temporary project with spaces
+in its path, preserved the configuration on a rerun, and provided initialization
+help and Bash completion. All 86 local documentation links/anchors resolved;
+evaluated build outputs remain under the user's `/tmp/_dotnet` policy. No active
+installation or shell profile was modified. Native Windows/macOS acceptance
+remains pending the CI matrix; link-creation tests do not run on Windows where
+they may require additional privileges.
+
 ## Single-checkout workflow and formatting (2026-09-18)
 
 The complete `./build.sh` gate now passes on Linux with SDK 10.0.401: **226 tests**,

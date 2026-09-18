@@ -204,6 +204,39 @@ preview by running `dotnet tool uninstall dotask --tool-path ./artifacts/tools`,
 then the install command above again. Use `--no-http-cache` when rebuilding the same
 preview version. Uninstall affects this tool directory only.
 
+## Initialize a project
+
+With the current `dotask` installed, run this **from the project directory you
+want to initialize**:
+
+```sh
+dotask --init
+dotask
+```
+
+This creates an empty `.tasks/` directory and `.dotasks.yaml`, using the directory
+name for the project name:
+
+```yaml
+version: 1
+name: "MyProject"
+description: ''
+settings: {}
+```
+
+Edit the description and shared settings, then write your own tasks or select
+shared tasks with `dotask --add "dotnet/{build,run,format}"`. Commit the
+configuration and task files. The lock file is created when shared tasks are added.
+Initialization is offline, needs no language SDK, and safely preserves existing
+files when repeated. It initializes the current directory even inside another
+DoTask project; it does not search parent directories.
+
+Use `dotask --init --help` for details, including custom task directories and
+existing-configuration handling. The [initialization reference](docs/USAGE.md#initialize-a-project)
+describes those rules. The source bootstrap launchers always select their own
+checkout, so use the installed command from the intended project directory when
+initializing another project.
+
 ## Commands
 
 With `dotask` on PATH, run these from the checkout root:
@@ -222,7 +255,8 @@ dotask --use-dir examples/basic/.tasks hello -n Ada
 
 `build`, `run`, `publish`, and similar names are ordinary project-defined targets,
 not built-in dotask commands. Available targets depend on the selected `.tasks`
-directory. You create the directory and files yourself; there is no `init` command.
+directory. Use `dotask --init` to create the project structure, then write task
+files or add shared tasks. Bare `init` remains an ordinary task name.
 
 Shared tasks live at `.tasks/<source>/<group>/<task>.cs`. Their full names are
 paths such as `dotask-official/dotnet/build`; `dotnet/build` and `build` work when

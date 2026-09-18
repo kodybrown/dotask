@@ -2,6 +2,7 @@ using DoTask.Cli.Completion;
 using DoTask.Cli.Configuration;
 using DoTask.Cli.Discovery;
 using DoTask.Cli.Execution;
+using DoTask.Cli.Initialization;
 using DoTask.Cli.Metadata;
 using DoTask.Cli.Parsing;
 using DoTask.Cli.SharedTasks;
@@ -34,6 +35,13 @@ public static class CliApplication
         throw new TaskException("Usage: dotask help [TARGET]");
       }
       var sharedCommand = SharedTaskCommand.Commands.Contains(command.Command, StringComparer.OrdinalIgnoreCase);
+      if (command.Command?.Equals("--init", StringComparison.OrdinalIgnoreCase) == true) {
+        if (command.Help) {
+          HelpWriter.Initialization(helpOutput);
+          return 0;
+        }
+        return InitializeCommand.Run(command, invocationDirectory, output, cancellationToken);
+      }
       if (command.Help && (command.Command is null || sharedCommand || (helpCommand && command.Arguments.Length == 0))) {
         HelpWriter.Usage(helpOutput);
         return 0;

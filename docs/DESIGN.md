@@ -14,6 +14,13 @@ Roslyn reads actual C# documentation trivia, and YamlDotNet parses configuration
 
 ## Discovery and metadata
 
+`--init` operates directly on the invocation directory before normal discovery.
+It preflights configuration and destination types, creates missing pieces, and
+publishes a new configuration without overwriting an existing destination.
+Repeated initialization preserves existing user files; legacy/invalid YAML and
+symlink destinations require user review. Initialization uses no SDK or shared
+task sources and creates no lock file. See [initialization](USAGE.md#initialize-a-project).
+
 Root `.dotasks.yaml` or the nearest `.tasks` anchors the project. Legacy
 `.tasks/config.yaml` remains readable, but simultaneous old/new configuration is
 an error. `--use-dir` is an exact override; root config above the selected directory

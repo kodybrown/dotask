@@ -50,6 +50,10 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 
 - Discovery walks upward for root `.dotasks.yaml` or `.tasks`; `--use-dir` is an
   exact override. Root configuration anchors projects even without task files.
+- `--init` initializes the invocation directory without upward discovery, SDK
+  calls, or downloads. Preserve existing configuration/tasks/tracking; refuse
+  legacy/invalid configuration, path-type conflicts, and symlink destinations.
+  Custom task directories must stay beneath that root; the override is not saved.
 - One C# file per target; XML documentation owns target metadata. No target
   registration in YAML is required.
 - Discovery only accepts supported code extensions (currently `.cs`); documents,

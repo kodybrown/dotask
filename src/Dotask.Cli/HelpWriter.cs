@@ -12,6 +12,7 @@ internal static class HelpWriter
     output.WriteLine("Usage: dotask [--use-dir PATH] [TARGET [OPTIONS]]");
     output.WriteLine("       dotask help [TARGET]");
     output.WriteLine("       dotask completion <bash|zsh|fish|powershell>");
+    output.WriteLine("       dotask --init [--use-dir PATH]");
     output.WriteLine("       dotask --list [SELECTION...] | --save SELECTION... | --add SELECTION...");
     output.WriteLine("       dotask --sync [SELECTION...] | --remove SELECTION...");
     output.WriteLine();
@@ -20,6 +21,7 @@ internal static class HelpWriter
     output.WriteRow("  dotask TARGET        ", "Run a target with its declared options.");
     output.WriteRow("  dotask help TARGET   ", "Show one target's details (also: dotask TARGET --help).");
     output.WriteRow("  dotask completion    ", "Print a completion script for the specified shell.");
+    output.WriteRow("  dotask --init        ", "Create project configuration and a task directory here; preserve existing files.");
     output.WriteLine();
     output.WriteLine("Global options:");
     output.WriteRow("  --use-dir PATH  ", "Use this task directory (relative to the invocation directory).");
@@ -36,6 +38,20 @@ internal static class HelpWriter
     output.WriteRow("  --accept-merge  ", "With --sync and explicit task names, record an already reviewed manual merge; keep project file contents.");
     output.WriteLine("Selections: dotnet/build, \"dotnet/{build,run,format}\", \"dotnet/*\", private-tasks/my-group/my-task.");
     output.WriteLine("An omitted source means dotask-official. Commit .dotasks.yaml, .dotasks-lock.yaml, and .tasks/.");
+  }
+
+  public static void Initialization( HelpText output )
+  {
+    output.WriteLine("Usage: dotask --init [--use-dir PATH]");
+    output.WriteLine("Initialize the current directory, without searching parent projects.");
+    output.WriteLine("Create missing .dotasks.yaml and .tasks/ entries; never overwrite existing files.");
+    output.WriteLine("The initial name comes from the directory; description and shared settings start empty.");
+    output.WriteLine();
+    output.WriteRow("  --use-dir PATH  ", "Create/use a task subdirectory beneath the current directory. Pass this override on subsequent commands too; it is not saved.");
+    output.WriteRow("  --help, -h      ", "Show this help without creating files.");
+    output.WriteLine();
+    output.WriteLine("Initialization is offline and needs no language SDK. It does not add tasks or create a lock file.");
+    output.WriteLine("Then edit .dotasks.yaml and write tasks, or select shared tasks with dotask --add GROUP/TASK.");
   }
 
   public static void Project( HelpText output, ProjectConfiguration config, string rootDirectory, string taskDirectory )
