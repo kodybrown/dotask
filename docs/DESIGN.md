@@ -153,7 +153,12 @@ a UTF-8 `.shim` sidecar. Launcher source and x64/ARM64 delivery assets live in
 The launcher only starts the named executable and preserves process behavior.
 
 Command activation uses a durable rollback journal; unexpected edits prevent
-automatic recovery. Multiple command updates are recoverable but not jointly
+automatic recovery. Missing owned launchers are recreated on reinstall; the
+journal records their physical absence while retaining the original ownership
+receipt, so interrupted repairs can roll back safely. Creation refuses to
+overwrite a command that appears after the missing-state check. Modified owned
+commands and occupied unowned destinations remain conflicts.
+Multiple command updates are recoverable but not jointly
 atomic to observers. Old builds are retained. PATH editing, existing global-tool
 removal and command-directory relocation are not automatic. See
 [installation](INSTALLATION.md) for the public API and ownership contract.

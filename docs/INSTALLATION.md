@@ -113,6 +113,15 @@ recorded; a truncated collision fails safely. The application's declared version
 is retained. A changed build with the same version gets another directory.
 An unchanged build is checked and reused. Timestamps do not determine identity.
 
+If a previously installed command is deleted, rerun the install task with the
+original command directory. The installer recreates missing owned launchers,
+including either missing member of a Windows `.exe`/`.shim` pair. This works
+when reusing an identical build and when installing changed files; no force flag
+or removal of installation records is needed. An existing launcher that was
+changed or replaced (including a retargeted or dangling replacement symlink)
+still causes a conflict. Missing launchers do not bypass build verification or
+protection of other commands.
+
 All published files are copied into staging, checked against the original
 inventory, and moved into place before commands switch. Existing builds remain
 untouched. Installations are serialized using `.dotask-install.lock` files in
@@ -133,7 +142,9 @@ overlap the publish output or each other within the application directory.
 Activation uses a `.dotask-pending.json` recovery journal. A subsequent install
 rolls an interrupted activation back before proceeding, provided affected files
 still match their recorded old or new states. Manual edits stop recovery with an
-error. Preserve the journal and installation records when resolving a conflict;
+error. A repair records the launcher's original absence separately from its
+ownership; rollback restores that absence before installation retries the repair.
+Preserve the journal and installation records when resolving a conflict;
 do not delete them to bypass ownership checks. An abrupt process termination
 can leave an unused `.staging-*` directory; it is never activated or automatically
 adopted.

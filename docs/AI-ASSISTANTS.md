@@ -137,7 +137,10 @@ methods in the same file; it needs no separate helper source. Use the bootstrap
 launcher for the initial upgrade from an older library, and explicit temporary
 `--install-root` / `--bin-dir` directories for isolated tests. Do not remove
 ownership/recovery records, edit hashes, or overwrite an existing global-tool
-launcher to bypass a conflict. Installation never edits PATH, removes old builds,
+launcher to bypass a conflict. If an owned launcher was deleted, rerun the
+bootstrap install with its original command directory to recreate it. Existing
+modified launchers remain protected; no force flag is needed for a missing one.
+Installation never edits PATH, removes old builds,
 or retargets an existing `dt` shortcut automatically. Other task languages and a
 public JSON installation interface remain deferred.
 

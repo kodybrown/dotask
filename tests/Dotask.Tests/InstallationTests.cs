@@ -38,6 +38,116 @@ public sealed class InstallationTests
     AssertNoLocks(fixture);
   }
 
+  [Theory]
+  [InlineData(false, false)]
+  [InlineData(true, false)]
+  [InlineData(false, true)]
+  public async Task MissingOwnedCommandsAreRestoredOnReinstall( bool updateBuild, bool removeBinDirectory )
+  {
+    using var fixture = new Fixture();
+    var first = await UserInstaller.InstallAsync(fixture.Definition);
+    var receiptPath = Path.Combine(fixture.App, ".dotask-install.json");
+    var before = InstallationFiles.Read<InstallReceipt>(receiptPath);
+    foreach (var name in before.Commands.Keys) {
+      File.Delete(Path.Combine(fixture.Bin, name));
+    }
+    if (removeBinDirectory) {
+      Directory.Delete(fixture.Bin);
+    }
+    if (updateBuild) {
+      fixture.WritePayload("payload two");
+    }
+
+    var repaired = await UserInstaller.InstallAsync(fixture.Definition);
+    Assert.Equal(!updateBuild, repaired.Reused);
+    Assert.Equal(!updateBuild, first.Fingerprint == repaired.Fingerprint);
+    Assert.Equal("payload one", File.ReadAllText(Path.Combine(first.InstallDirectory, fixture.Executable)));
+    AssertActive(repaired, fixture.Executable);
+    var after = InstallationFiles.Read<InstallReceipt>(receiptPath);
+    foreach (var entry in after.Commands) {
+      Assert.Equal(entry.Value, CommandFile.Read(Path.Combine(fixture.Bin, entry.Key)));
+    }
+    Assert.False(File.Exists(Path.Combine(fixture.App, ".dotask-pending.json")));
+    AssertNoLocks(fixture);
+  }
+
+  [Theory]
+  [InlineData("sample.exe")]
+  [InlineData("sample.shim")]
+  public void MissingMemberOfFileLauncherPairIsRepairedWithoutChangingSurvivor( string missing )
+  {
+    using var fixture = new Fixture();
+    Directory.CreateDirectory(fixture.App);
+    Directory.CreateDirectory(fixture.Bin);
+    var commands = new Dictionary<string, CommandFile> {
+      ["sample.exe"] = new("file", Convert.ToBase64String(Encoding.UTF8.GetBytes("launcher bytes"))),
+      ["sample.shim"] = new("file", Convert.ToBase64String(Encoding.UTF8.GetBytes("path = executable")))
+    };
+    var receipt = new InstallReceipt(1, "sample", fixture.Bin, "build", commands);
+    InstallationFiles.Write(Path.Combine(fixture.App, ".dotask-install.json"), receipt);
+    foreach (var entry in commands.Where(entry => entry.Key != missing)) {
+      CommandFile.Apply(Path.Combine(fixture.Bin, entry.Key), entry.Value);
+    }
+
+    InstallationCommands.Activate(fixture.App, receipt, receipt);
+    foreach (var entry in commands) {
+      Assert.Equal(entry.Value, CommandFile.Read(Path.Combine(fixture.Bin, entry.Key)));
+    }
+    Assert.False(File.Exists(Path.Combine(fixture.App, ".dotask-pending.json")));
+  }
+
+  [Fact]
+  public async Task MissingCommandDoesNotAllowOverwritingAnotherModifiedCommand()
+  {
+    using var fixture = new Fixture();
+    var multiple = fixture.Definition with { Commands = [new("sample", fixture.Executable), new("alias", fixture.Executable)] };
+    await UserInstaller.InstallAsync(multiple);
+    var missing = Path.Combine(fixture.Bin, fixture.Executable);
+    var edited = Path.Combine(fixture.Bin, OperatingSystem.IsWindows() ? "alias.exe" : "alias");
+    File.Delete(missing);
+    File.Delete(edited);
+    File.WriteAllText(edited, "my command");
+    var receiptPath = Path.Combine(fixture.App, ".dotask-install.json");
+    var originalReceipt = File.ReadAllText(receiptPath);
+    fixture.WritePayload("next build");
+
+    await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(multiple));
+    Assert.False(InstallationFiles.Exists(missing));
+    Assert.Equal("my command", File.ReadAllText(edited));
+    Assert.Equal(originalReceipt, File.ReadAllText(receiptPath));
+    Assert.Single(Directory.GetDirectories(fixture.App));
+    AssertNoLocks(fixture);
+  }
+
+  [Fact]
+  public async Task ChangedDanglingOwnedLinkIsNotTreatedAsMissing()
+  {
+    if (OperatingSystem.IsWindows()) {
+      return;
+    }
+    using var fixture = new Fixture();
+    await UserInstaller.InstallAsync(fixture.Definition);
+    var command = Path.Combine(fixture.Bin, "sample");
+    var changedTarget = Path.Combine(fixture.Project.Root, "missing-target");
+    File.Delete(command);
+    File.CreateSymbolicLink(command, changedTarget);
+
+    await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(fixture.Definition));
+    Assert.Equal(changedTarget, new FileInfo(command).LinkTarget);
+    AssertNoLocks(fixture);
+  }
+
+  [Fact]
+  public void CreatingMissingCommandCannotOverwriteALaterArrival()
+  {
+    using var fixture = new Fixture();
+    var path = fixture.Project.Write("command dir/sample", "someone else's command");
+    var desired = new CommandFile("file", Convert.ToBase64String(Encoding.UTF8.GetBytes("new launcher")));
+    Assert.Throws<IOException>(() => CommandFile.Apply(path, desired, overwrite: false));
+    Assert.Equal("someone else's command", File.ReadAllText(path));
+    Assert.Empty(Directory.GetFiles(fixture.Bin, "*.tmp"));
+  }
+
   [Fact]
   public async Task FingerprintIncludesResourcesAndExecutablePermissions()
   {
@@ -203,6 +313,129 @@ public sealed class InstallationTests
     await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(fixture.Definition));
     Assert.Equal("manual edit during recovery", File.ReadAllText(edited));
     Assert.True(File.Exists(journal));
+  }
+
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task InterruptedRepairRestoresAbsenceAndOwnershipBeforeRetrying( bool removeAlias )
+  {
+    using var fixture = new Fixture();
+    var multiple = fixture.Definition with { Commands = [new("sample", fixture.Executable), new("alias", fixture.Executable)] };
+    var installed = await UserInstaller.InstallAsync(multiple);
+    var receiptPath = Path.Combine(fixture.App, ".dotask-install.json");
+    var originalReceipt = File.ReadAllText(receiptPath);
+    var before = InstallationFiles.Read<InstallReceipt>(receiptPath);
+    foreach (var name in before.Commands.Keys) {
+      File.Delete(Path.Combine(fixture.Bin, name));
+    }
+    var definition = removeAlias ? fixture.Definition : multiple;
+    var after = before with { Commands = InstallationCommands.Desired(installed.InstallDirectory, definition.Commands) };
+    var changes = InstallationCommands.Changes(before, after, before.Commands.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
+    var journal = Path.Combine(fixture.App, ".dotask-pending.json");
+    InstallationFiles.Write(journal, new InstallJournal(before, after, changes));
+    var repaired = changes.First(change => change.After is not null);
+    CommandFile.Apply(Path.Combine(fixture.Bin, repaired.Name), repaired.After);
+    InstallationFiles.Write(receiptPath, after);
+
+    InstallationCommands.Recover(fixture.App, "sample", fixture.Bin);
+    Assert.Equal(originalReceipt, File.ReadAllText(receiptPath));
+    Assert.False(File.Exists(journal));
+    foreach (var name in before.Commands.Keys) {
+      Assert.False(InstallationFiles.Exists(Path.Combine(fixture.Bin, name)));
+    }
+    await UserInstaller.InstallAsync(definition);
+    AssertActive(installed, fixture.Executable);
+    foreach (var entry in after.Commands) {
+      Assert.Equal(entry.Value, CommandFile.Read(Path.Combine(fixture.Bin, entry.Key)));
+    }
+    Assert.Equal(!removeAlias, File.Exists(Path.Combine(fixture.Bin, OperatingSystem.IsWindows() ? "alias.exe" : "alias")));
+    AssertNoLocks(fixture);
+  }
+
+  [Fact]
+  public async Task InterruptedRepairPreservesAnUnexpectedCommandAndItsJournal()
+  {
+    using var fixture = new Fixture();
+    await UserInstaller.InstallAsync(fixture.Definition);
+    var receiptPath = Path.Combine(fixture.App, ".dotask-install.json");
+    var before = InstallationFiles.Read<InstallReceipt>(receiptPath);
+    var changes = InstallationCommands.Changes(before, before, before.Commands.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
+    foreach (var name in before.Commands.Keys) {
+      File.Delete(Path.Combine(fixture.Bin, name));
+    }
+    var journal = Path.Combine(fixture.App, ".dotask-pending.json");
+    InstallationFiles.Write(journal, new InstallJournal(before, before, changes));
+    var unexpected = Path.Combine(fixture.Bin, changes[0].Name);
+    File.WriteAllText(unexpected, "added while installer stopped");
+
+    await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(fixture.Definition));
+    Assert.Equal("added while installer stopped", File.ReadAllText(unexpected));
+    Assert.True(File.Exists(journal));
+    foreach (var change in changes.Skip(1)) {
+      Assert.False(InstallationFiles.Exists(Path.Combine(fixture.Bin, change.Name)));
+    }
+    AssertNoLocks(fixture);
+  }
+
+  [Theory]
+  [InlineData("duplicate")]
+  [InlineData("unknown")]
+  [InlineData("altered")]
+  [InlineData("null")]
+  public async Task InvalidRepairJournalCannotMutateCommandsOrOwnership( string corruption )
+  {
+    using var fixture = new Fixture();
+    await UserInstaller.InstallAsync(fixture.Definition);
+    var receiptPath = Path.Combine(fixture.App, ".dotask-install.json");
+    var originalReceipt = File.ReadAllText(receiptPath);
+    var before = InstallationFiles.Read<InstallReceipt>(receiptPath);
+    var changes = InstallationCommands.Changes(before, before, before.Commands.Keys.ToHashSet(StringComparer.OrdinalIgnoreCase));
+    foreach (var name in before.Commands.Keys) {
+      File.Delete(Path.Combine(fixture.Bin, name));
+    }
+    if (corruption == "duplicate") {
+      changes = [.. changes, changes[0]];
+    } else if (corruption == "unknown") {
+      changes[0] = changes[0] with { Name = "unowned" };
+    } else if (corruption == "altered") {
+      changes[0] = changes[0] with { After = new("file", Convert.ToBase64String(Encoding.UTF8.GetBytes("changed"))) };
+    } else {
+      changes[0] = null!;
+    }
+    var journal = Path.Combine(fixture.App, ".dotask-pending.json");
+    InstallationFiles.Write(journal, new InstallJournal(before, before, changes));
+    var originalJournal = File.ReadAllText(journal);
+
+    await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(fixture.Definition));
+    Assert.Empty(Directory.GetFileSystemEntries(fixture.Bin));
+    Assert.Equal(originalReceipt, File.ReadAllText(receiptPath));
+    Assert.Equal(originalJournal, File.ReadAllText(journal));
+    AssertNoLocks(fixture);
+  }
+
+  [Fact]
+  public async Task RemovingAnAlreadyMissingAliasUpdatesOwnershipWithoutRecreatingIt()
+  {
+    using var fixture = new Fixture();
+    var multiple = fixture.Definition with { Commands = [new("sample", fixture.Executable), new("alias", fixture.Executable)] };
+    await UserInstaller.InstallAsync(multiple);
+    var receiptPath = Path.Combine(fixture.App, ".dotask-install.json");
+    var before = InstallationFiles.Read<InstallReceipt>(receiptPath);
+    var aliases = before.Commands.Keys.Where(name => name.StartsWith("alias", StringComparison.Ordinal)).ToArray();
+    foreach (var name in aliases) {
+      File.Delete(Path.Combine(fixture.Bin, name));
+    }
+
+    var updated = await UserInstaller.InstallAsync(fixture.Definition);
+    AssertActive(updated, fixture.Executable);
+    var after = InstallationFiles.Read<InstallReceipt>(receiptPath);
+    foreach (var name in aliases) {
+      Assert.False(InstallationFiles.Exists(Path.Combine(fixture.Bin, name)));
+      Assert.False(after.Commands.ContainsKey(name));
+    }
+    Assert.False(File.Exists(Path.Combine(fixture.App, ".dotask-pending.json")));
+    AssertNoLocks(fixture);
   }
 
   [Fact]

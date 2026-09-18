@@ -27,7 +27,7 @@ internal sealed record CommandFile( string Kind, string Value )
     return new("file", Convert.ToBase64String(File.ReadAllBytes(path)));
   }
 
-  internal static void Apply( string path, CommandFile? value )
+  internal static void Apply( string path, CommandFile? value, bool overwrite = true )
   {
     if (value is null) { File.Delete(path); return; }
     var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -40,7 +40,7 @@ internal sealed record CommandFile( string Kind, string Value )
         throw new TaskException("Unknown command record kind.");
       }
 
-      File.Move(temporary, path, overwrite: true);
+      File.Move(temporary, path, overwrite);
     } finally { File.Delete(temporary); }
   }
 }
@@ -97,13 +97,18 @@ internal static class InstallationCommands
     }
   }
 
-  internal static void VerifyOwned( InstallReceipt receipt )
+  internal static HashSet<string> VerifyOwned( InstallReceipt receipt )
   {
+    var missing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     foreach (var entry in receipt.Commands) {
-      if (CommandFile.Read(Path.Combine(receipt.BinDirectory, entry.Key)) != entry.Value) {
-        throw new TaskException($"Installed command was changed or removed; refusing to overwrite it: {Path.Combine(receipt.BinDirectory, entry.Key)}");
+      var current = CommandFile.Read(Path.Combine(receipt.BinDirectory, entry.Key));
+      if (current is null) {
+        missing.Add(entry.Key);
+      } else if (current != entry.Value) {
+        throw new TaskException($"Installed command was changed; refusing to overwrite it: {Path.Combine(receipt.BinDirectory, entry.Key)}");
       }
     }
+    return missing;
   }
 
   internal static void CheckConflicts( InstallReceipt receipt, Dictionary<string, CommandFile> desired,
@@ -143,8 +148,15 @@ internal static class InstallationCommands
     var journal = InstallationFiles.Read<InstallJournal>(path);
     ValidateReceipt(journal.Before, appId, bin);
     ValidateReceipt(journal.After, appId, bin);
-    var expected = Changes(journal.Before, journal.After);
-    if (journal.Changes is null || !expected.SequenceEqual(journal.Changes)) {
+    if (journal.Changes is null || journal.Changes.Any(change => change is null)) {
+      throw new TaskException($"Invalid installation recovery journal: {path}");
+    }
+    // A repair keeps the ownership receipt, but records an absent launcher as
+    // null in the physical before-state so rollback restores that absence.
+    var missing = journal.Changes.Where(change => change.Before is null && change.Name is not null
+      && journal.Before.Commands.ContainsKey(change.Name)).Select(change => change.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var expected = Changes(journal.Before, journal.After, missing);
+    if (!expected.SequenceEqual(journal.Changes)) {
       throw new TaskException($"Invalid installation recovery journal: {path}");
     }
 
@@ -161,8 +173,12 @@ internal static class InstallationCommands
     }
     foreach (var change in expected.Reverse()) {
       var destination = Path.Combine(bin, change.Name);
-      if (CommandFile.Read(destination) != change.Before) {
-        CommandFile.Apply(destination, change.Before);
+      var current = CommandFile.Read(destination);
+      if (current != change.Before && current != change.After) {
+        throw new TaskException($"Interrupted installation has a modified command. Preserve {path} and resolve {change.Name} before retrying.");
+      }
+      if (current != change.Before) {
+        CommandFile.Apply(destination, change.Before, overwrite: current is not null);
       }
     }
     InstallationFiles.Write(Path.Combine(app, ".dotask-install.json"), journal.Before);
@@ -171,14 +187,16 @@ internal static class InstallationCommands
 
   private static string JsonIdentity( InstallReceipt receipt ) => System.Text.Json.JsonSerializer.Serialize(receipt);
 
-  internal static CommandChange[] Changes( InstallReceipt before, InstallReceipt after )
+  internal static CommandChange[] Changes( InstallReceipt before, InstallReceipt after, IReadOnlySet<string>? missing = null )
     => before.Commands.Keys.Union(after.Commands.Keys, StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal)
-      .Select(name => new CommandChange(name, before.Commands.GetValueOrDefault(name), after.Commands.GetValueOrDefault(name)))
-      .Where(c => c.Before != c.After).ToArray();
+      .Select(name => new CommandChange(name, missing?.Contains(name) == true ? null : before.Commands.GetValueOrDefault(name), after.Commands.GetValueOrDefault(name)))
+      // Keep missing aliases that are being removed, even though both physical
+      // states are null, so recovery can validate their original absence too.
+      .Where(c => c.Before != c.After || missing?.Contains(c.Name) == true).ToArray();
 
   internal static void Activate( string app, InstallReceipt before, InstallReceipt after )
   {
-    var changes = Changes(before, after);
+    var changes = Changes(before, after, VerifyOwned(before));
     var pending = Path.Combine(app, ".dotask-pending.json");
     InstallationFiles.Write(pending, new InstallJournal(before, after, changes));
     try {
@@ -188,7 +206,9 @@ internal static class InstallationCommands
           throw new TaskException($"Command changed during installation: {path}");
         }
 
-        CommandFile.Apply(path, change.After);
+        if (change.Before != change.After) {
+          CommandFile.Apply(path, change.After, overwrite: change.Before is not null);
+        }
       }
       InstallationFiles.Write(Path.Combine(app, ".dotask-install.json"), after);
       File.Delete(pending);

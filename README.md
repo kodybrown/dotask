@@ -128,6 +128,9 @@ On Windows, use `.\build.cmd install`. Use the same directory overrides as your
 first installation. A content fingerprint distinguishes builds with the same
 version, so no uninstall is necessary. The command switches after copying and
 validation succeed. An unchanged build is checked and reused.
+If you deleted the installed launcher, the same command recreates it using the
+existing installation records. Changed or replaced launchers remain protected;
+do not delete ownership records to bypass a conflict.
 
 ## Try the example without installing
 

@@ -17,4 +17,14 @@
 - Changed agent workflow to use the primary checkout directly for single-agent
   work; additional worktrees require an explicit request.
 
-Initial implementation is awaiting user testing and completion approval.
+### 2026-09-18 Repair missing installed launchers
+
+- Reinstalling recreates deleted owned launchers for identical or changed
+  builds, including either file in a Windows launcher pair. Modified and
+  unowned commands remain protected; no force flag is needed.
+- Recovery journals preserve ownership and original physical absence so
+  interrupted repairs and removal of missing aliases remain recoverable.
+- Verification: `./build.sh` passed 266 tests and all repository checks on Linux,
+  including 16 added regressions. A subsequent bootstrap installation restored
+  the reported missing command; all 223 installed files and permissions matched
+  the host publish output. Native Windows/macOS acceptance remains pending.

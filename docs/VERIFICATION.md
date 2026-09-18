@@ -1,5 +1,29 @@
 # Verification
 
+## Missing installed launcher repair (2026-09-18)
+
+Reinstalling now recreates missing owned launchers while preserving the refusal
+to overwrite modified or unowned commands. Activation journals retain original
+ownership and record physical absence, allowing interrupted repairs to roll back
+before retrying. Missing aliases can also be removed from ownership without
+recreating their files.
+
+On Linux with SDK 10.0.401, the full `./build.sh` gate passed **266 tests**, solution
+and task formatting, documentation/Git whitespace, catalog freshness, and bundled
+shim hashes. The 16 added regression cases cover identical/new builds, a deleted
+command directory, either member of a file-launcher pair, modified companion
+commands, changed dangling symlinks, no-overwrite creation, interrupted repairs,
+malformed journals, and missing alias removal. All 43 local links/anchors in the
+changed reference documents resolved.
+
+After isolated tests passed, `./build.sh install` repaired the user's reported
+missing launcher and activated the current source build. Command lookup resolved
+the restored launcher; `dotask --version` and `dotask --init --help` succeeded.
+All 223 installed files and Unix permissions matched the current host publish
+output. The prior build remained intact, with no pending journal or lock files.
+Native Windows/macOS execution remains pending the CI matrix; portable tests of
+the two-file launcher state do not establish native Windows acceptance.
+
 ## Project initialization (2026-09-18)
 
 `dotask --init` creates missing project configuration and a task directory in the
