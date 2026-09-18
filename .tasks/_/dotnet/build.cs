@@ -14,7 +14,7 @@ public static class Target
   {
     var project = BuildContext.Current;
     var dotnet = project.Parameters.Get<string>("dotnet");
-    await project.ExecTargetAsync("_/dotnet/restore", new { Dotnet = dotnet });
+    await project.ExecTargetAsync("dotask-official/dotnet/restore", new { Dotnet = dotnet });
     await project.RunAsync(dotnet, [
       "build", project.Config.GetPath("solution"),
       "--configuration", project.Parameters.Get<string>("configuration"), "--no-restore"

@@ -32,10 +32,10 @@ public static class Target
     await project.RunAsync(dotnet, taskArguments);
 
     if (!verify) {
-      var result = await project.ExecTargetIfExistsAsync("_/text/fixeol");
+      var result = await project.ExecTargetIfExistsAsync("dotask-official/text/fixeol");
       if (result.Status == TargetExecutionStatus.Failed) {
         if (result.ExitCode is { } exitCode) {
-          throw new ProcessFailedException("_/text/fixeol", exitCode);
+          throw new ProcessFailedException("dotask-official/text/fixeol", exitCode);
         }
         throw new TaskException(result.Error ?? "Line-ending normalization failed.");
       }
