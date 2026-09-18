@@ -8,8 +8,9 @@
   `C:\tmp\_dotnet` on Windows and `/tmp/_dotnet` on Linux and macOS.
 - Repository-level `Directory.Build.props` files must import the user-level
   props before defining other settings and must not redirect output into source.
-- Build launchers must use the evaluated MSBuild `PublishDir`;
-  `install-user` may copy from there into `~/Bin/apps/<Project>`.
+- Build launchers must use the evaluated MSBuild `PublishDir`. Application
+  installation uses the `dotnet/install` task and DoTask installation library;
+  follow `docs/INSTALLATION.md` for versioned locations and command activation.
 - Bootstrap runners are temporary physical copies of the publish output, outside
   the checkout. Do not redirect the repository's build outputs to stage a runner.
 - Verify the evaluated `BaseOutputPath`, `BaseIntermediateOutputPath`, and
