@@ -72,7 +72,7 @@ public static class CompletionEngine
         try {
           foreach (var (source, task) in new SharedTaskStore(sharedTaskOptions ?? SharedTaskOptions.FromEnvironment()).CachedTasks()) {
             candidates.Add(new(source + "/" + task.Id, "target", task.Description));
-            if (source == "dotask-official") {
+            if (source == "_") {
               candidates.Add(new(task.Id, "target", task.Description));
             }
           }

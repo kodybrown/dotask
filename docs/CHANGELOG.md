@@ -60,3 +60,20 @@ acceptance, installation, and publication.
 - Verification: `./build.sh verify-docs` and `git diff --check` passed. All six
   selected modules are present; the four unadapted modules match PTS byte for
   byte.
+
+### 2026-09-18 Compact official task source
+
+- Renamed the official shared-task source to `_` throughout selection, cache and
+  project paths, lock tracking, completion, reusable task calls, and documentation.
+  Omitted sources still select official tasks; help labels them `Official tasks (_)`.
+  No migration or compatibility alias is provided for the previous source name.
+- Discover the reserved task-root `_` directory while continuing to exclude
+  underscore-prefixed helpers, nested `_` directories, and symlinks. Private
+  catalog discovery retains its existing helper exclusions.
+- Updated shared sources and their repository copies together and regenerated
+  the shared catalog. Added coverage for both add spellings, qualified completion,
+  the help label, and the discovery exception.
+- Verification: focused discovery and official-source tests passed (33 tests).
+  `./build.sh` passed all 269 Release tests, formatting, documentation, catalog,
+  and bundled shim checks; `git diff --check` passed. Windows and macOS
+  acceptance not run.

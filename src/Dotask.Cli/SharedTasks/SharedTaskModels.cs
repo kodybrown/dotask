@@ -110,8 +110,8 @@ internal sealed record TaskSelection( string Source, string Pattern )
         continue;
       }
       var segments = argument.Split('/');
-      var explicitSource = segments.Length == 3 || (segments.Length == 2 && segments[0].ToLowerInvariant() is "private-tasks" or "dotask-official");
-      var source = explicitSource ? segments[0].ToLowerInvariant() : "dotask-official";
+      var explicitSource = segments.Length == 3 || (segments.Length == 2 && segments[0].ToLowerInvariant() is "private-tasks" or "_");
+      var source = explicitSource ? segments[0].ToLowerInvariant() : "_";
       var pattern = explicitSource ? string.Join('/', segments[1..]) : argument;
       SharedTaskFiles.ValidateId(source, 1);
       if (pattern != "*") {

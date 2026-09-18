@@ -76,7 +76,7 @@ task filename, including any grouping space;
 paths containing spaces are enclosed in single quotes for display. Do not infer
 a hyphenated filename from a command such as `dotnet-build`.
 
-The reusable `dotask-official/dotnet/check.cs` in the starter catalog checks the configured
+The reusable `_/dotnet/check.cs` in the starter catalog checks the configured
 solution's presence and the SDK, MSBuild, and bundled formatter versions. It
 takes no target parameters and does not run tests or verify formatting. Use
 `test` and `format --verify` explicitly, or use `verify` to run the available
@@ -109,7 +109,7 @@ example without an application dependency, use
    Optional top-level `name` and `description` identify the project in summaries;
    they are not keys in `project.Config` or task parameters.
    Add `targets.<full-name>.defaults` only when overriding a parameter default
-   (for example, `targets.dotask-official/dotnet/run.defaults`, not `targets.run.defaults`).
+   (for example, `targets._/dotnet/run.defaults`, not `targets.run.defaults`).
    There is no registration requirement and no generated `config.SomeProperty`.
 6. Use argument lists for child processes and portable-path helpers for actual
    paths. Await operations. Use `ExecTargetAsync` for other targets and forward
@@ -155,9 +155,9 @@ public JSON installation interface remain deferred.
 | Task-local resource        | `project.Path(project.TargetDirectory, "templates", "file.txt")`                                                                     |
 | Child command              | `await project.RunAsync("dotnet", ["build", config.GetPath("solution")])`                                                            |
 | Command options            | `new ProcessDefinition { Executable = "git", Arguments = ["status"], CaptureOutput = true }`                                         |
-| Another task               | `await project.ExecTargetAsync("dotask-official/dotnet/build", new { Configuration = "Release" })`                                   |
-| Target presence            | `await project.TargetExistsAsync("dotask-official/dotnet/test")`; no compilation/execution; invalid metadata still counts as present |
-| Optional task              | `await project.ExecTargetIfExistsAsync("dotask-official/dotnet/test")`; inspect `Status`, `ExitCode`, and `Error`                    |
+| Another task               | `await project.ExecTargetAsync("_/dotnet/build", new { Configuration = "Release" })`                                   |
+| Target presence            | `await project.TargetExistsAsync("_/dotnet/test")`; no compilation/execution; invalid metadata still counts as present |
+| Optional task              | `await project.ExecTargetIfExistsAsync("_/dotnet/test")`; inspect `Status`, `ExitCode`, and `Error`                    |
 | Current task identity      | `project.TargetName` is the full name; `TargetFile` retains the actual source path                                                   |
 | Task directories           | `project.TaskDirectory` is the selected tasks root, including `--use-dir`; `TargetDirectory` contains the current target file       |
 | Host detection             | `project.OS`, `IsWindows`, `IsLinux`, `IsMacOS`; an `OS=linux` parameter does not change the host                                    |
@@ -200,14 +200,14 @@ reusable tasks; `.tasks/` contains the copies used by the repository itself.
 Keep the `dotnet/format.cs`, `dotnet/install.cs`, `dotnet/pack.cs`, and `git/check.cs` copies
 identical when updating them, and regenerate the catalog. The standard formatter
 formats the solution and C# files throughout the selected tasks directory;
-`--verify` checks both without running optional `dotask-official/text/fixeol`.
+`--verify` checks both without running optional `_/text/fixeol`.
 Formatting changes to tracked shared copies are local edits for sync purposes.
 `pack` creates local NuGet packages; it does not upload them.
 
 Read [shared tasks](SHARED-TASKS.md) before adding, syncing, or removing them.
 Use explicit selections such as `dotask --add "dotnet/{build,run,format}"`.
 Commit `.dotasks.yaml`, `.dotasks-lock.yaml`, and installed `.tasks/` files.
-Sources are `dotask-official` or `private-tasks`; other remote sources are deferred.
+Sources are `_` or `private-tasks`; other remote sources are deferred.
 
 - Run management `--dry-run` to inspect an update plan. Cache downloads are allowed;
   project files and tracking are unchanged. Review task source before executing it.

@@ -18,8 +18,8 @@ internal sealed class SharedTaskStore( SharedTaskOptions options, HttpClient? cl
     if (source == "private-tasks") {
       return PrivateCatalog();
     }
-    if (source != "dotask-official") {
-      throw new TaskException($"Unknown shared task source '{source}'. This version supports dotask-official and private-tasks; additional repositories are deferred.");
+    if (source != "_") {
+      throw new TaskException($"Unknown shared task source '{source}'. This version supports _ and private-tasks; additional repositories are deferred.");
     }
     var cache = SharedTaskFiles.Resolve(options.CacheDirectory, source + "/catalog.json");
     byte[] bytes;
@@ -40,18 +40,18 @@ internal sealed class SharedTaskStore( SharedTaskOptions options, HttpClient? cl
 
   public IEnumerable<(string Source, SharedTask Task)> CachedTasks()
   {
-    var catalogPath = SharedTaskFiles.Resolve(options.CacheDirectory, "dotask-official/catalog.json");
+    var catalogPath = SharedTaskFiles.Resolve(options.CacheDirectory, "_/catalog.json");
     if (File.Exists(catalogPath)) {
       var catalog = JsonSerializer.Deserialize<SharedCatalog>(File.ReadAllBytes(catalogPath), SharedTaskJson.Options)!;
       ValidateCatalog(catalog);
       foreach (var task in catalog.Tasks) {
-        yield return ("dotask-official", task);
+        yield return ("_", task);
       }
     }
     if (!Directory.Exists(options.PrivateDirectory)) {
       yield break;
     }
-    foreach (var file in TargetCatalog.EnumerateSources(options.PrivateDirectory)) {
+    foreach (var file in TargetCatalog.EnumerateSources(options.PrivateDirectory, false)) {
       var relative = Path.GetRelativePath(options.PrivateDirectory, file).Replace(Path.DirectorySeparatorChar, '/');
       var id = relative[..^3];
       try {
@@ -71,7 +71,7 @@ internal sealed class SharedTaskStore( SharedTaskOptions options, HttpClient? cl
     }
     SharedTaskFiles.CheckLink(options.PrivateDirectory);
     var tasks = new List<SharedTask>();
-    foreach (var file in TargetCatalog.EnumerateSources(options.PrivateDirectory)) {
+    foreach (var file in TargetCatalog.EnumerateSources(options.PrivateDirectory, false)) {
       var relative = Path.GetRelativePath(options.PrivateDirectory, file).Replace(Path.DirectorySeparatorChar, '/');
       var id = relative[..^3];
       SharedTaskFiles.ValidateId(id, 2);

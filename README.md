@@ -10,8 +10,8 @@ registration step.
 .dotasks-lock.yaml
 .tasks/
   build.cs
-  dotask-official/dotnet/build.cs
-  dotask-official/dotnet/run.cs
+  _/dotnet/build.cs
+  _/dotnet/run.cs
   release.cs
 ```
 
@@ -262,7 +262,7 @@ directory. Use `dotask --init` to create the project structure, then write task
 files or add shared tasks. Bare `init` remains an ordinary task name.
 
 Shared tasks live at `.tasks/<source>/<group>/<task>.cs`. Their full names are
-paths such as `dotask-official/dotnet/build`; `dotnet/build` and `build` work when
+paths such as `_/dotnet/build`; `dotnet/build` and `build` work when
 unique. A top-level `build.cs` can orchestrate multiple groups. Old space-grouped
 filenames remain supported. Use source-qualified names in calls between tasks.
 

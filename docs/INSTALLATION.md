@@ -164,8 +164,8 @@ Add the shared task when the online catalog is published, or use the documented
 
 ```sh
 dotask --add dotnet/install
-dotask help dotask-official/dotnet/install
-dotask dotask-official/dotnet/install
+dotask help _/dotnet/install
+dotask _/dotnet/install
 ```
 
 The task is self-contained in `install.cs`, including its .NET publishing and

@@ -25,17 +25,17 @@ public sealed class TargetCatalog
       .ToDictionary(g => g.Key, g => g.Select(x => x.target).ToArray(), StringComparer.OrdinalIgnoreCase);
   }
 
-  internal static IEnumerable<string> EnumerateSources( string directory )
+  internal static IEnumerable<string> EnumerateSources( string directory, bool taskRoot = true )
   {
     foreach (var entry in new DirectoryInfo(directory).EnumerateFileSystemInfos().OrderBy(e => e.Name, StringComparer.Ordinal)) {
-      if (entry.Name.StartsWith('.') || entry.Name.StartsWith('_') || (entry.Attributes & FileAttributes.ReparsePoint) != 0) {
+      if (entry.Name.StartsWith('.') || (entry.Name.StartsWith('_') && !(taskRoot && entry is DirectoryInfo && entry.Name == "_")) || (entry.Attributes & FileAttributes.ReparsePoint) != 0) {
         continue;
       }
       if (entry is DirectoryInfo child) {
         if (child.Name is "bin" or "obj" or "node_modules") {
           continue;
         }
-        foreach (var file in EnumerateSources(child.FullName)) {
+        foreach (var file in EnumerateSources(child.FullName, false)) {
           yield return file;
         }
       } else if (entry.Extension.Equals(".cs", StringComparison.OrdinalIgnoreCase)) {

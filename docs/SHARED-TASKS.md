@@ -22,7 +22,7 @@ uses `~/Library/Caches/dotask/tasks` for the local cache and
 `DOTASK_PRIVATE_TASKS` overrides the private task source directory.
 Neither directory is the compiler cache, which remains separate.
 
-The first version supports **dotask-official** and **private-tasks**. Named third-party
+The first version supports **Official tasks (_)** and **private-tasks**. Named third-party
 GitHub repositories, authenticated private repositories, other task languages,
 and CLI self-update are future features. Reserving a source component in IDs and
 paths does not mean arbitrary remote sources are already supported.
@@ -43,8 +43,9 @@ support files are included. Optional calls do not cause automatic installation.
 Run `--save` to refresh cached selections before adding, or `--sync` afterward to
 check for newer versions. A previously downloaded selection can be added offline.
 
-Omitting the source means `dotask-official`; `dotnet/build` and
-`dotask-official/dotnet/build` select the same shared task. Multiple arguments,
+Official tasks (_) use the reserved source name `_`.
+Omitting the source means `_`; `dotnet/build` and
+`_/dotnet/build` select the same shared task. Multiple arguments,
 quoted brace selections, and quoted group wildcards are supported:
 
 ```sh
@@ -72,7 +73,7 @@ A typical project becomes:
 .dotasks-lock.yaml
 .tasks/
   build.cs                              Handwritten orchestrator, optional
-  dotask-official/
+  _/
     dotnet/build.cs                     Downloaded build task
     dotnet/restore.cs                   Required by the build task
     dotnet/run.cs
@@ -94,9 +95,9 @@ unambiguous; an exact project-relative name takes precedence. There is no
 another.** Apply this to all three target-call helpers:
 
 ```csharp
-await project.ExecTargetAsync("dotask-official/dotnet/build");
-bool present = await project.TargetExistsAsync("dotask-official/dotnet/test");
-var result = await project.ExecTargetIfExistsAsync("dotask-official/dotnet/test");
+await project.ExecTargetAsync("_/dotnet/build");
+bool present = await project.TargetExistsAsync("_/dotnet/test");
+var result = await project.ExecTargetIfExistsAsync("_/dotnet/test");
 ```
 
 Handle a failed optional result; `NotFound` is the only skippable absence.
@@ -152,9 +153,9 @@ public static class Target
 
 Use one `<requires>` element per task or file. Task IDs are `group/task` without
 the source name or `.cs`; file paths are relative to the shared source root.
-For example, `dotask-official/dotnet/build.cs` declares
+For example, `_/dotnet/build.cs` declares
 `<requires task="dotnet/restore" />`, while its C# code calls the fully qualified
-`dotask-official/dotnet/restore`. These declarations tell add/sync which companions
+`_/dotnet/restore`. These declarations tell add/sync which companions
 to copy. They appear in help but do not execute tasks, check for companions at
 runtime, or download anything during help or execution. Calls and their order
 remain explicit in `Main`; do not declare optional task calls as required dependencies.
@@ -184,7 +185,7 @@ copies and lock files remain usable; normal sync protections still apply.
 ```sh
 dotask --sync --dry-run
 dotask --sync
-dotask --sync dotask-official/dotnet/build
+dotask --sync _/dotnet/build
 ```
 
 Sync refreshes the relevant source catalogs and updates the **current project's
@@ -244,8 +245,8 @@ cache and comparison files, but does not change project files or tracking.
 ## Remove shared tasks
 
 ```sh
-dotask --remove dotask-official/dotnet/run --dry-run
-dotask --remove dotask-official/dotnet/run
+dotask --remove _/dotnet/run --dry-run
+dotask --remove _/dotnet/run
 ```
 
 Removal only handles recorded shared tasks. Every affected file must match the

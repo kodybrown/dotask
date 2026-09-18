@@ -21,8 +21,8 @@ my-project/
   .dotasks-lock.yaml                   Generated tracking for added shared tasks
   .tasks/
     build.cs                          Handwritten orchestrator
-    dotask-official/dotnet/build.cs    Installed shared task
-    dotask-official/dotnet/restore.cs  Its required dependency
+    _/dotnet/build.cs                 Installed shared task
+    _/dotnet/restore.cs               Its required dependency
     private-tasks/tools/check.cs      Installed private task
     _support/Helpers.cs               Included helper, not a target
   src/
@@ -31,11 +31,12 @@ my-project/
 Discovery walks upward to the nearest `.dotasks.yaml` or `.tasks` directory.
 The configuration anchors the project even before `.tasks` exists. A nearer
 project wins; configurations and task directories are never merged across roots.
-Tasks are discovered recursively. Hidden and underscore-prefixed entries,
+Tasks are discovered recursively. The task-root `_` directory contains official tasks.
+Other hidden and underscore-prefixed entries,
 `bin`, `obj`, `node_modules`, and symbolic links/reparse points are skipped.
 
 The task's path relative to `.tasks`, without `.cs`, is its full name. For example,
-`dotask-official/dotnet/build.cs` is `dotask-official/dotnet/build`. `dotnet/build`
+`_/dotnet/build.cs` is `_/dotnet/build`. `dotnet/build`
 and `build` work as shortcuts when unique. Exact project-relative names take
 precedence, so `.tasks/build.cs` owns `dotask build` and can orchestrate several
 source-qualified tasks. Ambiguity produces an error with the available full names.
@@ -237,7 +238,7 @@ description:
 ```text
 Target:
   build           Restore packages and build the solution.
-                  Source: ./.tasks/dotask-official/dotnet/build.cs
+                  Source: ./.tasks/_/dotnet/build.cs
 
 Options:
   --configuration, -c <Debug|Release>  Build configuration. (default: Debug)
@@ -316,7 +317,7 @@ description: Build, test, and publish MyApp.
 settings:
   solution: MyApp.slnx
 targets:
-  dotask-official/dotnet/build:
+  _/dotnet/build:
     defaults:
       configuration: Release
 ```
@@ -337,7 +338,7 @@ the `configuration` parameter. Likewise, `configuration=Release` changes a
 parameter for that invocation; it does not edit YAML or override a shared setting.
 There is no environment-variable interpolation in YAML.
 
-The example configures `.tasks/dotask-official/dotnet/build.cs`, whether invoked
+The example configures `.tasks/_/dotnet/build.cs`, whether invoked
 by its full name or an available shortcut. Use `targets.build` for a plain `build.cs`; short aliases are not
 looked up when loading defaults. Renaming a plain task to a grouped filename
 requires updating its YAML target-default key to the new full name.

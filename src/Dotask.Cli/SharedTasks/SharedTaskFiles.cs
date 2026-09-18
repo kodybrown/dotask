@@ -17,7 +17,7 @@ internal static partial class SharedTaskFiles
       throw new TaskException("A shared task identifier cannot be empty.");
     }
     var segments = id.Split('/');
-    if ((parts is not null && segments.Length != parts) || segments.Any(s => !Identifier().IsMatch(s) || IsDevice(s))) {
+    if ((parts is not null && segments.Length != parts) || segments.Where(( s, index ) => !(index == 0 && s == "_" && parts is 1 or 3)).Any(s => !Identifier().IsMatch(s) || IsDevice(s))) {
       throw new TaskException($"Invalid shared task identifier '{id}'. Use group/task names made of letters, digits, underscores, and hyphens.");
     }
   }

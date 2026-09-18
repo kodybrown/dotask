@@ -9,7 +9,7 @@
       "files": [
         {
           "path": "dotnet/build.cs",
-          "sha256": "43e2e4208cc7df2cf95eb61bfafb021b267936fc6e96f0121ca37936d76ffda3"
+          "sha256": "ff0d138f301ea8717a7b649b4ea210f960e7b61b12ebb43215d9cc16a121b8b7"
         }
       ],
       "requires": [
@@ -50,7 +50,7 @@
       "files": [
         {
           "path": "dotnet/format.cs",
-          "sha256": "ea70e7076ecf03648cb152c9522be95701a44578bd0edaac5214ec48dfc66ee5"
+          "sha256": "afa96372cfefffe8c2ba829b0156f076159e80676ebc80caaefb963a61ab9500"
         }
       ],
       "requires": []
@@ -141,7 +141,7 @@
       "files": [
         {
           "path": "dotnet/verify.cs",
-          "sha256": "213f093dafb8201d0e742283497f43d9ad2d02d710e9a3828d63094623e72715"
+          "sha256": "2f18e13096df82fa9668352f67a20dbba035ead6d2aebc94f45e966b63cdd424"
         }
       ],
       "requires": []

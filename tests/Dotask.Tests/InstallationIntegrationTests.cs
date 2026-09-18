@@ -181,6 +181,6 @@ public sealed class InstallationIntegrationTests
   {
     using var stream = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;
     using var reader = new StreamReader(stream);
-    project.Write(".tasks/dotask-official/" + relative, reader.ReadToEnd());
+    project.Write(".tasks/_/" + relative, reader.ReadToEnd());
   }
 }

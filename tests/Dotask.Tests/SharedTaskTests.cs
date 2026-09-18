@@ -12,6 +12,23 @@ namespace DoTask.Tests;
 
 public sealed class SharedTaskTests
 {
+  [Theory]
+  [InlineData("dotnet/build")]
+  [InlineData("_/dotnet/build")]
+  public async Task OfficialSourceUsesReservedDirectoryAndQualifiedCompletion( string selection )
+  {
+    using var fixture = new Fixture();
+    fixture.Online("dotnet/build");
+    fixture.WriteCatalog();
+    var added = await fixture.Run("--add", selection);
+    Assert.True(added.Code == 0, added.Error + added.Output);
+    Assert.True(File.Exists(fixture.Installed("_/dotnet/build")));
+    Assert.Equal("_", Assert.Single(fixture.Lock().Tasks).Value.Source);
+    Assert.Contains(CompletionEngine.Complete("dotask _/dotnet/b", fixture.Project.Root), c => c.Value == "_/dotnet/build");
+    var help = await fixture.Run("--help");
+    Assert.Contains("Official tasks (_)", help.Output);
+  }
+
   [Fact]
   public async Task OfficialCatalogMatchesSourcesAndEveryPublishedTaskCompiles()
   {
@@ -20,9 +37,9 @@ public sealed class SharedTaskTests
     foreach (var name in assembly.GetManifestResourceNames().Where(n => n.StartsWith("Shared/", StringComparison.Ordinal))) {
       using var stream = assembly.GetManifestResourceStream(name)!;
       using var reader = new StreamReader(stream);
-      project.Write(".tasks/dotask-official/" + name[7..].Replace('\\', '/'), await reader.ReadToEndAsync());
+      project.Write(".tasks/_/" + name[7..].Replace('\\', '/'), await reader.ReadToEndAsync());
     }
-    var root = Path.Combine(project.Tasks, "dotask-official");
+    var root = Path.Combine(project.Tasks, "_");
     var catalog = JsonSerializer.Deserialize<SharedCatalog>(File.ReadAllBytes(Path.Combine(root, "catalog.json")), SharedTaskJson.Options)!;
     SharedTaskStore.ValidateCatalog(catalog);
     foreach (var task in catalog.Tasks) {
@@ -197,9 +214,9 @@ public sealed class SharedTaskTests
     Assert.Equal(project.Root, directory.RootDirectory);
     Assert.Empty(new TargetCatalog(directory.DirectoryPath).Targets);
     Assert.Equal("Root project", ProjectConfiguration.Load(directory.DirectoryPath).Name);
-    project.Target("dotask-official/dotnet/build", metadata: "/// <summary>Build.</summary>");
+    project.Target("_/dotnet/build", metadata: "/// <summary>Build.</summary>");
     var catalog = new TargetCatalog(project.Tasks);
-    Assert.Equal("dotask-official/dotnet/build", catalog.Get("build").Name);
+    Assert.Equal("_/dotnet/build", catalog.Get("build").Name);
     Assert.Same(catalog.Get("build"), catalog.Get("dotnet/build"));
     Assert.Same(catalog.Get("build"), catalog.Get("DOTNET-BUILD"));
     project.Target("second-source/dotnet/build");
@@ -207,7 +224,7 @@ public sealed class SharedTaskTests
     Assert.Throws<TaskException>(() => catalog.Get("build"));
     Assert.Throws<TaskException>(() => catalog.Get("dotnet/build"));
     project.Target("build");
-    project.Write(".tasks/dotask-official/dotnet/_support/Helper.cs", "invalid C# helper");
+    project.Write(".tasks/_/dotnet/_support/Helper.cs", "invalid C# helper");
     catalog = new TargetCatalog(project.Tasks);
     Assert.Equal("build", catalog.Get("build").Name);
     Assert.Equal(3, catalog.Targets.Count);
@@ -388,11 +405,11 @@ public sealed class SharedTaskTests
     fixture.Online("dotnet/two");
     fixture.WriteCatalog();
     Assert.Equal(0, (await fixture.Run("--save", "dotnet/one")).Code);
-    Assert.True(File.Exists(Path.Combine(fixture.Options.CacheDirectory, "dotask-official/dotnet/one.cs")));
-    Assert.False(File.Exists(Path.Combine(fixture.Options.CacheDirectory, "dotask-official/dotnet/two.cs")));
+    Assert.True(File.Exists(Path.Combine(fixture.Options.CacheDirectory, "_/dotnet/one.cs")));
+    Assert.False(File.Exists(Path.Combine(fixture.Options.CacheDirectory, "_/dotnet/two.cs")));
     Directory.Delete(fixture.OnlineDirectory, true);
     Assert.Equal(0, (await fixture.Run("--add", "dotnet/one")).Code);
-    Assert.True(File.Exists(fixture.Installed("dotask-official/dotnet/one")));
+    Assert.True(File.Exists(fixture.Installed("_/dotnet/one")));
     var originalLock = File.ReadAllBytes(fixture.LockPath);
     Assert.Equal(1, (await fixture.Run("--sync")).Code);
     Assert.Equal(originalLock, File.ReadAllBytes(fixture.LockPath));
@@ -426,7 +443,7 @@ public sealed class SharedTaskTests
     Assert.Equal(0, (await fixture.Run("--add", "dotnet/build")).Code);
     Assert.Equal(2, fixture.Lock().Tasks.Count);
     Assert.Equal(1, (await fixture.Run("--remove", "dotnet/restore")).Code);
-    Assert.True(File.Exists(fixture.Installed("dotask-official/dotnet/restore")));
+    Assert.True(File.Exists(fixture.Installed("_/dotnet/restore")));
     Assert.Equal(0, (await fixture.Run("--remove", "dotnet/{build,restore}")).Code);
     Assert.Empty(fixture.Lock().Tasks);
   }
@@ -507,8 +524,8 @@ public sealed class SharedTaskTests
       return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
     }));
     var store = new SharedTaskStore(fixture.Options with { OnlineDirectory = null }, client);
-    var catalog = await store.CatalogAsync("dotask-official", true, CancellationToken.None);
-    await store.SaveAsync("dotask-official", catalog.Tasks[0], CancellationToken.None);
+    var catalog = await store.CatalogAsync("_", true, CancellationToken.None);
+    await store.SaveAsync("_", catalog.Tasks[0], CancellationToken.None);
     Assert.Equal(["catalog.json", "tools/hello.cs"], requests);
   }
 

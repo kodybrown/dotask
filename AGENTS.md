@@ -119,6 +119,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - Author reusable task changes in `shared-tasks/`. Keep the format/install/pack
   copies under `.tasks/dotnet/` and `.tasks/git/check.cs` identical to their canonical sources.
 - Recursive task paths define full names; shared copies include source/group/task.
+  The official source is `_`, the default for omitted sources; only the task-root
+  `_` directory is exempt from underscore-prefixed discovery exclusions.
   Exact names precede unique shortcuts; old space-grouped filenames remain supported.
   Use source-qualified paths for nested shared-task calls, YAML defaults, and identity.
 - Shared management copies files into projects and tracks original SHA-256 hashes in

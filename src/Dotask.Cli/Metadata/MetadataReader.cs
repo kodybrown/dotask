@@ -25,7 +25,7 @@ public static partial class MetadataReader
       if (taskDirectory is not null) {
         var relative = Path.GetRelativePath(taskDirectory, file).Replace(Path.DirectorySeparatorChar, '/');
         var parents = relative.Split('/')[..^1];
-        if (parents.Any(parent => !Identifier().IsMatch(parent))) {
+        if (parents.Where(( parent, index ) => !(index == 0 && parent == "_")).Any(parent => !Identifier().IsMatch(parent))) {
           throw new TaskException($"Invalid target directory in '{relative}'. Use letters, digits, underscores, or hyphens, starting with a letter.");
         }
         if (parents.Length > 0) {

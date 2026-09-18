@@ -6,6 +6,22 @@ namespace DoTask.Tests;
 public sealed class DiscoveryAndMetadataTests
 {
   [Fact]
+  public void OfficialSourceIsDiscoveredButUnderscoreHelpersRemainExcluded()
+  {
+    using var project = new TestProject();
+    project.Target("_/dotnet/build");
+    foreach (var name in new[] { "_support/helper", "_/dotnet/_support/helper", "_/dotnet/_/helper", "tools/_/helper", "_hidden/build", "_" }) {
+      project.Target(name);
+    }
+    var catalog = new TargetCatalog(project.Tasks);
+    var target = Assert.Single(catalog.Targets);
+    Assert.Null(target.Error);
+    Assert.Equal("_/dotnet/build", target.Name);
+    Assert.Same(target, catalog.Get("dotnet/build"));
+    Assert.Same(target, catalog.Get("build"));
+  }
+
+  [Fact]
   public void DiscoveryOnlyTreatsSupportedCodeExtensionsAsTargets()
   {
     using var project = new TestProject();

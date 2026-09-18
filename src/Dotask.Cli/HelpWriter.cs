@@ -37,7 +37,7 @@ internal static class HelpWriter
     output.WriteRow("  --dry-run       ", "Preview --add, --sync, or --remove without changing project files.");
     output.WriteRow("  --accept-merge  ", "With --sync and explicit task names, record an already reviewed manual merge; keep project file contents.");
     output.WriteLine("Selections: dotnet/build, \"dotnet/{build,run,format}\", \"dotnet/*\", private-tasks/my-group/my-task.");
-    output.WriteLine("An omitted source means dotask-official. Commit .dotasks.yaml, .dotasks-lock.yaml, and .tasks/.");
+    output.WriteLine("Official tasks (_) are the default when the source is omitted. Commit .dotasks.yaml, .dotasks-lock.yaml, and .tasks/.");
   }
 
   public static void Initialization( HelpText output )

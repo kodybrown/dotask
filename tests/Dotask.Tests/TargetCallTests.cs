@@ -184,16 +184,16 @@ public sealed class TargetCallTests
   {
     using var project = new TestProject();
     await CopyVerifyAsync(project);
-    project.Target("dotask-official/dotnet/check", "File.AppendAllText(\"order\", \"check;\");");
-    project.Target("dotask-official/dotnet/test", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
+    project.Target("_/dotnet/check", "File.AppendAllText(\"order\", \"check;\");");
+    project.Target("_/dotnet/test", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
       "/// <option name=\"configuration\" choices=\"Debug,Release\" />");
-    project.Target("dotask-official/dotnet/format", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\").ToString());",
+    project.Target("_/dotnet/format", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\").ToString());",
       "/// <option name=\"verify\" type=\"bool\" />");
     var result = await project.RunAsync("verify", "-c", "Debug");
     Assert.True(result.ExitCode == 0, result.StandardError);
     Assert.Equal("check;Debug;True", File.ReadAllText(Path.Combine(project.Root, "order")));
     File.Delete(Path.Combine(project.Root, "order"));
-    project.Target("dotask-official/dotnet/test", "Environment.Exit(7);", "/// <option name=\"configuration\" />");
+    project.Target("_/dotnet/test", "Environment.Exit(7);", "/// <option name=\"configuration\" />");
     result = await project.RunAsync("verify");
     Assert.Equal(7, result.ExitCode);
     Assert.Equal("check;", File.ReadAllText(Path.Combine(project.Root, "order")));
@@ -207,12 +207,12 @@ public sealed class TargetCallTests
     var empty = await project.RunAsync("verify");
     Assert.Equal(1, empty.ExitCode);
     Assert.Contains("No verification targets found", empty.StandardError);
-    project.Target("dotask-official/dotnet/format", "Console.WriteLine(BuildContext.Current.Parameters.Get<bool>(\"verify\"));",
+    project.Target("_/dotnet/format", "Console.WriteLine(BuildContext.Current.Parameters.Get<bool>(\"verify\"));",
       "/// <option name=\"verify\" type=\"bool\" />");
     var one = await project.RunAsync("dotnet-verify");
     Assert.True(one.ExitCode == 0, one.StandardError);
-    Assert.Contains("Skipping dotask-official/dotnet/check: target not found.", one.StandardOutput);
-    Assert.Contains("Skipping dotask-official/dotnet/test: target not found.", one.StandardOutput);
+    Assert.Contains("Skipping _/dotnet/check: target not found.", one.StandardOutput);
+    Assert.Contains("Skipping _/dotnet/test: target not found.", one.StandardOutput);
     Assert.Contains("True", one.StandardOutput);
   }
 
@@ -220,6 +220,6 @@ public sealed class TargetCallTests
   {
     using var stream = typeof(TargetCallTests).Assembly.GetManifestResourceStream("DoTask.Tests.Targets.DotnetVerify.cs")!;
     using var reader = new StreamReader(stream);
-    project.Write(".tasks/dotask-official/dotnet/verify.cs", await reader.ReadToEndAsync());
+    project.Write(".tasks/_/dotnet/verify.cs", await reader.ReadToEndAsync());
   }
 }

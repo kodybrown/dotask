@@ -55,7 +55,7 @@ public sealed class SharedDotNetTaskTests
     var untidy = project.Write(tasks + "/custom/untidy.cs",
       "public static class Other\n{\npublic static void Main()\n{\nSystem.Console.WriteLine(\"done\");\n}\n}\n");
     var original = File.ReadAllBytes(untidy);
-    var fixeol = project.Write(tasks + "/dotask-official/text/fixeol.cs", """
+    var fixeol = project.Write(tasks + "/_/text/fixeol.cs", """
       using DoTask;
       public static class Target
       {
@@ -91,6 +91,6 @@ public sealed class SharedDotNetTaskTests
   {
     using var stream = typeof(SharedDotNetTaskTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;
     using var reader = new StreamReader(stream);
-    project.Write(directory + "/dotask-official/" + relative, reader.ReadToEnd());
+    project.Write(directory + "/_/" + relative, reader.ReadToEnd());
   }
 }

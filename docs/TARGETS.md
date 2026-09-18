@@ -15,11 +15,12 @@ Jump to [a complete target](#a-complete-target), [reuse](#reuse-a-target),
 Tasks are discovered recursively under `.tasks`. Their project-relative paths
 without `.cs` are their full names. Directory/file identifiers start with an ASCII
 letter and then use letters, digits, `_`, or `-`; matching is case-insensitive.
+The reserved official source directory `_` is allowed at the task root.
 
 | File below `.tasks/`              | Full name                      | Available shortcuts                                             |
 | --------------------------------- | ------------------------------ | --------------------------------------------------------------- |
 | `build.cs`                        | `build`                        | Exact project orchestrator                                      |
-| `dotask-official/dotnet/build.cs` | `dotask-official/dotnet/build` | `dotnet/build`, `build`, and legacy `dotnet-build`, when unique |
+| `_/dotnet/build.cs` | `_/dotnet/build` | `dotnet/build`, `build`, and legacy `dotnet-build`, when unique |
 | `private-tasks/tools/check.cs`    | `private-tasks/tools/check`    | `tools/check`, `check`, and `tools-check`, when unique          |
 | `dotnet run.cs`                   | `dotnet-run`                   | Legacy `run`, when unique                                       |
 
@@ -38,7 +39,7 @@ detection. **Use source-qualified names in calls between shared tasks**, includi
 change dependencies or make them ambiguous.
 
 Hidden/underscore-prefixed entries, `bin`, `obj`, `node_modules`, and symlinks are
-excluded from discovery. Put helper C# files under `_support`, and reference them
+excluded from discovery, except for the task-root `_` directory for official tasks. Put helper C# files under `_support`, and reference them
 with source-relative `#:include` directives. See [shared task distribution](SHARED-TASKS.md)
 for installing copies, support-file declarations, and protected synchronization.
 
@@ -135,22 +136,22 @@ each project owns its configuration.
 Use [shared-task management](SHARED-TASKS.md) to add and synchronize reusable
 copies. For manual copying, preserve source/group/task paths and include required
 companions. Calls between shared tasks should use paths such as
-`dotask-official/dotnet/build`, including the source, to stay stable as other
+`_/dotnet/build`, including the source, to stay stable as other
 sources are installed. Executing a target never fetches missing tasks.
 
 The [official catalog sources](../shared-tasks/) provide reusable examples:
 
 | Task                             | Dependencies / effect                                                                            |
 | -------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `dotask-official/dotnet/build`   | `settings.solution`; requires `dotnet/restore`, then builds                                      |
-| `dotask-official/dotnet/test`    | `settings.solution`; runs solution tests                                                         |
-| `dotask-official/dotnet/format`  | `settings.solution`; formats or verifies; optionally calls the source-qualified text/fixeol task |
-| `dotask-official/dotnet/check`   | Checks solution presence and SDK/MSBuild/formatter versions                                      |
-| `dotask-official/dotnet/verify`  | Runs installed official check/test/format tasks; skips missing ones and stops on failure         |
-| `dotask-official/dotnet/publish` | `settings.project`; publishes for the requested OS/architecture                                  |
-| `dotask-official/dotnet/install` | `settings.project`; publishes and installs for the current user; all task logic is in one file   |
-| `dotask-official/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
-| `dotask-official/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
+| `_/dotnet/build`   | `settings.solution`; requires `dotnet/restore`, then builds                                      |
+| `_/dotnet/test`    | `settings.solution`; runs solution tests                                                         |
+| `_/dotnet/format`  | `settings.solution`; formats or verifies; optionally calls the source-qualified text/fixeol task |
+| `_/dotnet/check`   | Checks solution presence and SDK/MSBuild/formatter versions                                      |
+| `_/dotnet/verify`  | Runs installed official check/test/format tasks; skips missing ones and stops on failure         |
+| `_/dotnet/publish` | `settings.project`; publishes for the requested OS/architecture                                  |
+| `_/dotnet/install` | `settings.project`; publishes and installs for the current user; all task logic is in one file   |
+| `_/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
+| `_/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
 
 The build/test/format targets need the `dotnet` executable. The publish target
 also uses `dotnet`; it creates publish output, not a public package release or
@@ -176,7 +177,7 @@ local edits; this convention does not authorize overwriting modified copies.
 throughout `project.TaskDirectory`, including other groups and custom `--use-dir`
 locations. `--verify` adds `--verify-no-changes` to both steps and skips optional
 line-ending normalization. Normal formatting runs the optional
-`dotask-official/text/fixeol` target only if installed and propagates its failures.
+`_/text/fixeol` target only if installed and propagates its failures.
 The repository no longer has a separate root `format.cs` shadowing this task.
 Task formatting follows the consuming project's `.editorconfig`. Changes to
 tracked shared copies count as local edits and remain protected during sync.
@@ -187,7 +188,7 @@ Use `-c Debug` to select Debug, `--output`/`-o` to choose a package directory
 select the CLI executable. Packing writes `.nupkg` files locally; publishing to
 a package feed is a separate action.
 
-`dotask dotask-official/dotnet/check` runs `dotnet --version`,
+`dotask _/dotnet/check` runs `dotnet --version`,
 `dotnet msbuild -version -nologo`, and `dotnet format --version` from the project
 root. SDK selection follows `global.json`. The target reports versions and fails
 on an unsuccessful or empty version response. It accepts no target options and
@@ -197,7 +198,7 @@ the SDK and these bundled tools, not NuGet dependencies, workloads, or additiona
 global/local .NET tools. It does not test, format, restore, build, or publish the
 consumer project. Run `dotask test` or `dotask format --verify` for those checks.
 
-`dotask dotask-official/dotnet/verify` combines the available official
+`dotask _/dotnet/verify` combines the available official
 `dotnet/check`, `dotnet/test`, and `dotnet/format` targets in that order. It forwards
 `--configuration`/`-c` (default `Release`) to the test target and `verify=true` to
 the format target. Missing targets are reported and skipped, while any failure
@@ -283,7 +284,7 @@ settings:
     retries: 3
     enabled: true
 targets:
-  dotask-official/dotnet/run:
+  _/dotnet/run:
     defaults:
       configuration: Release
 ```
@@ -308,8 +309,8 @@ For example, `settings.name` is an independent value and does not set the projec
 name or any target's `name` parameter. CLI-only `dotask --help` does not read YAML.
 
 Unknown top-level keys and case-insensitive duplicate keys are errors. Target
-entries use full command names: `targets.dotask-official/dotnet/run.defaults` configures
-`.tasks/dotask-official/dotnet/run.cs`, even when invoked as `dotask run`. A `targets.run` entry applies
+entries use full command names: `targets._/dotnet/run.defaults` configures
+`.tasks/_/dotnet/run.cs`, even when invoked as `dotask run`. A `targets.run` entry applies
 only to a plain `run.cs`; it does not configure the grouped file through its alias.
 Defaults refer to full option names, and misspelled options are rejected for that target.
 Defaults must be scalar strings, booleans, or numbers; arrays, objects, and nulls
@@ -360,7 +361,7 @@ Use `var project = BuildContext.Current; var config = project.Config;` in `Main`
 | `InvocationDirectory`                                   | Original directory where dotask was invoked                                             |
 | `WorkingDirectory`                                      | Default command directory: project root                                                 |
 | `TaskDirectory`                                         | Selected tasks root, including a custom `--use-dir` location                              |
-| `TargetFile`, `TargetDirectory`, `TargetName`           | Original source location and full command name (e.g. `dotask-official/dotnet/run`)      |
+| `TargetFile`, `TargetDirectory`, `TargetName`           | Original source location and full command name (e.g. `_/dotnet/run`)      |
 | `OS`, `Architecture`, `IsWindows`, `IsLinux`, `IsMacOS` | Actual host information                                                                 |
 | `Config`, `Parameters`                                  | Read-only typed configuration and validated parameters                                  |
 | `CancellationToken`                                     | Cancellation for the running target                                                     |
@@ -387,8 +388,8 @@ var text = project.Files.ReadText(template);
 The file in that snippet must exist next to the target under `templates/`.
 
 ```csharp
-await project.ExecTargetAsync("dotask-official/dotnet/check");
-await project.ExecTargetAsync("dotask-official/dotnet/publish",
+await project.ExecTargetAsync("_/dotnet/check");
+await project.ExecTargetAsync("_/dotnet/publish",
     new { OS = "linux", Configuration = "Release" });
 ```
 
@@ -408,20 +409,20 @@ nulls, and nested objects are not supported. A dictionary can express a name
 that is not a C# identifier:
 
 ```csharp
-await project.ExecTargetAsync("dotask-official/dotnet/publish",
+await project.ExecTargetAsync("_/dotnet/publish",
     new Dictionary<string, object> { ["output-dir"] = "artifacts/release" });
 ```
 
-That example requires `dotask-official/dotnet/publish.cs` to declare `output-dir`. Child XML/YAML defaults
+That example requires `_/dotnet/publish.cs` to declare `output-dir`. Child XML/YAML defaults
 still apply to parameters you omit. An orchestration task must explicitly pass
 its resolved configuration to each child; a caller's options are not inherited.
 
 ### Optional targets
 
 ```csharp
-bool hasTests = await project.TargetExistsAsync("dotask-official/dotnet/test");
+bool hasTests = await project.TargetExistsAsync("_/dotnet/test");
 
-var result = await project.ExecTargetIfExistsAsync("dotask-official/dotnet/test",
+var result = await project.ExecTargetIfExistsAsync("_/dotnet/test",
     new { Configuration = "Release" });
 switch (result.Status)
 {
@@ -596,7 +597,7 @@ Task IDs are `group/task` within the same source; files are relative to that
 source's root. Use one element per companion in the same class/Main documentation
 as the summary and options. These declarations appear in help but do not run
 pre-execution checks or schedule tasks. Keep execution explicit with
-`await project.ExecTargetAsync("dotask-official/dotnet/restore")`, and use a
+`await project.ExecTargetAsync("_/dotnet/restore")`, and use a
 task-file-relative `#:include _support/Helpers.cs` directive to compile helper
 sources. No `.task.json` sidecar is needed.
 
