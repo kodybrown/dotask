@@ -1,0 +1,31 @@
+# Set default behaviors to automatically normalize line endings.
+# ===========================================================================
+# Handle line endings automatically for files detected as text
+# and leave all files detected as binary untouched.
+#
+# Use `* text=auto eol=lf` to always use specific line-endings.
+# Use `* text=auto` to check in as LF, but checkout matching the OS.
+#
+
+*          text=auto eol=lf
+
+# Force CRLF line-endings.
+*.[Bb][Aa][Tt] text eol=crlf
+*.[Cc][Mm][Dd] text eol=crlf
+
+# Force binary files.
+*.7z       binary
+*.aseprite binary
+*.dll      binary
+*.exe      binary
+*.ico      binary
+*.otf      binary
+*.pdn      binary
+*.png      binary
+*.ttf      binary
+*.woff     binary
+*.woff2    binary
+*.zip      binary
+
+# Unified diffs require prefix whitespace on otherwise blank context lines.
+*.patch whitespace=-trailing-space

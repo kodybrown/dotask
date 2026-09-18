@@ -1,0 +1,23 @@
+# Load with: source <(dotask completion bash)
+_dotask_complete() {
+  local value kind description current prefix
+  current=${COMP_WORDS[COMP_CWORD]}
+  COMPREPLY=()
+  while IFS=$'\t' read -r value kind description; do
+    # Readline treats '=' as a word break; only replace the value in NAME=value.
+    if [[ $value == *=* && $current != *=* ]]; then
+      prefix=${value%%=*}
+      if [[ ${COMP_LINE:0:COMP_POINT} == *"$prefix="* ]]; then
+        value=${value#*=}
+      fi
+    fi
+    COMPREPLY+=("$value")
+    if [[ $kind == file || $kind == directory ]]; then
+      compopt -o filenames 2>/dev/null || true
+    fi
+    if [[ $kind == directory || $value == *= ]]; then
+      compopt -o nospace 2>/dev/null || true
+    fi
+  done < <(dotask __complete --shell bash --line "$COMP_LINE" --position "$COMP_POINT" 2>/dev/null)
+}
+complete -F _dotask_complete dotask

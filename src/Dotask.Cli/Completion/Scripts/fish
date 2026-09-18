@@ -1,0 +1,8 @@
+# Load with: dotask completion fish | source
+function __dotask_complete
+    dotask __complete --shell fish --line (commandline -cp) 2>/dev/null | while read --delimiter \t value kind description
+        # Fish quotes candidates when inserting them; pre-escaping adds literal quotes.
+        printf '%s\t%s\n' "$value" "$description"
+    end
+end
+complete -c dotask -f -a '(__dotask_complete)'

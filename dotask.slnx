@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Dotask/Dotask.csproj" />
+    <Project Path="src/Dotask.Cli/Dotask.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Dotask.Tests/Dotask.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,19 @@
+# Load with: dotask completion powershell | Out-String | Invoke-Expression
+Register-ArgumentCompleter -Native -CommandName dotask -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+    $line = $commandAst.Extent.Text
+    $position = $cursorPosition - $commandAst.Extent.StartOffset
+    dotask __complete --shell powershell --line $line --position $position 2>$null | ForEach-Object {
+        $fields = $_ -split "`t", 3
+        if ($fields.Length -ge 2) {
+            $value = $fields[0]
+            $insert = $value
+            if ($value -match '[\s`"''$;&|(){}<>]') {
+                $insert = "'" + $value.Replace("'", "''") + "'"
+            }
+            $description = if ($fields.Length -eq 3 -and $fields[2]) { $fields[2] } else { $value }
+            $kind = if ($fields[1] -eq 'directory') { 'ProviderContainer' } elseif ($fields[1] -eq 'file') { 'ProviderItem' } else { 'ParameterValue' }
+            [System.Management.Automation.CompletionResult]::new($insert, $value, $kind, $description)
+        }
+    }
+}

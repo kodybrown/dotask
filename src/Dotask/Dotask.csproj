@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Dotask.Library</AssemblyName>
+    <RootNamespace>DoTask</RootNamespace>
+    <PackageId>Dotask.Library</PackageId>
+    <Description>Portable helpers and ambient execution context for dotask targets.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../Dotask.Shim/assets/win-*.exe" LogicalName="DoTask.Shim.%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

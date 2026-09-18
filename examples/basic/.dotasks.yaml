@@ -1,0 +1,10 @@
+version: 1
+name: dotask example
+description: Try shared settings, target options, nested tasks, and file helpers.
+settings:
+  message: Hello from dotask
+  output: artifacts/example.txt
+targets:
+  hello:
+    defaults:
+      name: Developer

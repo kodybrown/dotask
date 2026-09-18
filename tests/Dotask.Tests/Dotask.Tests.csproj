@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>DoTask.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="../../.tasks/shim.cs" LogicalName="Shim/build-task.cs" />
+    <EmbeddedResource Include="../../src/Dotask.Shim/shim.c;../../src/Dotask.Shim/kernel32.def;../../src/Dotask.Shim/assets/hashes.json"
+                      LogicalName="Shim/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../src/Dotask.Shim/assets/win-*.exe"
+                      LogicalName="Shim/assets/%(Filename)%(Extension)" />
+    <Compile Include="../../.tasks/_support/TaskCatalog.cs" Link="RepositoryTasks/TaskCatalog.cs" />
+    <EmbeddedResource Include="../../.tasks/verify.cs;../../.tasks/verify-docs.cs;../../.tasks/catalog.cs;../../.tasks/_support/TaskCatalog.cs"
+                      LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../src/Dotask.Cli/Metadata/MetadataReader.cs;../../src/Dotask.Cli/Metadata/TargetDefinition.cs"
+                      LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../build.sh;../../build.cmd;../../.tasks/misc/bootstrap.targets"
+                      LogicalName="Bootstrap/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../shared-tasks/**/*" LogicalName="Shared/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../.tasks/dotnet/check.cs" LogicalName="DoTask.Tests.Targets.DotnetCheck.cs" />
+    <EmbeddedResource Include="../../.tasks/dotnet/verify.cs" LogicalName="DoTask.Tests.Targets.DotnetVerify.cs" />
+    <ProjectReference Include="../../src/Dotask.Cli/Dotask.Cli.csproj" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,47 @@
+name: Verify
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  shim-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install shim development tools
+        run: sudo apt-get update && sudo apt-get install -y clang lld llvm
+      - name: Cross-compile both Windows shims from source
+        run: ./build.sh shim
+      - name: Verify generated shim records
+        run: ./build.sh shim --verify
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            launcher: ./build.sh
+            shell: bash
+          - os: macos-latest
+            launcher: ./build.sh
+            shell: bash
+          - os: windows-latest
+            launcher: build.cmd
+            shell: cmd
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Bootstrap and verify
+        shell: ${{ matrix.shell }}
+        run: ${{ matrix.launcher }}
+      - name: Package
+        shell: ${{ matrix.shell }}
+        run: ${{ matrix.launcher }} pack

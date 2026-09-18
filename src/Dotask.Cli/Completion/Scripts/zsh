@@ -1,0 +1,12 @@
+# Load after compinit: source <(dotask completion zsh)
+_dotask_complete() {
+  local value kind description
+  while IFS=$'\t' read -r value kind description; do
+    if [[ $kind == directory || $value == *= ]]; then
+      compadd -U -S '' -- "$value"
+    else
+      compadd -U -- "$value"
+    fi
+  done < <(dotask __complete --shell zsh --line "$BUFFER" --position "$CURSOR" 2>/dev/null)
+}
+compdef _dotask_complete dotask

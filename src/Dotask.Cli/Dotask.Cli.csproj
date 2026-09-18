@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>dotask</AssemblyName>
+    <RootNamespace>DoTask.Cli</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>dotask</ToolCommandName>
+    <PackageId>dotask</PackageId>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Description>Portable C# tasks with YAML settings, XML help, and shell completion.</Description>
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <ProjectReference Include="../Dotask/Dotask.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <EmbeddedResource Include="Completion/Scripts/*" />
+  </ItemGroup>
+  <Import Project="../../.tasks/misc/bootstrap.targets" />
+</Project>

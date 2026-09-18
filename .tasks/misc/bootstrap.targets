@@ -1,0 +1,16 @@
+<Project>
+  <!-- A physical copy lets repository tasks rebuild/clean dotask on Windows. -->
+  <Target Name="StageDotaskBootstrap" AfterTargets="Publish"
+          Condition="'$(DotaskBootstrapDirectory)' != ''">
+    <PropertyGroup>
+      <_DotaskPublishRoot>$([MSBuild]::EnsureTrailingSlash('$(PublishDir)'))</_DotaskPublishRoot>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_DotaskPublishRoot)dotask.dll')"
+           Text="The bootstrap publish did not produce dotask.dll." />
+    <ItemGroup>
+      <_DotaskBootstrapFiles Include="$(_DotaskPublishRoot)**/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_DotaskBootstrapFiles)"
+          DestinationFiles="@(_DotaskBootstrapFiles->'$(DotaskBootstrapDirectory)/%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+</Project>

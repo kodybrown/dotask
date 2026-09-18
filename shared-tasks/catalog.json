@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "dotnet/build",
+      "entryPoint": "dotnet/build.cs",
+      "description": "Restore packages and build the configured solution.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/build.cs",
+          "sha256": "43e2e4208cc7df2cf95eb61bfafb021b267936fc6e96f0121ca37936d76ffda3"
+        }
+      ],
+      "requires": [
+        "dotnet/restore"
+      ]
+    },
+    {
+      "id": "dotnet/check",
+      "entryPoint": "dotnet/check.cs",
+      "description": "Check the solution, .NET SDK, MSBuild, and formatter prerequisites.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/check.cs",
+          "sha256": "4f4c9517859a1a84e78e167f162ad903866dd4fe83772d7d3644f70bfdddee81"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/clean",
+      "entryPoint": "dotnet/clean.cs",
+      "description": "Clean the configured solution's build outputs for one configuration.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/clean.cs",
+          "sha256": "e6a97cf1a913f80188049308239fed6e25a3c28d70d2c28e6e977a213146531b"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/format",
+      "entryPoint": "dotnet/format.cs",
+      "description": "Format solution and task code, then run optional fixeol, or check formatting.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/format.cs",
+          "sha256": "d98f9adb1e55185e7534396820916a80fb1c7b2f2bbc28ed31772075efbde204"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/install",
+      "entryPoint": "dotnet/install.cs",
+      "description": "Publish and install the configured application for the current user.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/install.cs",
+          "sha256": "62779ec1d887f0c748017e0ff30881152451e8ca723ef966915de6d10495b315"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/pack",
+      "entryPoint": "dotnet/pack.cs",
+      "description": "Build the configured .NET project and create local NuGet packages.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/pack.cs",
+          "sha256": "027b89cd6304c31a5030e84f6ed8552da1fcc09f75754f258e50930ff704e666"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/publish",
+      "entryPoint": "dotnet/publish.cs",
+      "description": "Publish the project for the selected OS and CPU architecture.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/publish.cs",
+          "sha256": "539dcf9e457cf651e75952bab8ae7e92bd98ad4dd05999961fe206691ad58936"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/restore",
+      "entryPoint": "dotnet/restore.cs",
+      "description": "Restore NuGet packages for the configured solution.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/restore.cs",
+          "sha256": "ac4683d16a3a7d4665b328074a85aff7336b606948c0b1cb112883da270fec8e"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/run",
+      "entryPoint": "dotnet/run.cs",
+      "description": "Build and run the configured project, optionally passing an input file.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/run.cs",
+          "sha256": "34142ad8c095cea2f217d1d1e0b937f4fb839813088cdb65d03eca0d65780370"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/test",
+      "entryPoint": "dotnet/test.cs",
+      "description": "Build and run the solution's tests.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/test.cs",
+          "sha256": "57cfa1d1f229d3d8b0b5443c4191ecab39e748746ae74c2dfec42b48389fef09"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotnet/verify",
+      "entryPoint": "dotnet/verify.cs",
+      "description": "Run available dependency, test, and formatting checks.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/verify.cs",
+          "sha256": "15a5ade35cdc11ac27c57ce15a80a5bf5b5e62fa53196a639f1e2b0682827d65"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "git/check",
+      "entryPoint": "git/check.cs",
+      "description": "Check that Git is available.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "git/check.cs",
+          "sha256": "9b0239975873c8d00b9868fb144ae719d3b133627b09ec076fd55dbc9264a8f7"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "text/fixeol",
+      "entryPoint": "text/fixeol.cs",
+      "description": "Normalize text-file encoding and line endings using fixeol.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "text/fixeol.cs",
+          "sha256": "5fcd28c72fb7716a4f8d9a5c2bffea6043a2ca9943e2dfd2d321018237bcb86d"
+        }
+      ],
+      "requires": []
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <_UserBuildProps>$([System.Environment]::GetFolderPath(SpecialFolder.UserProfile))/Directory.Build.props</_UserBuildProps>
+  </PropertyGroup>
+  <Import Project="$(_UserBuildProps)" Condition="Exists('$(_UserBuildProps)')" />
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <LangVersion>14.0</LangVersion>
+    <Version>0.1.0</Version>
+    <Authors>Kody Brown</Authors>
+    <Copyright>Copyright (c) 2026 Kody Brown</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)LICENSE.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>
