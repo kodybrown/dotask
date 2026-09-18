@@ -323,6 +323,7 @@ Tab: it should offer `Debug` and `Release`. See [completion details](docs/USAGE.
 ./build.sh test -c Release         # Build and run tests
 ./build.sh format --verify         # Check solution formatting and task C# whitespace
 ./build.sh verify-docs             # Required docs and Git whitespace
+./build.sh git/check --whitespace  # Git availability and staged/unstaged whitespace
 ./build.sh catalog --verify        # Check shared source hashes/metadata
 ./build.sh catalog                 # Regenerate the shared catalog
 ./build.sh shim --verify           # Verify bundled shim source/binary hashes
@@ -349,8 +350,18 @@ The MSBuild copy hook lives in `.tasks/misc/bootstrap.targets` and is imported
 by the CLI project. It is build support data, so dotask does not discover it as a
 task. Only supported code extensions are considered; currently that means `.cs`.
 
-`verify-docs` checks required files and both staged/unstaged Git whitespace; it
-does not validate Markdown links or execute examples. Check those separately
+After adding, editing, renaming, or removing a shared task or one of its declared
+support files, run `./build.sh catalog` **after your final edits/formatting and
+before committing**. Commit the regenerated `shared-tasks/catalog.json` with the
+sources. Run `./build.sh` afterward; its catalog verification fails if the index
+is stale and never rewrites it. `catalog.cs` contains the generation logic and
+reuses the CLI metadata parser; there is no separate catalog helper task file.
+
+`verify-docs` checks required files, then calls its declared `git/check` dependency
+with `--whitespace` to check staged and unstaged Git diffs. Plain `git/check` only
+checks Git availability and works outside repositories. The whitespace checks
+do not require a clean working tree and do not inspect untracked files.
+`verify-docs` does not validate Markdown links or execute examples. Check those separately
 when changing documentation. Focused test runs may use `dotnet test dotask.slnx
 -c Release --filter ...` directly. `format` resolves to `dotnet/format`, the
 standard shared formatter; it checks the solution and standalone C# tasks.

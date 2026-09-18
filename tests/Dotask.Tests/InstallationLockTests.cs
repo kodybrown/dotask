@@ -38,8 +38,7 @@ public sealed class InstallationLockTests
 
     Process Start()
     {
-      var start = new ProcessStartInfo(DotnetHost.Find())
-      {
+      var start = new ProcessStartInfo(DotnetHost.Find()) {
         UseShellExecute = false,
         RedirectStandardInput = true,
         RedirectStandardOutput = true,
@@ -51,52 +50,41 @@ public sealed class InstallationLockTests
     }
 
     using (var parentLease = InstallationFiles.Lock(directory))
-    using (var blocked = Start())
-    {
-      try
-      {
+    using (var blocked = Start()) {
+      try {
         Assert.Equal("busy", await blocked.StandardOutput.ReadLineAsync(timeout.Token));
         await blocked.WaitForExitAsync(timeout.Token);
         Assert.Equal(23, blocked.ExitCode);
         Assert.True(File.Exists(lockFile));
-      }
-      finally { if (!blocked.HasExited) { blocked.Kill(true); await blocked.WaitForExitAsync(); } }
+      } finally { if (!blocked.HasExited) { blocked.Kill(true); await blocked.WaitForExitAsync(); } }
     }
     Assert.False(File.Exists(lockFile));
 
-    for (var attempt = 0; attempt < 3; attempt++)
-    {
+    for (var attempt = 0; attempt < 3; attempt++) {
       using var owner = Start();
-      try
-      {
+      try {
         Assert.Equal("acquired", await owner.StandardOutput.ReadLineAsync(timeout.Token));
         Assert.Throws<TaskException>(() => InstallationFiles.Lock(directory));
         Assert.True(File.Exists(lockFile));
-        if (attempt == 2)
-        {
+        if (attempt == 2) {
           owner.Kill(entireProcessTree: true);
-        }
-        else
-        {
+        } else {
           await owner.StandardInput.WriteLineAsync("release");
         }
 
         await owner.WaitForExitAsync(timeout.Token);
-        if (attempt != 2)
-        {
+        if (attempt != 2) {
           Assert.Equal(0, owner.ExitCode);
           Assert.False(File.Exists(lockFile));
         }
         // Abrupt termination on Unix may leave an unlocked pathname. It must
         // neither block reacquisition nor survive the next graceful release.
-        using (var next = InstallationFiles.Lock(directory))
-        {
+        using (var next = InstallationFiles.Lock(directory)) {
           Assert.True(File.Exists(lockFile));
         }
 
         Assert.False(File.Exists(lockFile));
-      }
-      finally { if (!owner.HasExited) { owner.Kill(true); await owner.WaitForExitAsync(); } }
+      } finally { if (!owner.HasExited) { owner.Kill(true); await owner.WaitForExitAsync(); } }
     }
   }
 

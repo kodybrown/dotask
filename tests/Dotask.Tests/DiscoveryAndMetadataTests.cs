@@ -10,8 +10,7 @@ public sealed class DiscoveryAndMetadataTests
   {
     using var project = new TestProject();
     project.Target("run");
-    foreach (var extension in new[] { "txt", "md", "target", "targets", "yaml", "yml", "json", "rs", "py", "go" })
-    {
+    foreach (var extension in new[] { "txt", "md", "target", "targets", "yaml", "yml", "json", "rs", "py", "go" }) {
       project.Write("notes." + extension, "not a task");
       project.Write(".tasks/misc/bootstrap." + extension, "/// <summary>This must not be discovered.</summary>");
     }
@@ -82,7 +81,7 @@ public sealed class DiscoveryAndMetadataTests
   [InlineData("/// <requires tool=\"dotnet\" setting=\"x\" />", "one tool")]
   [InlineData("/// <requires task=\"\" />", "one tool")]
   [InlineData("/// <requires task=\"dotnet/restore\" file=\"dotnet/helper.txt\" />", "one tool")]
-  public void InvalidMetadataProducesAnIndividualTargetError(string metadata, string expected)
+  public void InvalidMetadataProducesAnIndividualTargetError( string metadata, string expected )
   {
     using var project = new TestProject();
     var target = MetadataReader.Read(project.Target("broken", metadata: metadata));
@@ -98,8 +97,7 @@ public sealed class DiscoveryAndMetadataTests
     project.Target("run");
     project.Target("RUN");
     var catalog = new TargetCatalog(project.Tasks);
-    if (catalog.Targets.Count == 2)
-    {
+    if (catalog.Targets.Count == 2) {
       Assert.All(catalog.Targets, t => Assert.Contains("Ambiguous", t.Error));
       Assert.Throws<TaskException>(() => catalog.Get("run"));
     }
@@ -111,7 +109,7 @@ public sealed class DiscoveryAndMetadataTests
   [InlineData("dotnet-run", "dotnet-run", null)]
   [InlineData("dotnet run", "dotnet-run", "run")]
   [InlineData("DotNet format-check", "DotNet-format-check", "format-check")]
-  public void FilenamesDefineFullNamesAndOptionalShortNames(string filename, string fullName, string? shortName)
+  public void FilenamesDefineFullNamesAndOptionalShortNames( string filename, string fullName, string? shortName )
   {
     using var project = new TestProject();
     var file = project.Target(filename, metadata: "/// <summary>A reusable target.</summary>");
@@ -122,8 +120,7 @@ public sealed class DiscoveryAndMetadataTests
     Assert.Equal(file, target.FilePath);
     var catalog = new TargetCatalog(project.Tasks);
     Assert.Equal(file, catalog.Get(fullName.ToUpperInvariant()).FilePath);
-    if (shortName is not null)
-    {
+    if (shortName is not null) {
       Assert.Same(catalog.Get(fullName), catalog.Get(shortName.ToUpperInvariant()));
       Assert.Equal($"{shortName} ({fullName})", catalog.DisplayName(catalog.Get(fullName)));
     }
@@ -136,7 +133,7 @@ public sealed class DiscoveryAndMetadataTests
   [InlineData("dotnet-run ")]
   [InlineData("dotnet\trun")]
   [InlineData("dotnet^run")]
-  public void GroupedNamesRequireExactlyOneSpaceBetweenValidIdentifiers(string filename)
+  public void GroupedNamesRequireExactlyOneSpaceBetweenValidIdentifiers( string filename )
   {
     using var project = new TestProject();
     var target = MetadataReader.Read(Path.Combine(project.Tasks, filename + ".cs"));
@@ -167,7 +164,7 @@ public sealed class DiscoveryAndMetadataTests
   [Theory]
   [InlineData("dotnet run", "dotnet-run")]
   [InlineData("dotnet format-check", "dotnet-format check")]
-  public void FullNameCollisionsAreErrorsForEveryAffectedFile(string first, string second)
+  public void FullNameCollisionsAreErrorsForEveryAffectedFile( string first, string second )
   {
     using var project = new TestProject();
     project.Target(first);

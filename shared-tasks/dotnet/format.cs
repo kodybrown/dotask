@@ -13,8 +13,7 @@ public static class Target
   {
     var project = BuildContext.Current;
     var solution = project.Config.GetPath("solution");
-    if (!File.Exists(solution))
-    {
+    if (!File.Exists(solution)) {
       throw new TaskException($"Solution is missing: {solution}");
     }
 
@@ -24,8 +23,7 @@ public static class Target
     List<string> taskArguments = [
       "format", "whitespace", project.TaskDirectory, "--folder", "--verbosity", "minimal"
     ];
-    if (verify)
-    {
+    if (verify) {
       solutionArguments.Add("--verify-no-changes");
       taskArguments.Add("--verify-no-changes");
     }
@@ -33,13 +31,10 @@ public static class Target
     await project.RunAsync(dotnet, solutionArguments);
     await project.RunAsync(dotnet, taskArguments);
 
-    if (!verify)
-    {
+    if (!verify) {
       var result = await project.ExecTargetIfExistsAsync("dotask-official/text/fixeol");
-      if (result.Status == TargetExecutionStatus.Failed)
-      {
-        if (result.ExitCode is { } exitCode)
-        {
+      if (result.Status == TargetExecutionStatus.Failed) {
+        if (result.ExitCode is { } exitCode) {
           throw new ProcessFailedException("dotask-official/text/fixeol", exitCode);
         }
         throw new TaskException(result.Error ?? "Line-ending normalization failed.");

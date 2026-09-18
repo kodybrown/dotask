@@ -14,7 +14,7 @@ public sealed class HelpAndShellTests
   [InlineData("help run")]
   [InlineData("run --help")]
   [InlineData("run -h")]
-  public async Task HelpReadsMetadataAndDefaultsWithoutSdkRestoreCompilationOrExecution(string command)
+  public async Task HelpReadsMetadataAndDefaultsWithoutSdkRestoreCompilationOrExecution( string command )
   {
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", "targets: { run: { defaults: { configuration: Release } } }");
@@ -37,13 +37,11 @@ public sealed class HelpAndShellTests
     var temporary = Path.Combine(project.Root, "temp");
     Directory.CreateDirectory(temporary);
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-    var result = await ProcessRunner.RunAsync(new ProcessDefinition
-    {
+    var result = await ProcessRunner.RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),
       Arguments = [typeof(CliApplication).Assembly.Location, .. command.Split(' ', StringSplitOptions.RemoveEmptyEntries)],
       WorkingDirectory = project.Root,
-      Environment = new Dictionary<string, string?>
-      {
+      Environment = new Dictionary<string, string?> {
         ["DOTNET_HOST_PATH"] = unusableHost,
         ["TMPDIR"] = temporary,
         ["TMP"] = temporary,
@@ -66,7 +64,7 @@ public sealed class HelpAndShellTests
   [InlineData("--help")]
   [InlineData("-h")]
   [InlineData("help --help")]
-  public async Task GlobalHelpDoesNotReadOrLocateTheProject(string command)
+  public async Task GlobalHelpDoesNotReadOrLocateTheProject( string command )
   {
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", "invalid: [");
@@ -77,8 +75,7 @@ public sealed class HelpAndShellTests
     {
       command.Split(' '),
       command.Split(' ').Concat(["--use-dir", "missing-task-directory"]).ToArray()
-    })
-    {
+    }) {
       var output = new StringWriter();
       var error = new StringWriter();
       var code = await CliApplication.RunAsync(args, project.Root, output, error);
@@ -96,7 +93,7 @@ public sealed class HelpAndShellTests
   [Theory]
   [InlineData("")]
   [InlineData("help")]
-  public async Task ProjectSummaryShowsIdentitySettingsAndTargetOptionsWithoutCliUsage(string command)
+  public async Task ProjectSummaryShowsIdentitySettingsAndTargetOptionsWithoutCliUsage( string command )
   {
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", """
@@ -167,7 +164,7 @@ public sealed class HelpAndShellTests
   [Theory]
   [InlineData("")]
   [InlineData("help")]
-  public async Task MissingProjectReportsAnErrorWithoutCliUsage(string command)
+  public async Task MissingProjectReportsAnErrorWithoutCliUsage( string command )
   {
     using var project = new TestProject();
     Directory.Delete(project.Tasks);
@@ -225,7 +222,7 @@ public sealed class HelpAndShellTests
   {
     using var project = new TestProject();
     var variants = new[] { "", "alias=\"m\"", "type=\"int\"", "required=\"true\"", "choices=\"one,two\"", "completion=\"file\"" };
-    var targets = variants.Select((attributes, i) => MetadataReader.Read(project.Target($"task{i}",
+    var targets = variants.Select(( attributes, i ) => MetadataReader.Read(project.Target($"task{i}",
       metadata: $"/// <option name=\"mode\" {attributes}>Mode.</option>"))).ToArray();
     var output = new StringWriter();
     HelpWriter.CombinedOptions(new HelpText(output), targets, ProjectConfiguration.Load(project.Tasks));
@@ -279,7 +276,7 @@ public sealed class HelpAndShellTests
   [InlineData("zsh", "compdef")]
   [InlineData("fish", "complete -c dotask")]
   [InlineData("powershell", "Register-ArgumentCompleter")]
-  public void ShellScriptsAreEmbeddedAndAvailableWithoutProject(string shell, string marker)
+  public void ShellScriptsAreEmbeddedAndAvailableWithoutProject( string shell, string marker )
   {
     var output = new StringWriter();
     CompletionCommand.PrintScript(shell, output);
@@ -290,8 +287,7 @@ public sealed class HelpAndShellTests
   [Fact]
   public async Task BashAdapterHandlesSeparatedAndEqualsValues()
   {
-    if (OperatingSystem.IsWindows() || !File.Exists("/bin/bash"))
-    {
+    if (OperatingSystem.IsWindows() || !File.Exists("/bin/bash")) {
       return;
     }
     using var project = new TestProject();
@@ -299,8 +295,7 @@ public sealed class HelpAndShellTests
     var script = new StringWriter();
     CompletionCommand.PrintScript("bash", script);
     project.Write("completion.bash", script.ToString());
-    var result = await ProcessRunner.RunAsync(new ProcessDefinition
-    {
+    var result = await ProcessRunner.RunAsync(new ProcessDefinition {
       Executable = "/bin/bash",
       Arguments = ["--noprofile", "--norc", "-c", """
         dotask() { "$DOTASK_TEST_HOST" "$DOTASK_TEST_CLI" "$@"; }
@@ -318,8 +313,7 @@ public sealed class HelpAndShellTests
         _dotask_complete
         [[ ${COMPREPLY[0]} == Release ]] || exit 11
         """],
-      Environment = new Dictionary<string, string?>
-      {
+      Environment = new Dictionary<string, string?> {
         ["DOTASK_TEST_HOST"] = DotnetHost.Find(),
         ["DOTASK_TEST_CLI"] = typeof(CliApplication).Assembly.Location
       },

@@ -150,15 +150,25 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `dotask-official/dotnet/publish` | `settings.project`; publishes for the requested OS/architecture                                  |
 | `dotask-official/dotnet/install` | `settings.project`; publishes and installs for the current user; all task logic is in one file   |
 | `dotask-official/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
+| `dotask-official/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
 
 The build/test/format targets need the `dotnet` executable. The publish target
 also uses `dotnet`; it creates publish output, not a public package release or
 deployment. Adjust descriptions and declared options if you adapt a target's
 behavior.
 
+`dotask git/check` checks Git availability without requiring a repository.
+`dotask git/check --whitespace` additionally runs `git diff --check` and
+`git diff --cached --check`, stopping on the first failure and preserving its
+exit code. These read-only checks find whitespace errors in tracked changes;
+they allow a dirty tree and do not examine untracked files. The repository's
+`verify-docs.cs` declares `<requires task="git/check" />` and explicitly calls
+`await project.ExecTargetAsync("git/check", new { Whitespace = true })` after
+checking required documents. The declaration alone does not run the task.
+
 `shared-tasks/` is the canonical authoring location in the DoTask repository.
 The corresponding `.tasks/` files are runnable project copies. The standard
-`dotnet/format.cs`, `dotnet/install.cs`, and `dotnet/pack.cs` copies are kept
+`dotnet/format.cs`, `dotnet/install.cs`, `dotnet/pack.cs`, and `git/check.cs` copies are kept
 identical. In consuming projects, shared-task synchronization still protects
 local edits; this convention does not authorize overwriting modified copies.
 

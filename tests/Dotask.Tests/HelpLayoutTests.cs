@@ -9,7 +9,7 @@ public sealed class HelpLayoutTests
   [InlineData(60)]
   [InlineData(96)]
   [InlineData(120)]
-  public void WrappingPreservesWordsAndAlignsContinuationLines(int width)
+  public void WrappingPreservesWordsAndAlignsContinuationLines( int width )
   {
     const string prefix = "  --configuration, -c <Debug|Release>  ";
     var description = string.Join(" ", Enumerable.Repeat("Build configuration for the selected project.", 5));
@@ -27,7 +27,7 @@ public sealed class HelpLayoutTests
   [InlineData(null)]
   [InlineData(0)]
   [InlineData(59)]
-  public void UnknownOrNarrowWidthsDoNotWrap(int? width)
+  public void UnknownOrNarrowWidthsDoNotWrap( int? width )
   {
     var text = "  --input <path>  " + new string('x', 200);
     var output = new StringWriter();
@@ -55,7 +55,7 @@ public sealed class HelpLayoutTests
   [Theory]
   [InlineData(60)]
   [InlineData(96)]
-  public async Task ProjectTargetAndCliHelpHonorTheRequestedWidth(int width)
+  public async Task ProjectTargetAndCliHelpHonorTheRequestedWidth( int width )
   {
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", """
@@ -71,8 +71,7 @@ public sealed class HelpLayoutTests
       /// <requires setting="solution" />
       /// <example>dotask build --configuration Release</example>
       """);
-    foreach (var command in new[] { "", "help", "build --help", "--help" })
-    {
+    foreach (var command in new[] { "", "help", "build --help", "--help" }) {
       var output = new StringWriter();
       var error = new StringWriter();
       var code = await CliApplication.RunAsync(command.Split(' ', StringSplitOptions.RemoveEmptyEntries),

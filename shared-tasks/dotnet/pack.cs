@@ -14,8 +14,7 @@ public static class Target
   {
     var project = BuildContext.Current;
     var projectFile = project.Config.GetPath("project");
-    if (!File.Exists(projectFile))
-    {
+    if (!File.Exists(projectFile)) {
       throw new TaskException($"Project file does not exist: {projectFile}");
     }
     await project.RunAsync(project.Parameters.Get<string>("dotnet"), [

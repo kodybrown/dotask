@@ -8,8 +8,7 @@ public sealed class BootstrapTests
   public async Task LauncherStagesRunnerForwardsArgumentsAndCleansUpOnSuccessAndTaskFailure()
   {
     using var fixture = new Fixture();
-    foreach (var args in new[] { Array.Empty<string>(), new[] { "inspect", "-c", "Debug", "value with spaces", "literal! value" }, new[] { "", "inspect" }, new[] { "rebuild" }, new[] { "exit", "23" } })
-    {
+    foreach (var args in new[] { Array.Empty<string>(), new[] { "inspect", "-c", "Debug", "value with spaces", "literal! value" }, new[] { "", "inspect" }, new[] { "rebuild" }, new[] { "exit", "23" } }) {
       var result = await fixture.Run(args);
       var expected = args.FirstOrDefault() == "exit" ? 23 : 0;
       Assert.True(result.ExitCode == expected, result.StandardOutput + result.StandardError);
@@ -49,8 +48,7 @@ public sealed class BootstrapTests
 
     public Fixture()
     {
-      foreach (var file in new[] { "build.sh", "build.cmd", "bootstrap.targets" })
-      {
+      foreach (var file in new[] { "build.sh", "build.cmd", "bootstrap.targets" }) {
         using var stream = typeof(BootstrapTests).Assembly.GetManifestResourceStream("Bootstrap/" + file)!;
         using var reader = new StreamReader(stream);
         Project.Write(file == "bootstrap.targets" ? ".tasks/misc/" + file : file, reader.ReadToEnd());
@@ -93,15 +91,14 @@ public sealed class BootstrapTests
       Directory.CreateDirectory(Path.Combine(Project.Root, "called from here"));
     }
 
-    public async Task<ProcessResult> Run(params string[] arguments)
+    public async Task<ProcessResult> Run( params string[] arguments )
     {
       using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
       // CALL is deliberately avoided so CMD does not expand arguments twice.
       var command = OperatingSystem.IsWindows()
         ? new[] { "/d", "/c", "..\\build.cmd" }.Concat(arguments).ToArray()
         : new[] { Path.Combine(Project.Root, "build.sh") }.Concat(arguments).ToArray();
-      return await ProcessRunner.RunAsync(new ProcessDefinition
-      {
+      return await ProcessRunner.RunAsync(new ProcessDefinition {
         Executable = OperatingSystem.IsWindows() ? Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe" : "/bin/bash",
         Arguments = command,
         WorkingDirectory = Path.Combine(Project.Root, "called from here"),

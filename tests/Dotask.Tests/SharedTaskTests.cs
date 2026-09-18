@@ -17,8 +17,7 @@ public sealed class SharedTaskTests
   {
     using var project = new TestProject();
     var assembly = typeof(SharedTaskTests).Assembly;
-    foreach (var name in assembly.GetManifestResourceNames().Where(n => n.StartsWith("Shared/", StringComparison.Ordinal)))
-    {
+    foreach (var name in assembly.GetManifestResourceNames().Where(n => n.StartsWith("Shared/", StringComparison.Ordinal))) {
       using var stream = assembly.GetManifestResourceStream(name)!;
       using var reader = new StreamReader(stream);
       project.Write(".tasks/dotask-official/" + name[7..].Replace('\\', '/'), await reader.ReadToEndAsync());
@@ -26,18 +25,15 @@ public sealed class SharedTaskTests
     var root = Path.Combine(project.Tasks, "dotask-official");
     var catalog = JsonSerializer.Deserialize<SharedCatalog>(File.ReadAllBytes(Path.Combine(root, "catalog.json")), SharedTaskJson.Options)!;
     SharedTaskStore.ValidateCatalog(catalog);
-    foreach (var task in catalog.Tasks)
-    {
-      foreach (var file in task.Files)
-      {
+    foreach (var task in catalog.Tasks) {
+      foreach (var file in task.Files) {
         Assert.Equal(file.Sha256, SharedTaskFiles.HashFile(Path.Combine(root, file.Path)));
       }
     }
     var targets = new TargetCatalog(project.Tasks);
     Assert.Equal(catalog.Tasks.Length, targets.Targets.Count);
     var compiler = new TargetCompiler();
-    foreach (var task in targets.Targets)
-    {
+    foreach (var task in targets.Targets) {
       var result = await compiler.CompileAsync(task, CancellationToken.None);
       Assert.True(result.Success, task.Name + ": " + result.Diagnostics);
     }
@@ -91,7 +87,7 @@ public sealed class SharedTaskTests
   [InlineData("/// <requires file=\"../outside.txt\" />")]
   [InlineData("/// <requires file=\"tools/missing.txt\" />")]
   [InlineData("/// <requires file=\"tools/a.txt\" task=\"tools/check\" />")]
-  public async Task InvalidPrivateXmlDependenciesFailBeforeProjectMutation(string metadata)
+  public async Task InvalidPrivateXmlDependenciesFailBeforeProjectMutation( string metadata )
   {
     using var fixture = new Fixture();
     var original = fixture.Private("tools/run", metadata: metadata);
@@ -250,7 +246,7 @@ public sealed class SharedTaskTests
   [Theory]
   [InlineData(false)]
   [InlineData(true)]
-  public async Task AddNeverOverwritesUntrackedFilesEvenWhenBytesMatch(bool identical)
+  public async Task AddNeverOverwritesUntrackedFilesEvenWhenBytesMatch( bool identical )
   {
     using var fixture = new Fixture();
     var original = fixture.Private("tools/hello");
@@ -438,8 +434,7 @@ public sealed class SharedTaskTests
   [Fact]
   public async Task SymbolicLinkDestinationsAreNeverFollowed()
   {
-    if (OperatingSystem.IsWindows())
-    {
+    if (OperatingSystem.IsWindows()) {
       return;
     }
     using var fixture = new Fixture();
@@ -465,8 +460,7 @@ public sealed class SharedTaskTests
       new(".dotasks-lock.yaml", SharedTaskFiles.Hash("old lock"), "new lock"u8.ToArray())];
     Assert.Throws<IOException>(() => transaction.Apply(changes, CancellationToken.None, index =>
     {
-      if (index == 1)
-      {
+      if (index == 1) {
         throw new IOException("Simulated interrupted update");
       }
     }));
@@ -530,8 +524,7 @@ public sealed class SharedTaskTests
     Directory.Delete(fixture.Options.CacheDirectory, true);
     using var clone = new TestProject();
     foreach (var file in Directory.GetFiles(fixture.Project.Root, "*", SearchOption.AllDirectories)
-      .Where(f => !f.Contains(Path.DirectorySeparatorChar + ".dotask" + Path.DirectorySeparatorChar, StringComparison.Ordinal)))
-    {
+      .Where(f => !f.Contains(Path.DirectorySeparatorChar + ".dotask" + Path.DirectorySeparatorChar, StringComparison.Ordinal))) {
       var target = Path.Combine(clone.Root, Path.GetRelativePath(fixture.Project.Root, file));
       Directory.CreateDirectory(Path.GetDirectoryName(target)!);
       File.Copy(file, target);
@@ -543,9 +536,9 @@ public sealed class SharedTaskTests
     Assert.False(Directory.Exists(fixture.Options.PrivateDirectory));
   }
 
-  private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> response) : HttpMessageHandler
+  private sealed class Handler( Func<HttpRequestMessage, HttpResponseMessage> response ) : HttpMessageHandler
   {
-    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => Task.FromResult(response(request));
+    protected override Task<HttpResponseMessage> SendAsync( HttpRequestMessage request, CancellationToken cancellationToken ) => Task.FromResult(response(request));
   }
 
   private sealed class Fixture : IDisposable
@@ -558,18 +551,18 @@ public sealed class SharedTaskTests
     public List<SharedTask> CatalogTasks { get; } = [];
 
     public Fixture() => Options = new(Path.Combine(Root, "cache"), Path.Combine(Root, "private"), OnlineDirectory);
-    public string Installed(string id) => Path.Combine(Project.Tasks, id + ".cs");
+    public string Installed( string id ) => Path.Combine(Project.Tasks, id + ".cs");
     public TaskLock Lock() => TaskLock.Read(File.ReadAllBytes(LockPath), ".tasks");
-    public string Private(string id, string body = "Console.WriteLine(\"hello\");", bool async = false, string metadata = "") =>
-      WriteSource(Options.PrivateDirectory, id, body, async, metadata);
-    public void Online(string id, string body = "Console.WriteLine(\"hello\");", string[]? dependencies = null)
+    public string Private( string id, string body = "Console.WriteLine(\"hello\");", bool async = false, string metadata = "" )
+      => WriteSource(Options.PrivateDirectory, id, body, async, metadata);
+    public void Online( string id, string body = "Console.WriteLine(\"hello\");", string[]? dependencies = null )
     {
       var path = WriteSource(OnlineDirectory, id, body, false);
       CatalogTasks.Add(new(id, id + ".cs", "Example task", "csharp", [new(id + ".cs", SharedTaskFiles.HashFile(path)!)], dependencies ?? []));
     }
     public void WriteCatalog() => File.WriteAllBytes(Path.Combine(OnlineDirectory, "catalog.json"),
       JsonSerializer.SerializeToUtf8Bytes(new SharedCatalog(1, CatalogTasks.ToArray()), SharedTaskJson.Options));
-    private static string WriteSource(string root, string id, string body, bool async, string metadata = "")
+    private static string WriteSource( string root, string id, string body, bool async, string metadata = "" )
     {
       var path = Path.Combine(root, id + ".cs");
       Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -587,7 +580,7 @@ public sealed class SharedTaskTests
         """);
       return path;
     }
-    public async Task<(int Code, string Output, string Error)> Run(params string[] args)
+    public async Task<(int Code, string Output, string Error)> Run( params string[] args )
     {
       using var output = new StringWriter();
       using var error = new StringWriter();
@@ -597,8 +590,7 @@ public sealed class SharedTaskTests
     public void Dispose()
     {
       Project.Dispose();
-      if (Directory.Exists(Root))
-      {
+      if (Directory.Exists(Root)) {
         Directory.Delete(Root, true);
       }
     }

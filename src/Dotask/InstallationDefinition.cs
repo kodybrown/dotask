@@ -14,7 +14,7 @@ public sealed record InstallationDefinition
 
 /// <param name="Name">Command name without an extension.</param>
 /// <param name="Executable">Portable relative path inside the published directory.</param>
-public sealed record InstalledCommand(string Name, string Executable);
+public sealed record InstalledCommand( string Name, string Executable );
 
-public sealed record InstallationResult(string InstallDirectory, string BinDirectory,
-  string Fingerprint, bool Reused, IReadOnlyList<string> Warnings);
+public sealed record InstallationResult( string InstallDirectory, string BinDirectory,
+  string Fingerprint, bool Reused, IReadOnlyList<string> Warnings );

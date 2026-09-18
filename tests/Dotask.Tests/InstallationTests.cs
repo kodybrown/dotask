@@ -47,8 +47,7 @@ public sealed class InstallationTests
     fixture.Project.Write("published/data/settings.json", "two");
     var second = await UserInstaller.InstallAsync(fixture.Definition);
     Assert.NotEqual(first.Fingerprint, second.Fingerprint);
-    if (!OperatingSystem.IsWindows())
-    {
+    if (!OperatingSystem.IsWindows()) {
       File.SetUnixFileMode(Path.Combine(fixture.Source, fixture.Executable), UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
       var third = await UserInstaller.InstallAsync(fixture.Definition);
       Assert.NotEqual(second.Fingerprint, third.Fingerprint);
@@ -111,8 +110,7 @@ public sealed class InstallationTests
   [Fact]
   public async Task UnixSourceLinksAndDanglingCommandLinksAreRejected()
   {
-    if (OperatingSystem.IsWindows())
-    {
+    if (OperatingSystem.IsWindows()) {
       return;
     }
 
@@ -132,8 +130,7 @@ public sealed class InstallationTests
   [Fact]
   public async Task IntentionalBinDirectorySymlinkIsResolved()
   {
-    if (OperatingSystem.IsWindows())
-    {
+    if (OperatingSystem.IsWindows()) {
       return;
     }
 
@@ -151,7 +148,7 @@ public sealed class InstallationTests
   [InlineData("CON")]
   [InlineData("name.")]
   [InlineData("bad:name")]
-  public async Task InvalidIdentitiesFailBeforeCreatingDestinations(string name)
+  public async Task InvalidIdentitiesFailBeforeCreatingDestinations( string name )
   {
     using var fixture = new Fixture();
     await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(fixture.Definition with { AppId = name }));
@@ -163,7 +160,7 @@ public sealed class InstallationTests
   [InlineData("../sample")]
   [InlineData("/sample")]
   [InlineData("dir\\sample")]
-  public async Task ExecutableCannotEscapePublishedFiles(string executable)
+  public async Task ExecutableCannotEscapePublishedFiles( string executable )
   {
     using var fixture = new Fixture();
     await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(fixture.Definition with { Commands = [new("sample", executable)] }));
@@ -242,8 +239,7 @@ public sealed class InstallationTests
   public async Task CompetingInstallerAndMissingEntrypointsFailWithoutActivation()
   {
     using var fixture = new Fixture();
-    using (var lease = InstallationFiles.Lock(fixture.Bin))
-    {
+    using (var lease = InstallationFiles.Lock(fixture.Bin)) {
       await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(fixture.Definition));
       Assert.False(File.Exists(Path.Combine(fixture.Definition.InstallRoot!, ".dotask-install.lock")));
       Assert.True(File.Exists(Path.Combine(fixture.Bin, ".dotask-install.lock")));
@@ -272,8 +268,7 @@ public sealed class InstallationTests
   [Fact]
   public async Task NonExecutableUnixOutputIsRejected()
   {
-    if (OperatingSystem.IsWindows())
-    {
+    if (OperatingSystem.IsWindows()) {
       return;
     }
 
@@ -286,15 +281,13 @@ public sealed class InstallationTests
   [Fact]
   public async Task WindowsShellWrappersAndSidecarsCannotBeSilentlyReplaced()
   {
-    if (!OperatingSystem.IsWindows())
-    {
+    if (!OperatingSystem.IsWindows()) {
       return;
     }
 
     using var fixture = new Fixture();
     Directory.CreateDirectory(fixture.Bin);
-    foreach (var extension in new[] { ".cmd", ".shim" })
-    {
+    foreach (var extension in new[] { ".cmd", ".shim" }) {
       var file = Path.Combine(fixture.Bin, "sample" + extension);
       File.WriteAllText(file, "mine");
       await Assert.ThrowsAsync<TaskException>(() => UserInstaller.InstallAsync(fixture.Definition));
@@ -303,21 +296,18 @@ public sealed class InstallationTests
     }
   }
 
-  private static void AssertNoLocks(Fixture fixture)
+  private static void AssertNoLocks( Fixture fixture )
   {
     Assert.False(File.Exists(Path.Combine(fixture.Definition.InstallRoot!, ".dotask-install.lock")));
     Assert.False(File.Exists(Path.Combine(fixture.Bin, ".dotask-install.lock")));
   }
 
-  private static void AssertActive(InstallationResult result, string executable)
+  private static void AssertActive( InstallationResult result, string executable )
   {
     var expected = Path.Combine(result.InstallDirectory, executable);
-    if (OperatingSystem.IsWindows())
-    {
+    if (OperatingSystem.IsWindows()) {
       Assert.Equal($"path = \"{expected}\"\n", File.ReadAllText(Path.Combine(result.BinDirectory, "sample.shim")));
-    }
-    else
-    {
+    } else {
       Assert.Equal(expected, new FileInfo(Path.Combine(result.BinDirectory, "sample")).LinkTarget);
     }
   }
@@ -329,8 +319,7 @@ public sealed class InstallationTests
     public string Bin => Path.Combine(Project.Root, "command dir");
     public string App => Path.Combine(Project.Root, "programs", "sample");
     public string Executable => OperatingSystem.IsWindows() ? "sample.exe" : "sample";
-    public InstallationDefinition Definition => new()
-    {
+    public InstallationDefinition Definition => new() {
       AppId = "sample",
       Version = "1.2.3",
       SourceDirectory = Source,
@@ -339,11 +328,10 @@ public sealed class InstallationTests
       Commands = [new("sample", Executable)]
     };
     public Fixture() => WritePayload("payload one");
-    public void WritePayload(string value)
+    public void WritePayload( string value )
     {
       var file = Project.Write("published/" + Executable, value);
-      if (!OperatingSystem.IsWindows())
-      {
+      if (!OperatingSystem.IsWindows()) {
         File.SetUnixFileMode(file,
         UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.GroupRead | UnixFileMode.GroupExecute);
       }

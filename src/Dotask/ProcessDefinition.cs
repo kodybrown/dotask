@@ -10,4 +10,4 @@ public sealed record ProcessDefinition
   public bool ThrowOnError { get; init; } = true;
 }
 
-public sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError);
+public sealed record ProcessResult( int ExitCode, string StandardOutput, string StandardError );

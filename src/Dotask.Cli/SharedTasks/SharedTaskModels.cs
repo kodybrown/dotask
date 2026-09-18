@@ -6,17 +6,16 @@ using YamlDotNet.Serialization.NamingConventions;
 
 namespace DoTask.Cli.SharedTasks;
 
-internal sealed record SharedFile(string Path, string Sha256);
-internal sealed record SharedTask(string Id, string EntryPoint, string Description, string Runtime, SharedFile[] Files, string[] Requires)
+internal sealed record SharedFile( string Path, string Sha256 );
+internal sealed record SharedTask( string Id, string EntryPoint, string Description, string Runtime, SharedFile[] Files, string[] Requires )
 {
   [JsonIgnore]
   public string Revision => SharedTaskFiles.Hash(JsonSerializer.Serialize(this, SharedTaskJson.Options));
 }
-internal sealed record SharedCatalog(int Version, SharedTask[] Tasks);
+internal sealed record SharedCatalog( int Version, SharedTask[] Tasks );
 internal static class SharedTaskJson
 {
-  public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
-  {
+  public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web) {
     WriteIndented = true,
     UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
     RespectNullableAnnotations = true,
@@ -30,54 +29,43 @@ internal sealed class TaskLock
   public string Directory { get; set; } = ".tasks";
   public SortedDictionary<string, InstalledTask> Tasks { get; set; } = new(StringComparer.Ordinal);
 
-  public static TaskLock Read(byte[]? bytes, string taskDirectory)
+  public static TaskLock Read( byte[]? bytes, string taskDirectory )
   {
-    if (bytes is null)
-    {
+    if (bytes is null) {
       return new() { Directory = taskDirectory };
     }
-    try
-    {
+    try {
       var result = new DeserializerBuilder().WithNamingConvention(HyphenatedNamingConvention.Instance)
         .WithDuplicateKeyChecking().Build().Deserialize<TaskLock>(System.Text.Encoding.UTF8.GetString(bytes))
         ?? throw new TaskException("The shared task lock file is empty.");
-      if (result.Version != 1 || result.Directory != taskDirectory || result.Tasks is null)
-      {
+      if (result.Version != 1 || result.Directory != taskDirectory || result.Tasks is null) {
         throw new TaskException("The shared task lock has an unsupported version or belongs to a different task directory.");
       }
       var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
       var paths = new Dictionary<string, (string Path, string Hash)>(StringComparer.OrdinalIgnoreCase);
-      foreach (var (id, task) in result.Tasks)
-      {
+      foreach (var (id, task) in result.Tasks) {
         SharedTaskFiles.ValidateId(id, 3);
         if (!ids.Add(id) || task is null || task.Source != id.Split('/')[0]
-          || !SharedTaskFiles.IsHash(task.Revision ?? "") || task.Requires is null || task.Files is null || task.Files.Count == 0)
-        {
+          || !SharedTaskFiles.IsHash(task.Revision ?? "") || task.Requires is null || task.Files is null || task.Files.Count == 0) {
           throw new TaskException($"Invalid tracking entry '{id}'.");
         }
-        foreach (var dependency in task.Requires)
-        {
+        foreach (var dependency in task.Requires) {
           SharedTaskFiles.ValidateId(dependency, 3);
         }
-        foreach (var (path, hash) in task.Files)
-        {
+        foreach (var (path, hash) in task.Files) {
           SharedTaskFiles.ValidateRelativePath(path);
           if (!path.StartsWith(task.Source + "/", StringComparison.Ordinal) || hash is null || !SharedTaskFiles.IsHash(hash)
-            || (paths.TryGetValue(path, out var previous) && (previous.Path != path || previous.Hash != hash)))
-          {
+            || (paths.TryGetValue(path, out var previous) && (previous.Path != path || previous.Hash != hash))) {
             throw new TaskException($"Invalid or conflicting tracked file '{path}'.");
           }
           paths[path] = (path, hash);
         }
-        if (!task.Files.ContainsKey(id + ".cs"))
-        {
+        if (!task.Files.ContainsKey(id + ".cs")) {
           throw new TaskException($"Missing entry point tracking for '{id}'.");
         }
       }
       return result;
-    }
-    catch (Exception ex) when (ex is YamlException or ArgumentException or InvalidCastException)
-    {
+    } catch (Exception ex) when (ex is YamlException or ArgumentException or InvalidCastException) {
       throw new TaskException($"Invalid .dotasks-lock.yaml; no project files changed: {ex.Message}");
     }
   }
@@ -94,8 +82,7 @@ internal sealed class InstalledTask
   public string[] Requires { get; set; } = [];
   public SortedDictionary<string, string> Files { get; set; } = new(StringComparer.Ordinal);
 
-  public static InstalledTask From(string source, SharedTask task) => new()
-  {
+  public static InstalledTask From( string source, SharedTask task ) => new() {
     Source = source,
     Revision = task.Revision,
     Requires = task.Requires.Select(id => source + "/" + id).ToArray(),
@@ -103,26 +90,21 @@ internal sealed class InstalledTask
   };
 }
 
-internal sealed record TaskSelection(string Source, string Pattern)
+internal sealed record TaskSelection( string Source, string Pattern )
 {
-  public static IEnumerable<TaskSelection> Parse(IEnumerable<string> arguments)
+  public static IEnumerable<TaskSelection> Parse( IEnumerable<string> arguments )
   {
-    foreach (var argument in arguments)
-    {
+    foreach (var argument in arguments) {
       var open = argument.IndexOf('{');
-      if (open >= 0)
-      {
-        if (!argument.EndsWith('}') || open == 0 || argument[open - 1] != '/' || argument[(open + 1)..^1].Contains('{'))
-        {
+      if (open >= 0) {
+        if (!argument.EndsWith('}') || open == 0 || argument[open - 1] != '/' || argument[(open + 1)..^1].Contains('{')) {
           throw new TaskException($"Invalid task selection '{argument}'. Use \"dotnet/{{build,run,format}}\".");
         }
         var members = argument[(open + 1)..^1].Split(',');
-        if (members.Any(m => m.Length == 0 || m.Contains('/') || m.Contains('*')))
-        {
+        if (members.Any(m => m.Length == 0 || m.Contains('/') || m.Contains('*'))) {
           throw new TaskException($"Invalid task selection '{argument}'.");
         }
-        foreach (var selection in Parse(members.Select(m => argument[..open] + m)))
-        {
+        foreach (var selection in Parse(members.Select(m => argument[..open] + m))) {
           yield return selection;
         }
         continue;
@@ -132,14 +114,10 @@ internal sealed record TaskSelection(string Source, string Pattern)
       var source = explicitSource ? segments[0].ToLowerInvariant() : "dotask-official";
       var pattern = explicitSource ? string.Join('/', segments[1..]) : argument;
       SharedTaskFiles.ValidateId(source, 1);
-      if (pattern != "*")
-      {
-        if (pattern.EndsWith("/*", StringComparison.Ordinal))
-        {
+      if (pattern != "*") {
+        if (pattern.EndsWith("/*", StringComparison.Ordinal)) {
           SharedTaskFiles.ValidateId(pattern[..^2], 1);
-        }
-        else
-        {
+        } else {
           SharedTaskFiles.ValidateId(pattern, 2);
         }
       }
@@ -147,6 +125,6 @@ internal sealed record TaskSelection(string Source, string Pattern)
     }
   }
 
-  public bool Matches(string id) => Pattern == "*" || (Pattern.EndsWith("/*", StringComparison.Ordinal)
+  public bool Matches( string id ) => Pattern == "*" || (Pattern.EndsWith("/*", StringComparison.Ordinal)
     ? id.StartsWith(Pattern[..^1], StringComparison.OrdinalIgnoreCase) : id.Equals(Pattern, StringComparison.OrdinalIgnoreCase));
 }

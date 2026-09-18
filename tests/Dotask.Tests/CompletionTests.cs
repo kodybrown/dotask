@@ -13,7 +13,7 @@ public sealed class CompletionTests
   [InlineData("dotask run --configuration=r", "--configuration=Release")]
   [InlineData("dotask run --verbose ", "false")]
   [InlineData("dotask completion p", "powershell")]
-  public void SuggestionsUseTargetMetadata(string line, string expected)
+  public void SuggestionsUseTargetMetadata( string line, string expected )
   {
     using var project = new TestProject();
     project.Target("run", "ThisDeliberatelyDoesNotCompile();", """
@@ -41,7 +41,7 @@ public sealed class CompletionTests
   [InlineData("dotask help dotnet-r", "dotnet-run")]
   [InlineData("dotask RUN -c r", "Release")]
   [InlineData("dotask DOTNET-RUN -c r", "Release")]
-  public void FullAndShortNamesUseTheSameCompletionMetadata(string line, string expected)
+  public void FullAndShortNamesUseTheSameCompletionMetadata( string line, string expected )
   {
     using var project = new TestProject();
     project.Target("dotnet run", "DoesNotCompile();", "/// <option name=\"configuration\" alias=\"c\" choices=\"Debug,Release\" />");
@@ -87,7 +87,7 @@ public sealed class CompletionTests
   [InlineData("dotask --use-dir a\\ b run ", "bash", "a b")]
   [InlineData("dotask --use-dir 'a''b' run ", "powershell", "a'b")]
   [InlineData("dotask --use-dir a` b run ", "powershell", "a b")]
-  public void TokenizationPreservesShellArgumentBoundaries(string line, string shell, string directory)
+  public void TokenizationPreservesShellArgumentBoundaries( string line, string shell, string directory )
   {
     var words = ShellWords.Parse(line, shell);
     Assert.Equal(directory, words[2]);

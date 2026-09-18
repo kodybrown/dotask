@@ -16,8 +16,7 @@ public sealed class ProcessAndFilesTests
     var compiled = await compiler.CompileAsync(MetadataReader.Read(source), CancellationToken.None);
     Assert.True(compiled.Success, compiled.Diagnostics);
     string[] arguments = ["", "two words", "a\"b", "'single'", "a=b=c", @"back\slash\", "$(touch BAD)", "& | ; < > %PATH%", "日本語", "line1\nline2"];
-    var result = await project.Context().RunAsync(new ProcessDefinition
-    {
+    var result = await project.Context().RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),
       Arguments = [compiled.AssemblyPath!, .. arguments],
       CaptureOutput = true
@@ -51,15 +50,13 @@ public sealed class ProcessAndFilesTests
     var compiled = await new TargetCompiler().CompileAsync(MetadataReader.Read(file), CancellationToken.None);
     Assert.True(compiled.Success, compiled.Diagnostics);
     using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-    var running = project.Context().RunAsync(new ProcessDefinition
-    {
+    var running = project.Context().RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),
       Arguments = [compiled.AssemblyPath!],
       CaptureOutput = true
     }, cancellation.Token);
     var pidFile = Path.Combine(project.Root, "pid.txt");
-    while (!File.Exists(pidFile))
-    {
+    while (!File.Exists(pidFile)) {
       await Task.Delay(25, cancellation.Token);
     }
     var pid = int.Parse(await File.ReadAllTextAsync(pidFile));
@@ -91,8 +88,7 @@ public sealed class ProcessAndFilesTests
   {
     using var project = new TestProject();
     await Assert.ThrowsAsync<TaskException>(() => project.Context().RunAsync("dotnet", ["bad\0value"]));
-    if (!OperatingSystem.IsWindows())
-    {
+    if (!OperatingSystem.IsWindows()) {
       Assert.Throws<TaskException>(() => project.Context().Path(@"C:\Windows\file.txt"));
     }
   }

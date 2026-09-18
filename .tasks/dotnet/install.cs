@@ -25,29 +25,25 @@ public static class Target
     Console.WriteLine($"{(result.Reused ? "Activated existing" : "Installed")} {definition.AppId} {definition.Version}");
     Console.WriteLine($"  Files: {result.InstallDirectory}");
     Console.WriteLine($"  Commands: {result.BinDirectory}");
-    foreach (var warning in result.Warnings)
-    {
+    foreach (var warning in result.Warnings) {
       Console.WriteLine($"  Note: {warning}");
     }
   }
 
-  private static async Task<InstallationDefinition> PublishAsync(BuildContext project)
+  private static async Task<InstallationDefinition> PublishAsync( BuildContext project )
   {
     var parameters = project.Parameters;
     var projectFile = project.Config.GetPath("project");
-    if (!File.Exists(projectFile))
-    {
+    if (!File.Exists(projectFile)) {
       throw new TaskException($"Project file does not exist: {projectFile}");
     }
-    var system = project.OS switch
-    {
+    var system = project.OS switch {
       HostOS.Windows => "win",
       HostOS.Linux => RuntimeInformation.RuntimeIdentifier.StartsWith("linux-musl-", StringComparison.Ordinal) ? "linux-musl" : "linux",
       HostOS.MacOS => "osx",
       _ => throw new TaskException("Installation supports Windows, Linux, and macOS.")
     };
-    var architecture = RuntimeInformation.OSArchitecture switch
-    {
+    var architecture = RuntimeInformation.OSArchitecture switch {
       Architecture.X64 => "x64",
       Architecture.Arm64 => "arm64",
       _ => throw new TaskException("The .NET installation task supports x64 and ARM64 hosts.")
@@ -59,19 +55,16 @@ public static class Target
       "-p:SelfContained=" + parameters.Get<bool>("self-contained").ToString().ToLowerInvariant(),
       "-p:UseAppHost=true"
     };
-    if (parameters.Contains("framework"))
-    {
+    if (parameters.Contains("framework")) {
       properties.Add("-p:TargetFramework=" + parameters.Get<string>("framework"));
     }
     var host = parameters.Get<string>("dotnet");
     var info = await Query(["msbuild", projectFile, "--nologo", .. properties,
       "-getProperty:TargetFramework,TargetFrameworks,OutputType"]);
-    if (string.IsNullOrWhiteSpace(info["TargetFramework"]))
-    {
+    if (string.IsNullOrWhiteSpace(info["TargetFramework"])) {
       throw new TaskException("Select a single target framework with --framework before installing this project.");
     }
-    if (info["OutputType"] != "Exe")
-    {
+    if (info["OutputType"] != "Exe") {
       throw new TaskException("The installation task currently supports console applications (OutputType Exe).");
     }
     Console.WriteLine($"Publishing {Path.GetFileName(projectFile)} for {system}-{architecture}...");
@@ -80,8 +73,7 @@ public static class Target
     var published = await Query(["publish", projectFile, "--nologo", "--verbosity", "quiet", .. properties,
       "-getProperty:PublishDir,AssemblyName,Version,ToolCommandName"]);
     var directory = Path.GetFullPath(published["PublishDir"], Path.GetDirectoryName(projectFile)!);
-    return new InstallationDefinition
-    {
+    return new InstallationDefinition {
       AppId = parameters.Get("app-id", published["AssemblyName"]),
       Version = published["Version"],
       SourceDirectory = directory,
@@ -91,17 +83,15 @@ public static class Target
       InstallRoot = parameters.Contains("install-root") ? parameters.GetPath("install-root") : null
     };
 
-    async Task<Dictionary<string, string>> Query(string[] arguments)
+    async Task<Dictionary<string, string>> Query( string[] arguments )
     {
-      var result = await project.RunAsync(new ProcessDefinition
-      {
+      var result = await project.RunAsync(new ProcessDefinition {
         Executable = host,
         Arguments = arguments,
         CaptureOutput = true,
         ThrowOnError = false
       });
-      if (result.ExitCode != 0)
-      {
+      if (result.ExitCode != 0) {
         Console.Error.WriteLine(result.StandardOutput.Trim());
         Console.Error.WriteLine(result.StandardError.Trim());
         throw new ProcessFailedException(host, result.ExitCode);
@@ -109,21 +99,17 @@ public static class Target
       // MSBuild prints evaluated properties as one JSON object. Warnings may
       // precede it; keep those visible without interpreting them as metadata.
       var start = result.StandardOutput.IndexOf("{\n", StringComparison.Ordinal);
-      if (start < 0)
-      {
+      if (start < 0) {
         start = result.StandardOutput.IndexOf("{\r\n", StringComparison.Ordinal);
       }
-      if (start < 0)
-      {
+      if (start < 0) {
         throw new TaskException("The .NET SDK did not return evaluated publish metadata.");
       }
       var notices = result.StandardOutput[..start].Trim();
-      if (notices.Length > 0)
-      {
+      if (notices.Length > 0) {
         Console.WriteLine(notices);
       }
-      if (!string.IsNullOrWhiteSpace(result.StandardError))
-      {
+      if (!string.IsNullOrWhiteSpace(result.StandardError)) {
         Console.Error.WriteLine(result.StandardError.Trim());
       }
       using var json = JsonDocument.Parse(result.StandardOutput[start..]);

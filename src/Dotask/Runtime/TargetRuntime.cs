@@ -10,18 +10,16 @@ public static class TargetRuntime
 
   public static void Initialize()
   {
-    if (Interlocked.Exchange(ref _initialized, 1) != 0)
-    {
+    if (Interlocked.Exchange(ref _initialized, 1) != 0) {
       return;
     }
-    AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+    AppDomain.CurrentDomain.UnhandledException += ( _, args ) =>
     {
       var exception = args.ExceptionObject as Exception;
       Console.Error.WriteLine(exception is TaskException ? exception.Message : args.ExceptionObject);
       // An unhandled target exception is an ordinary task failure. Avoid the
       // runtime's abort/core-dump path, while preserving useful source diagnostics.
-      Environment.Exit(exception switch
-      {
+      Environment.Exit(exception switch {
         OperationCanceledException => 130,
         ProcessFailedException failed => failed.ExitCode,
         _ => 1

@@ -8,3 +8,7 @@
 **/artifacts/
 *.nupkg
 *.snupkg
+
+# Intentional delivery assets, even when a user's global ignore excludes EXEs.
+!src/Dotask.Shim/assets/win-x64.exe
+!src/Dotask.Shim/assets/win-arm64.exe

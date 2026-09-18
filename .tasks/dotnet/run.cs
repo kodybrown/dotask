@@ -16,23 +16,18 @@ public static class Target
   {
     var project = BuildContext.Current;
     var projectFile = project.Config.GetPath("project");
-    if (!File.Exists(projectFile))
-    {
+    if (!File.Exists(projectFile)) {
       throw new TaskException($"Project is missing: {projectFile}");
     }
 
     string[]? projectArguments;
-    try
-    {
+    try {
       projectArguments = JsonSerializer.Deserialize<string[]>(project.Parameters.Get<string>("args"));
-    }
-    catch (JsonException)
-    {
+    } catch (JsonException) {
       throw new TaskException("args must be a JSON array of strings, for example: args='[\"--help\"]'");
     }
 
-    if (projectArguments is null || projectArguments.Any(argument => argument is null))
-    {
+    if (projectArguments is null || projectArguments.Any(argument => argument is null)) {
       throw new TaskException("args must be a JSON array of strings without null values.");
     }
 
@@ -42,8 +37,7 @@ public static class Target
     ];
     // Pass application arguments before the optional input file.
     arguments.AddRange(projectArguments);
-    if (project.Parameters.Contains("file"))
-    {
+    if (project.Parameters.Contains("file")) {
       arguments.Add(project.Parameters.GetPath("file"));
     }
 

@@ -292,11 +292,13 @@ In PowerShell, set `$env:DOTASK_ONLINE_TASKS` to the corresponding absolute loca
 path first. This override is a local publisher/preview fixture, not configuration
 for arbitrary remote sources. It must contain `catalog.json` and its declared files.
 
-Maintainers regenerate the small static catalog without compiling/executing tasks:
+Maintainers regenerate the small static catalog without compiling/executing the
+tasks being indexed:
 
 ```sh
 ./build.sh catalog
 ./build.sh catalog --verify
+./build.sh
 ```
 
 On Windows use `.\build.cmd catalog` and `.\build.cmd catalog --verify`.
@@ -304,9 +306,17 @@ The launcher bootstraps dotask from this checkout; the generator is a C# task
 under `.tasks`. No installed dotask or Python is required. `--verify` fails for
 a stale catalog without rewriting it.
 
+Run generation after the final edits/formatting whenever shared tasks or declared
+support files are added, changed, renamed, or removed, including metadata and
+comment edits: hashes cover the exact source bytes. Review and commit the generated
+`shared-tasks/catalog.json` alongside those changes. The full repository gate and
+CI check catalog freshness; they do not silently regenerate it. Repeating
+generation with unchanged inputs produces identical output.
+
 Descriptions, support files, and required same-source task IDs come from the
 task's XML documentation, using the same parser as help and private tasks.
-The repository catalog task includes that parser's C# sources and uses the same
+All catalog-generation methods live in `.tasks/catalog.cs`. The task includes
+the CLI parser's C# sources and uses the same
 Roslyn package as the CLI; it never compiles or executes the tasks being indexed.
 The generated `catalog.json` remains the downloadable index, not a file authors
 maintain per task. It contains portable IDs, `runtime: csharp`, entry points,

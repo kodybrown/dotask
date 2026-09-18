@@ -10,8 +10,7 @@
                       LogicalName="Shim/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../src/Dotask.Shim/assets/win-*.exe"
                       LogicalName="Shim/assets/%(Filename)%(Extension)" />
-    <Compile Include="../../.tasks/_support/TaskCatalog.cs" Link="RepositoryTasks/TaskCatalog.cs" />
-    <EmbeddedResource Include="../../.tasks/verify.cs;../../.tasks/verify-docs.cs;../../.tasks/catalog.cs;../../.tasks/_support/TaskCatalog.cs"
+    <EmbeddedResource Include="../../.tasks/verify.cs;../../.tasks/verify-docs.cs;../../.tasks/catalog.cs"
                       LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../src/Dotask.Cli/Metadata/MetadataReader.cs;../../src/Dotask.Cli/Metadata/TargetDefinition.cs"
                       LogicalName="RepositoryTasks/%(Filename)%(Extension)" />

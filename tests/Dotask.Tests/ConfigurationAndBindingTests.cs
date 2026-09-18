@@ -40,7 +40,7 @@ public sealed class ConfigurationAndBindingTests
   [InlineData("version: 1")]
   [InlineData("name: null\ndescription: null")]
   [InlineData("name: ''\ndescription: '  '")]
-  public void MissingOrBlankProjectIdentityUsesDefaults(string yaml)
+  public void MissingOrBlankProjectIdentityUsesDefaults( string yaml )
   {
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", yaml);
@@ -54,7 +54,7 @@ public sealed class ConfigurationAndBindingTests
   [InlineData("name", "[one, two]")]
   [InlineData("description", "true")]
   [InlineData("description", "{ text: value }")]
-  public void ProjectIdentityRequiresStrings(string key, string value)
+  public void ProjectIdentityRequiresStrings( string key, string value )
   {
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", $"{key}: {value}");
@@ -100,7 +100,7 @@ public sealed class ConfigurationAndBindingTests
     var config = ProjectConfiguration.Load(project.Tasks);
     Assert.Equal("Release", Bind([]).Get<string>("configuration"));
     Assert.Equal("Debug", Bind(["-C", "debug"]).Get<string>("configuration"));
-    Values Bind(string[] args) => new(OptionBinder.Bind(target, config, args, project.Root), project.Root);
+    Values Bind( string[] args ) => new(OptionBinder.Bind(target, config, args, project.Root), project.Root);
   }
 
   [Theory]
@@ -109,7 +109,7 @@ public sealed class ConfigurationAndBindingTests
   [InlineData("--CONFIGURATION=release", null)]
   [InlineData("Configuration=release", null)]
   [InlineData("C=release", null)]
-  public void LongAliasAndMakeSyntaxShareCaseInsensitiveValidation(string first, string? second)
+  public void LongAliasAndMakeSyntaxShareCaseInsensitiveValidation( string first, string? second )
   {
     using var project = new TestProject();
     var target = MetadataReader.Read(project.Target("run", metadata: Metadata));
@@ -139,7 +139,7 @@ public sealed class ConfigurationAndBindingTests
   [InlineData("count=abc")]
   [InlineData("verbose=maybe")]
   [InlineData("--name")]
-  public void InvalidArgumentsAreRejected(string argument)
+  public void InvalidArgumentsAreRejected( string argument )
   {
     using var project = new TestProject();
     var target = MetadataReader.Read(project.Target("run", metadata: Metadata));
@@ -164,7 +164,7 @@ public sealed class ConfigurationAndBindingTests
   [InlineData("unexpected: true")]
   [InlineData("targets: { run: { description: no } }")]
   [InlineData("settings: &a { next: *a }")]
-  public void InvalidConfigurationFailsClearly(string yaml)
+  public void InvalidConfigurationFailsClearly( string yaml )
   {
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", yaml);

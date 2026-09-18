@@ -21,34 +21,30 @@ internal sealed record ExecutionContextData
 
 internal enum TargetCallOperation { Execute, Exists, ExecuteIfExists }
 
-internal sealed record TargetCall(ExecutionContextData Context, string Target, JsonElement Parameters,
-  TargetCallOperation Operation = TargetCallOperation.Execute);
+internal sealed record TargetCall( ExecutionContextData Context, string Target, JsonElement Parameters,
+  TargetCallOperation Operation = TargetCallOperation.Execute );
 
-internal sealed record TargetCallReply(bool Exists, int? ExitCode = null, string? Error = null);
+internal sealed record TargetCallReply( bool Exists, int? ExitCode = null, string? Error = null );
 
 internal static class ContextFile
 {
-  public static async Task<string> WriteAsync<T>(string directory, T value, CancellationToken cancellationToken)
+  public static async Task<string> WriteAsync<T>( string directory, T value, CancellationToken cancellationToken )
   {
     Directory.CreateDirectory(directory);
     var path = System.IO.Path.Combine(directory, Guid.NewGuid().ToString("N") + ".json");
-    try
-    {
+    try {
       await WriteToAsync(path, value, cancellationToken);
       return path;
-    }
-    catch
-    {
+    } catch {
       File.Delete(path);
       throw;
     }
   }
 
-  public static async Task WriteToAsync<T>(string path, T value, CancellationToken cancellationToken)
+  public static async Task WriteToAsync<T>( string path, T value, CancellationToken cancellationToken )
   {
     var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write, Share = FileShare.None };
-    if (!OperatingSystem.IsWindows())
-    {
+    if (!OperatingSystem.IsWindows()) {
       options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
     }
     await using var stream = new FileStream(path, options);

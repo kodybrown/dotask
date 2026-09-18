@@ -13,8 +13,7 @@ public static class Target
   {
     var project = BuildContext.Current;
     var solution = project.Config.GetPath("solution");
-    if (!File.Exists(solution))
-    {
+    if (!File.Exists(solution)) {
       throw new TaskException($"Solution is missing: {solution}");
     }
 

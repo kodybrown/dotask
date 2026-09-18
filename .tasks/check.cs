@@ -7,16 +7,13 @@ public static class Target
   public static async Task Main()
   {
     var project = BuildContext.Current;
-    foreach (var target in new[] { "git/check", "dotnet/check" })
-    {
+    foreach (var target in new[] { "git/check", "dotnet/check" }) {
       var result = await project.ExecTargetIfExistsAsync(target);
-      if (result.Status != TargetExecutionStatus.Failed)
-      {
+      if (result.Status != TargetExecutionStatus.Failed) {
         continue;
       }
 
-      if (result.ExitCode is int exitCode)
-      {
+      if (result.ExitCode is int exitCode) {
         throw new ProcessFailedException(target, exitCode);
       }
 

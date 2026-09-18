@@ -12,13 +12,11 @@ public sealed class InstallationIntegrationTests
   {
     using var stream = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream("Shim/hashes.json")!;
     var hashes = JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
-    foreach (var entry in hashes)
-    {
+    foreach (var entry in hashes) {
       using var source = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream("Shim/" + entry.Key)!;
       Assert.Equal(entry.Value, Convert.ToHexStringLower(SHA256.HashData(source)));
     }
-    foreach (var (architecture, machine) in new[] { ("x64", Machine.Amd64), ("arm64", Machine.Arm64) })
-    {
+    foreach (var (architecture, machine) in new[] { ("x64", Machine.Amd64), ("arm64", Machine.Arm64) }) {
       using var binary = typeof(BuildContext).Assembly.GetManifestResourceStream($"DoTask.Shim.win-{architecture}.exe")!;
       Assert.Equal(hashes[$"assets/win-{architecture}.exe"], Convert.ToHexStringLower(SHA256.HashData(binary)));
       binary.Position = 0;
@@ -108,8 +106,7 @@ public sealed class InstallationIntegrationTests
     var probe = await RunProbe(command, project.Root, arguments);
     Assert.Equal(23, probe.ExitCode);
     Assert.Equal("probe stderr", probe.StandardError.Trim());
-    using (var output = JsonDocument.Parse(probe.StandardOutput))
-    {
+    using (var output = JsonDocument.Parse(probe.StandardOutput)) {
       Assert.Equal(arguments, output.RootElement.GetProperty("Args").Deserialize<string[]>());
       Assert.Equal("inherit me", output.RootElement.GetProperty("Environment").GetString());
       Assert.Equal("stdin text", output.RootElement.GetProperty("Input").GetString());
@@ -136,8 +133,7 @@ public sealed class InstallationIntegrationTests
     Assert.Contains("error", result.StandardError);
     Assert.Contains("second build", (await RunProbe(command, project.Root, [])).StandardOutput);
 
-    if (OperatingSystem.IsWindows())
-    {
+    if (OperatingSystem.IsWindows()) {
       var control = await RunProbe(Path.Combine(first, "installed-probe.exe"), project.Root, ["--control-driver", command]);
       Assert.Equal(42, control.ExitCode);
       Assert.Equal(unchecked((int)0xc0000005), (await RunProbe(command, project.Root, ["--exit-code", unchecked((int)0xc0000005).ToString()])).ExitCode);
@@ -155,18 +151,16 @@ public sealed class InstallationIntegrationTests
     }
   }
 
-  private static async Task<ProcessResult> RunProbe(string executable, string cwd, string[] arguments)
+  private static async Task<ProcessResult> RunProbe( string executable, string cwd, string[] arguments )
   {
-    var start = new ProcessStartInfo(executable)
-    {
+    var start = new ProcessStartInfo(executable) {
       WorkingDirectory = cwd,
       UseShellExecute = false,
       RedirectStandardOutput = true,
       RedirectStandardError = true,
       RedirectStandardInput = true
     };
-    foreach (var argument in arguments)
-    {
+    foreach (var argument in arguments) {
       start.ArgumentList.Add(argument);
     }
 
@@ -174,19 +168,16 @@ public sealed class InstallationIntegrationTests
     using var process = Process.Start(start)!;
     var stdout = process.StandardOutput.ReadToEndAsync();
     var stderr = process.StandardError.ReadToEndAsync();
-    try
-    {
+    try {
       await process.StandardInput.WriteLineAsync("stdin text");
       process.StandardInput.Close();
-    }
-    catch (IOException) { } // Invalid shim descriptions can fail before reading stdin.
+    } catch (IOException) { } // Invalid shim descriptions can fail before reading stdin.
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-    try { await process.WaitForExitAsync(timeout.Token); }
-    catch { process.Kill(entireProcessTree: true); throw; }
+    try { await process.WaitForExitAsync(timeout.Token); } catch { process.Kill(entireProcessTree: true); throw; }
     return new(process.ExitCode, await stdout, await stderr);
   }
 
-  private static void CopyShared(TestProject project, string relative)
+  private static void CopyShared( TestProject project, string relative )
   {
     using var stream = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;
     using var reader = new StreamReader(stream);

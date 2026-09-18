@@ -10,8 +10,7 @@ public static class Target
   {
     var project = BuildContext.Current;
     var fixeol = FindFixEol();
-    if (fixeol is null)
-    {
+    if (fixeol is null) {
       Console.Error.WriteLine("Warning: fixeol was not found on PATH; skipping UTF-8 and line-ending normalization.");
       return;
     }
@@ -21,8 +20,7 @@ public static class Target
       "playwright-report", "test-results", "TestResults"
     ];
     List<string> excludeArguments = ["--exclude", ".mcp_file_state.json"];
-    foreach (var directory in exclusions)
-    {
+    foreach (var directory in exclusions) {
       excludeArguments.AddRange(["--exclude", $"*/{directory}/*"]);
     }
 
@@ -39,8 +37,7 @@ public static class Target
       "--encoding", "utf8", "--eol", project.Parameters.Get<string>("eol"),
       "--recursive", .. textPatterns, .. excludeArguments
     ]);
-    foreach (var pattern in new[] { "*.cmd", "*.bat" })
-    {
+    foreach (var pattern in new[] { "*.cmd", "*.bat" }) {
       await project.RunAsync(fixeol, [
         "--encoding", "utf8", "--eol", "crlf", "--recursive", pattern, .. excludeArguments
       ]);
@@ -52,28 +49,22 @@ public static class Target
     var name = OperatingSystem.IsWindows() ? "fixeol.exe" : "fixeol";
     var directories = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
       .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-    foreach (var directory in directories)
-    {
-      try
-      {
+    foreach (var directory in directories) {
+      try {
         var candidate = Path.GetFullPath(Path.Combine(directory.Trim('"'), name));
-        if (!File.Exists(candidate))
-        {
+        if (!File.Exists(candidate)) {
           continue;
         }
 
         if (!OperatingSystem.IsWindows()
             && (File.GetUnixFileMode(candidate)
-              & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) == 0)
-        {
+              & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) == 0) {
           continue;
         }
 
         return candidate;
-      }
-      catch (Exception exception) when (
-        exception is ArgumentException or IOException or UnauthorizedAccessException)
-      {
+      } catch (Exception exception) when (
+          exception is ArgumentException or IOException or UnauthorizedAccessException) {
         // An unusable PATH entry must not hide a later executable.
       }
     }

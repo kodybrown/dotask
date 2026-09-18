@@ -24,7 +24,7 @@
       "files": [
         {
           "path": "dotnet/check.cs",
-          "sha256": "4f4c9517859a1a84e78e167f162ad903866dd4fe83772d7d3644f70bfdddee81"
+          "sha256": "5271de609544ccd428cb01a710da20f670236c68185e8ad2bab987b93305521d"
         }
       ],
       "requires": []
@@ -37,7 +37,7 @@
       "files": [
         {
           "path": "dotnet/clean.cs",
-          "sha256": "e6a97cf1a913f80188049308239fed6e25a3c28d70d2c28e6e977a213146531b"
+          "sha256": "49c33b2bdb77c4675b01d62293ece03bd803cdf9b43326219e6fb51bef69aa64"
         }
       ],
       "requires": []
@@ -50,7 +50,7 @@
       "files": [
         {
           "path": "dotnet/format.cs",
-          "sha256": "d98f9adb1e55185e7534396820916a80fb1c7b2f2bbc28ed31772075efbde204"
+          "sha256": "ea70e7076ecf03648cb152c9522be95701a44578bd0edaac5214ec48dfc66ee5"
         }
       ],
       "requires": []
@@ -63,7 +63,7 @@
       "files": [
         {
           "path": "dotnet/install.cs",
-          "sha256": "62779ec1d887f0c748017e0ff30881152451e8ca723ef966915de6d10495b315"
+          "sha256": "0279bebf58253c5dd950190e4c8415e917c81bc4f632201df13593715bb28330"
         }
       ],
       "requires": []
@@ -76,7 +76,7 @@
       "files": [
         {
           "path": "dotnet/pack.cs",
-          "sha256": "027b89cd6304c31a5030e84f6ed8552da1fcc09f75754f258e50930ff704e666"
+          "sha256": "9272f1880bf3a05237a513b3ba02f4e064ff062fcf6931749bbdfc6e4179caf8"
         }
       ],
       "requires": []
@@ -89,7 +89,7 @@
       "files": [
         {
           "path": "dotnet/publish.cs",
-          "sha256": "539dcf9e457cf651e75952bab8ae7e92bd98ad4dd05999961fe206691ad58936"
+          "sha256": "471803f7615b4dc443a2cae67a0b8cf108a00af5e83a767145d3d6d3f8fd21af"
         }
       ],
       "requires": []
@@ -102,7 +102,7 @@
       "files": [
         {
           "path": "dotnet/restore.cs",
-          "sha256": "ac4683d16a3a7d4665b328074a85aff7336b606948c0b1cb112883da270fec8e"
+          "sha256": "c9b9e9603ba82820482cdf4ce4452a811a143193cbe84d5faeea6413e13c3b01"
         }
       ],
       "requires": []
@@ -115,7 +115,7 @@
       "files": [
         {
           "path": "dotnet/run.cs",
-          "sha256": "34142ad8c095cea2f217d1d1e0b937f4fb839813088cdb65d03eca0d65780370"
+          "sha256": "648ffdf0e97ce1267f9c7ec5aff5fdf0e02ddef919bb4cbadb34e1596202f716"
         }
       ],
       "requires": []
@@ -141,7 +141,7 @@
       "files": [
         {
           "path": "dotnet/verify.cs",
-          "sha256": "15a5ade35cdc11ac27c57ce15a80a5bf5b5e62fa53196a639f1e2b0682827d65"
+          "sha256": "213f093dafb8201d0e742283497f43d9ad2d02d710e9a3828d63094623e72715"
         }
       ],
       "requires": []
@@ -149,12 +149,12 @@
     {
       "id": "git/check",
       "entryPoint": "git/check.cs",
-      "description": "Check that Git is available.",
+      "description": "Check that Git is available, optionally checking repository whitespace.",
       "runtime": "csharp",
       "files": [
         {
           "path": "git/check.cs",
-          "sha256": "9b0239975873c8d00b9868fb144ae719d3b133627b09ec076fd55dbc9264a8f7"
+          "sha256": "eae0a3cab76d0b16406bb8748a89ba7734f83df0cbe48e5c0d6e31d93f52014a"
         }
       ],
       "requires": []
@@ -167,7 +167,7 @@
       "files": [
         {
           "path": "text/fixeol.cs",
-          "sha256": "5fcd28c72fb7716a4f8d9a5c2bffea6043a2ca9943e2dfd2d321018237bcb86d"
+          "sha256": "436be36f0a59d8a9c0ae0d2a12b37c4df8a6b402c6fc0488a7f6e657cb62c922"
         }
       ],
       "requires": []

@@ -5,17 +5,13 @@
 - Product and command: `dotask`
 - C# namespace: `DoTask` (including `DoTask.Cli` and `DoTask.Runtime`)
 - Project type: .NET 10 CLI and target-authoring library
-- Integration checkout: the worktree on `main`, located with `git worktree list --porcelain`
-- Base directory: the parent of the resolved integration checkout
-- Task worktree root: `worktrees/ai` beneath that base directory
+- Integration checkout: the primary checkout on `main`, located with `git worktree list --porcelain`
 - Integration branch: `main`
-- Task branch prefix: `codex/`
-- Worktree mode: isolated-for-behavioral-work after the initial repository bootstrap
+- Worktree mode: work directly in the integration checkout (single agent)
 - Root Markdown policy: canonical-restricted
 
-Resolve these locations from the current repository's Git metadata before using
-them. During the initial bootstrap, the integration checkout is the current
-repository root on unborn `main`.
+Resolve the integration checkout from the current repository's Git metadata
+before using it. Do not create additional worktrees unless explicitly requested.
 
 <!-- powercode-agent-modules:start -->
 ## Shared Agent Modules
@@ -31,10 +27,10 @@ Read these modules once per task, in order. This root takes precedence.
 
 ## Workflow
 
-The approved initial bootstrap runs directly in the integration checkout on unborn `main`
-branch. Leave implementation uncommitted until requested. Once an integration
-commit exists, use scoped worktrees for normal behavioral work. Commit,
-integration, cleanup, publishing, installation, and pushing are separate gates.
+Work directly in the integration checkout on `main`; only one agent works on
+dotask at a time. Preserve unrelated changes and leave implementation uncommitted
+until requested. Commit, integration, cleanup, publishing, installation, and
+pushing are separate gates.
 Preserve the user-owned notes in the parent directory. Work as a single agent.
 Use ordinary filesystem tools, apply_patch, Git, and .NET tools as appropriate.
 
@@ -60,7 +56,7 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   YAML, and MSBuild `.targets` files are not tasks. The bootstrap copy hook lives
   in `.tasks/misc/bootstrap.targets`.
 - Author reusable task changes in `shared-tasks/`. Keep the format/install/pack
-  project copies under `.tasks/dotnet/` identical to their canonical sources.
+  copies under `.tasks/dotnet/` and `.tasks/git/check.cs` identical to their canonical sources.
 - Recursive task paths define full names; shared copies include source/group/task.
   Exact names precede unique shortcuts; old space-grouped filenames remain supported.
   Use source-qualified paths for nested shared-task calls, YAML defaults, and identity.
@@ -99,7 +95,10 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - `verify` requires every stage. The reusable `dotnet/verify` task's optional
   checks are not the repository verification gate.
 - Regenerate `shared-tasks/catalog.json` with `./build.sh catalog` after editing
-  shared sources; `./build.sh catalog --verify` checks without rewriting it.
+  shared sources/support files, after final formatting and before committing the
+  sources and index together. `./build.sh catalog --verify` checks without rewriting it.
+- `verify-docs` declares and executes `git/check` with `Whitespace = true` after
+  checking required documents; plain `git/check` only checks tool availability.
 - All changes: `git diff --check`.
 - The required gate also checks bundled shim hashes. Changes to `src/Dotask.Shim`
   require `./build.sh shim` with LLVM, review of both native delivery assets and

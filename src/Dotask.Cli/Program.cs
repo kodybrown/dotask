@@ -1,7 +1,7 @@
 using DoTask.Cli;
 
 using var cancellation = new CancellationTokenSource();
-Console.CancelKeyPress += (_, args) =>
+Console.CancelKeyPress += ( _, args ) =>
 {
   args.Cancel = true;
   cancellation.Cancel();

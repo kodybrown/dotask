@@ -14,13 +14,11 @@ public static class Target
   {
     var project = BuildContext.Current;
     var outputOS = project.Parameters.Get<string>("OS");
-    if (outputOS == "host")
-    {
+    if (outputOS == "host") {
       outputOS = project.OS.ToString().ToLowerInvariant();
     }
     var architecture = project.Parameters.Get<string>("architecture");
-    if (architecture == "host")
-    {
+    if (architecture == "host") {
       architecture = project.Architecture.ToString().ToLowerInvariant();
     }
     var runtimeOS = outputOS switch { "windows" => "win", "macos" => "osx", _ => outputOS };

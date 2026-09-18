@@ -12,7 +12,7 @@ public sealed class TestProject : IDisposable
 
   public TestProject() => Directory.CreateDirectory(Tasks);
 
-  public string Write(string relative, string text)
+  public string Write( string relative, string text )
   {
     var file = Path.Combine(Root, relative);
     Directory.CreateDirectory(Path.GetDirectoryName(file)!);
@@ -20,7 +20,7 @@ public sealed class TestProject : IDisposable
     return file;
   }
 
-  public string Target(string name, string body = "", string metadata = "", bool async = false)
+  public string Target( string name, string body = "", string metadata = "", bool async = false )
     => Write($".tasks/{name}.cs", $$"""
       using DoTask;
       {{metadata}}
@@ -33,8 +33,7 @@ public sealed class TestProject : IDisposable
       }
       """);
 
-  public BuildContext Context() => new(new ExecutionContextData
-  {
+  public BuildContext Context() => new(new ExecutionContextData {
     RootDirectory = Root,
     InvocationDirectory = Root,
     TaskDirectory = Tasks,
@@ -48,13 +47,12 @@ public sealed class TestProject : IDisposable
     TargetDefaults = JsonSerializer.SerializeToElement(new { })
   });
 
-  public async Task<ProcessResult> RunAsync(params string[] arguments) => await RunFromAsync(Root, arguments);
+  public async Task<ProcessResult> RunAsync( params string[] arguments ) => await RunFromAsync(Root, arguments);
 
-  public async Task<ProcessResult> RunFromAsync(string directory, params string[] arguments)
+  public async Task<ProcessResult> RunFromAsync( string directory, params string[] arguments )
   {
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-    return await ProcessRunner.RunAsync(new ProcessDefinition
-    {
+    return await ProcessRunner.RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),
       Arguments = [typeof(CliApplication).Assembly.Location, .. arguments],
       WorkingDirectory = directory,
@@ -65,8 +63,7 @@ public sealed class TestProject : IDisposable
 
   public void Dispose()
   {
-    if (Directory.Exists(Root))
-    {
+    if (Directory.Exists(Root)) {
       Directory.Delete(Root, recursive: true);
     }
   }

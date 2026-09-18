@@ -12,6 +12,15 @@ The source repository's `verify` requires all stages, including documentation an
 catalog checks. The reusable `dotnet/verify` task's optional behavior described
 below applies to consuming projects, not that repository gate.
 
+After final edits/formatting to any shared task or declared support file, run
+`./build.sh catalog`, then `./build.sh`; its catalog check detects stale output
+without rewriting it. Commit the generated `shared-tasks/catalog.json` with
+those sources. The generator's methods are inside `.tasks/catalog.cs`.
+Repository `verify-docs` checks required documents and delegates Git whitespace
+checks to its declared `git/check` dependency with `Whitespace = true`.
+Ordinary `git/check` remains a tool-availability check; `--whitespace` checks
+both tracked diffs without changing files or requiring a clean working tree.
+
 ## Establish the project context
 
 1. Read the consuming project's instructions and existing task files before
@@ -171,7 +180,7 @@ public JSON installation interface remain deferred.
 
 In the DoTask source repository, `shared-tasks/` is the canonical source of
 reusable tasks; `.tasks/` contains the copies used by the repository itself.
-Keep the `dotnet/format.cs`, `dotnet/install.cs`, and `dotnet/pack.cs` copies
+Keep the `dotnet/format.cs`, `dotnet/install.cs`, `dotnet/pack.cs`, and `git/check.cs` copies
 identical when updating them, and regenerate the catalog. The standard formatter
 formats the solution and C# files throughout the selected tasks directory;
 `--verify` checks both without running optional `dotask-official/text/fixeol`.

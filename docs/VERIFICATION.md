@@ -1,5 +1,55 @@
 # Verification
 
+## Single-checkout workflow and formatting (2026-09-18)
+
+The complete `./build.sh` gate now passes on Linux with SDK 10.0.401: **226 tests**,
+solution/task formatting, documentation/Git whitespace, catalog freshness, and
+bundled shim hashes. This resolves the formatting failure recorded below by
+applying the current `.editorconfig` throughout the solution and task sources.
+Help-setting character escaping was moved into an equivalent local function to
+avoid a switch-expression/lambda layout that alternated between formatter passes.
+The final formatter check reported zero changed files.
+
+All 13 shared sources are byte-identical to their project task copies, with a
+regenerated catalog. Rebuilding the shims reproduced the original binary hashes;
+only the formatted build-task hash changed in the shim record. Both binaries are
+included as delivery assets. The 82 local documentation links/anchors resolve,
+and evaluated build outputs remain under the user's `/tmp/_dotnet` policy.
+Native Windows/macOS acceptance remains pending the CI matrix.
+
+Agent instructions now use the primary checkout directly for single-agent work;
+additional worktrees require an explicit user request.
+
+## Catalog generation and Git task delegation (2026-09-18)
+
+Catalog generation now lives entirely in `.tasks/catalog.cs`, with the CLI
+metadata parser still included as its shared parsing implementation. The former
+single-use `.tasks/_support/TaskCatalog.cs` was removed. Tests invoke the actual
+catalog task and cover deterministic output, exact-byte hashes, dependency and
+path validation, legacy sidecar diagnostics, and read-only freshness checks.
+`verify-docs` declares and explicitly calls `git/check` with `Whitespace = true`;
+plain `git/check` continues to check only tool availability.
+
+On Linux with SDK 10.0.401, all **226 tests** passed through `./build.sh`, including
+20 focused repository-task cases. Coverage includes missing Git-task dependencies,
+child exit-code propagation, staged and unstaged whitespace errors, unchanged
+files/index entries, and plain Git checks outside repositories. Documentation/Git
+checks, catalog freshness, and shim hashes passed separately using the bootstrapped
+CLI. All 82 local documentation links/anchors resolved.
+
+The full gate stopped at formatting: the expanded `.editorconfig` from commit
+`0b543dd` exposes formatting diagnostics throughout existing solution files.
+Changed C# files were formatted and checked separately; this is not a fully
+passing source gate. No repository-wide formatting was applied.
+
+The fresh worktree also exposed two missing delivery assets: the initial commit
+omitted the bundled Windows shim executables because a global Git ignore excludes
+`*.exe`. Rebuilding them with `./build.sh shim` reproduced both recorded SHA-256
+hashes exactly. Both assets are included with this change, with narrow repository
+ignore exceptions; shim sources and recorded hashes are unchanged. Native
+Windows/macOS acceptance remains pending the CI matrix. Build outputs remain
+under the user-configured `/tmp/_dotnet` location.
+
 ## Task layout and shared standards (2026-09-18)
 
 `dotnet/install.cs` now contains its .NET publishing/query methods; the two

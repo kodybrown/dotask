@@ -87,7 +87,7 @@ public sealed class SharedDotNetTaskTests
     Assert.Equal(17, (await project.RunAsync(command)).ExitCode);
   }
 
-  private static void CopyShared(TestProject project, string relative, string directory)
+  private static void CopyShared( TestProject project, string relative, string directory )
   {
     using var stream = typeof(SharedDotNetTaskTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;
     using var reader = new StreamReader(stream);

@@ -1,8 +1,8 @@
 using DoTask;
 
 /// <summary>Check required documentation and Git whitespace errors.</summary>
-/// <requires tool="git" />
-/// <remarks>Checks required files and staged/unstaged diffs; does not validate links or execute documentation examples.</remarks>
+/// <requires task="git/check" />
+/// <remarks>Checks required files, then calls git/check --whitespace for staged/unstaged diffs; does not validate links or execute documentation examples.</remarks>
 public static class Target
 {
   public static async Task Main()
@@ -13,15 +13,12 @@ public static class Target
       "docs/SHARED-TASKS.md", "docs/INSTALLATION.md", "docs/TARGETS.md", "docs/AI-ASSISTANTS.md",
       "docs/DESIGN.md", "docs/VERIFICATION.md", "docs/CHANGELOG.md", "examples/basic/README.md"
     ];
-    foreach (var document in documents)
-    {
-      if (!File.Exists(project.Path(document)))
-      {
+    foreach (var document in documents) {
+      if (!File.Exists(project.Path(document))) {
         throw new TaskException($"Required document is missing: {document}");
       }
     }
-    await project.RunAsync("git", ["diff", "--check"]);
-    await project.RunAsync("git", ["diff", "--cached", "--check"]);
+    await project.ExecTargetAsync("git/check", new { Whitespace = true });
     Console.WriteLine("Required documentation exists and Git diffs have no whitespace errors.");
   }
 }

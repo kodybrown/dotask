@@ -62,8 +62,7 @@ public sealed class TargetCallTests
     Assert.Equal("dotnet-run:hello", File.ReadAllText(Path.Combine(project.Root, "result")));
     project.Target("fail", "Environment.Exit(BuildContext.Current.Parameters.Get<int>(\"code\"));",
       "/// <option name=\"code\" type=\"int\" />");
-    foreach (var code in new[] { 1, 7 })
-    {
+    foreach (var code in new[] { 1, 7 }) {
       var failure = await context.ExecTargetIfExistsAsync("fail", new { Code = code });
       Assert.Equal(TargetExecutionStatus.Failed, failure.Status);
       Assert.Equal(code, failure.ExitCode);
@@ -85,8 +84,7 @@ public sealed class TargetCallTests
     {
       ("metadata", "Metadata error"), ("compile", "CS0103"),
       ("required", "requires --input"), ("requirements", "requires setting 'missing'")
-    })
-    {
+    }) {
       Assert.True(await context.TargetExistsAsync(name));
       var result = await context.ExecTargetIfExistsAsync(name);
       Assert.Equal(TargetExecutionStatus.Failed, result.Status);
@@ -165,19 +163,14 @@ public sealed class TargetCallTests
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
     using var cancel = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token);
     var invocation = project.Context().ExecTargetIfExistsAsync("slow", cancellationToken: cancel.Token);
-    try
-    {
-      while (!File.Exists(Path.Combine(project.Root, "started")))
-      {
-        if (invocation.IsCompleted)
-        {
+    try {
+      while (!File.Exists(Path.Combine(project.Root, "started"))) {
+        if (invocation.IsCompleted) {
           Assert.Fail($"Target stopped before starting: {await invocation}");
         }
         await Task.Delay(25, timeout.Token);
       }
-    }
-    finally
-    {
+    } finally {
       cancel.Cancel();
       await Assert.ThrowsAnyAsync<OperationCanceledException>(() => invocation);
     }
@@ -223,7 +216,7 @@ public sealed class TargetCallTests
     Assert.Contains("True", one.StandardOutput);
   }
 
-  private static async Task CopyVerifyAsync(TestProject project)
+  private static async Task CopyVerifyAsync( TestProject project )
   {
     using var stream = typeof(TargetCallTests).Assembly.GetManifestResourceStream("DoTask.Tests.Targets.DotnetVerify.cs")!;
     using var reader = new StreamReader(stream);
