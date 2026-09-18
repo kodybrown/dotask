@@ -27,5 +27,10 @@
 *.woff2    binary
 *.zip      binary
 
+# PTS document formats are always plain UTF-8-compatible text.
+*.mdx      text eol=lf
+*.mds      text eol=lf
+*.mdp      text eol=lf
+
 # Unified diffs require prefix whitespace on otherwise blank context lines.
 *.patch whitespace=-trailing-space
