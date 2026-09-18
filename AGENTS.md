@@ -5,8 +5,8 @@
 - Product and command: `dotask`
 - C# namespace: `DoTask` (including `DoTask.Cli` and `DoTask.Runtime`)
 - Project type: .NET 10 CLI and target-authoring library
-- Integration checkout: the primary checkout on `main`, located with `git worktree list --porcelain`
-- Integration branch: `main`
+- Integration checkout: the primary checkout on `develop`, located with `git worktree list --porcelain`
+- Integration branch: `develop`
 - Worktree mode: work directly in the integration checkout (single agent)
 - Root Markdown policy: canonical-restricted
 
@@ -27,7 +27,7 @@ Read these modules once per task, in order. This root takes precedence.
 
 ## Workflow
 
-Work directly in the integration checkout on `main`; only one agent works on
+Work directly in the integration checkout on `develop`; only one agent works on
 dotask at a time. Preserve unrelated changes and leave implementation uncommitted
 until requested. Commit, integration, cleanup, publishing, installation, and
 pushing are separate gates.
