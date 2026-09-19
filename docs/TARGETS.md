@@ -660,3 +660,33 @@ target can execute referenced MSBuild/package logic during SDK restore/build.
 Help and completion never restore, build, or execute targets. Services, remote
 execution, dependency deduplication, incremental task
 skipping, and parallel scheduling are deferred.
+
+## Interactive group creation
+
+Run `dotask --create-task` in an initialized project to create a `.task` group.
+Use `--use-dir PATH` to select another existing task directory. The wizard
+requires interactive input and output; `--create-task --help` works anywhere,
+including scripts. For automation, write the YAML file directly.
+
+1. Enter a task name (letters, digits, underscores, and hyphens, starting with a
+   letter; no extension or directories) and an optional description.
+2. Search installed task names/descriptions, select a numbered result, and choose
+   whether that step is optional. Stored references use canonical full names.
+   Use `:manual` at the search prompt to enter an absent task by name.
+3. For installed tasks, inspect option descriptions, types, choices, and effective
+   defaults. Enter a value to override a parameter; Enter keeps its default and
+   omits it from `with`. Required parameters without defaults must be supplied.
+   Enter `:empty` to supply an explicit empty string. Invalid values are reprompted.
+   For absent tasks, enter parameter names and types manually; their compatibility
+   cannot be checked until the task exists. Supported manual types are `string`,
+   `bool`, `int`, and `number`.
+4. Add more steps, optionally reorder them by listing their numbers, and select
+   whether at least one step must execute (default no).
+5. Review the complete YAML preview and explicitly confirm save (default no).
+
+Task selection and validation read metadata only. The wizard does not execute,
+compile, restore, download, or install targets. It validates the generated file
+with the same `.task` parser used by discovery. It never overwrites an existing
+file or a conflicting C# target. Files are created only at final save; `:cancel`,
+Ctrl+C, end of input, or declining save leave no task file. Existing YAML editing
+is deliberately left to your editor, preserving comments and formatting.

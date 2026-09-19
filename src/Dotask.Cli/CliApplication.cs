@@ -1,3 +1,4 @@
+using DoTask.Cli.Authoring;
 using DoTask.Cli.Completion;
 using DoTask.Cli.Configuration;
 using DoTask.Cli.Discovery;
@@ -33,6 +34,22 @@ public static class CliApplication
       var helpOutput = new HelpText(output, consoleWidth ?? HelpText.GetConsoleWidth(output));
       if (helpCommand && command.Arguments.Length > 1) {
         throw new TaskException("Usage: dotask help [TARGET]");
+      }
+      if (command.Command?.Equals("--create-task", StringComparison.OrdinalIgnoreCase) == true) {
+        if (command.Help) {
+          helpOutput.WriteLine("Usage: dotask --create-task [--use-dir PATH]");
+          helpOutput.WriteLine("Interactively create a YAML .task group: choose tasks and parameters, reorder steps, preview, and save.");
+          helpOutput.WriteLine("Requires a terminal. Enter :cancel or press Ctrl+C to cancel. Existing files are never overwritten.");
+          return 0;
+        }
+        if (command.Arguments.Length != 0) {
+          throw new TaskException("Usage: dotask --create-task [--use-dir PATH]");
+        }
+        if (Console.IsInputRedirected || Console.IsOutputRedirected) {
+          throw new TaskException("--create-task requires an interactive terminal. Create a .task YAML file directly in scripts; run --create-task --help for usage.");
+        }
+        await new TaskWizard(Console.In, output, cancellationToken).RunAsync(TaskDirectory.Locate(invocationDirectory, command.UseDirectory));
+        return 0;
       }
       var sharedCommand = SharedTaskCommand.Commands.Contains(command.Command, StringComparer.OrdinalIgnoreCase);
       if (command.Command?.Equals("--init", StringComparison.OrdinalIgnoreCase) == true) {

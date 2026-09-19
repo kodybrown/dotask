@@ -12,6 +12,7 @@ run your first example. The preview is not yet published to a public package fee
 | Try an example without installing                    | [Source preview](../README.md#try-the-example-without-installing) |
 | Run tasks and understand CLI behavior                 | [Usage guide](USAGE.md)                                          |
 | Download, share, update, or remove tasks safely       | [Shared tasks](SHARED-TASKS.md)                                  |
+| Create a group interactively | [Creation wizard](TARGETS.md#interactive-group-creation) |
 | Compose existing tasks without C# | [YAML task groups](TARGETS.md#yaml-task-groups) |
 | Create a task or look up library APIs                 | [Authoring and configuration reference](TARGETS.md)              |
 | Ask an AI assistant to create or maintain tasks       | [AI assistant guide and reusable instructions](AI-ASSISTANTS.md) |

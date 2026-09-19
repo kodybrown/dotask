@@ -96,3 +96,20 @@ acceptance, installation, and publication.
   `./build.sh --use-dir examples/basic/.tasks help greet` and the same command
   with `greet` passed; all 94 local links/anchors in changed Markdown resolved.
   `git diff --check` passed. Windows and macOS acceptance remains pending.
+
+### 2026-09-18 Interactive task-group creation
+
+- Added `--create-task` with metadata-only task search, canonical names, optional
+  steps, parameter prompts with effective defaults and validation, manual absent
+  task entry, step reordering, and `require_at_least_1_step` selection.
+- Preview and validate YAML before an explicit final save. Preserve existing
+  files/targets, reject symlink destinations, and leave no task file on
+  cancellation or declined save. Redirected sessions receive actionable guidance;
+  command help and completion remain available without a project.
+- Added wizard tests and updated CLI, authoring, and agent documentation.
+- Verification: `./build.sh` passed all 316 Release tests (13 wizard cases),
+  formatting, documentation, catalog, and shim checks. A Linux PTY session
+  verified search, typed parameters, preview-before-write, final save, and
+  immediate Ctrl+C cancellation (exit 130). All 83 local links/anchors in changed
+  Markdown resolved; `git diff --check` passed. Native Windows/macOS acceptance
+  remains pending.

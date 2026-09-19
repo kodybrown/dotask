@@ -435,3 +435,19 @@ missing targets are silently skipped, while failures stop execution. Use
 `dotask help check` to inspect the steps and their explicit `with` parameters.
 See [YAML task groups](TARGETS.md#yaml-task-groups) for the schema and
 `require_at_least_1_step` behavior. Ordinary `.yaml` files are not targets.
+
+## Create a group interactively
+
+```sh
+dotask --create-task
+dotask --create-task --use-dir path/to/tasks
+dotask --create-task --help
+```
+
+The creation wizard searches project tasks, prompts for explicit step parameters,
+lets you reorder steps, and previews YAML before saving a new `.task` file.
+It requires a terminal and an existing project; use `dotask --init` first for a
+new project. It never runs selected tasks or overwrites existing files. Enter
+`:cancel` or press Ctrl+C to cancel. See the [wizard reference](TARGETS.md#interactive-group-creation)
+for prompts, defaults, and manual entry of absent tasks. Scripts should write YAML
+directly; redirected wizard input/output is rejected with guidance.

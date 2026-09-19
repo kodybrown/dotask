@@ -459,3 +459,18 @@ and `Host: Linux; configuration: Release`, and silently skipped the absent
 optional step. All 94 local links/anchors in the other changed Markdown files
 resolved, and `git diff --check` passed. Native Windows/macOS acceptance remains
 pending; these Linux results do not establish cross-platform acceptance.
+
+## Interactive group wizard (2026-09-18)
+
+On Linux with .NET SDK 10.0.401, `./build.sh` passed 316 Release tests, formatting,
+documentation, catalog freshness, and bundled shim checks. The 13 wizard cases
+cover canonical selection, effective defaults, typed values, manual entry,
+reordering, cancellation/EOF, declined saves, file and target conflicts, symlink
+protection, portable paths, help/completion, and redirected-input guidance.
+
+A real Linux PTY session in a temporary project verified task search and
+selection, boolean parameter entry, YAML preview with no file yet present, and
+explicit save producing a valid `.task` file. A second PTY session verified that
+Ctrl+C interrupts a blocked console read immediately with exit code 130.
+All 83 local links/anchors in the other changed Markdown files resolved, and
+`git diff --check` passed. Native Windows/macOS wizard acceptance remains pending.

@@ -91,6 +91,8 @@ For static orchestration, write a YAML `.task` group; see
 optional `optional: true`, and explicit scalar parameters under `with`.
 `require_at_least_1_step: true` rejects all-skipped execution; its default is
 false. Only missing optional targets are skipped, never failures or ambiguity.
+Humans can use `dotask --create-task` in a terminal for guided creation; agents
+and scripts should author YAML directly rather than pipe answers into the wizard.
 Groups have no CLI parameters or automatic forwarding. Use source-qualified
 names and keep dynamic logic in C#. Group help and completion remain metadata-only.
 

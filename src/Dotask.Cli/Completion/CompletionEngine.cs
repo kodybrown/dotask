@@ -13,6 +13,7 @@ public static class CompletionEngine
     new("--use-dir", "option", "Select a task directory"), new("--help", "option", "Show help"),
     new("--version", "option", "Show version"),
     new("--init", "option", "Initialize a project in the current directory"),
+    new("--create-task", "option", "Interactively create a YAML task group"),
     new("--list", "option", "List shared tasks"), new("--save", "option", "Download shared tasks"),
     new("--add", "option", "Add shared project tasks"), new("--sync", "option", "Sync shared project tasks"),
     new("--remove", "option", "Remove unchanged shared project tasks")];
@@ -46,7 +47,8 @@ public static class CompletionEngine
     if (words.FirstOrDefault()?.Equals("completion", StringComparison.OrdinalIgnoreCase) == true) {
       return Filter(new[] { "bash", "zsh", "fish", "powershell" }.Select(s => new CompletionCandidate(s, "value", "Shell integration")), current);
     }
-    if (words.FirstOrDefault()?.Equals("--init", StringComparison.OrdinalIgnoreCase) == true) {
+    if (words.FirstOrDefault()?.Equals("--init", StringComparison.OrdinalIgnoreCase) == true
+      || words.FirstOrDefault()?.Equals("--create-task", StringComparison.OrdinalIgnoreCase) == true) {
       return Filter(Globals.Where(c => c.Value is "--help" or "--version" || (c.Value == "--use-dir" && useDir is null)), current);
     }
     TargetCatalog? catalog = null;

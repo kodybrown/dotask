@@ -13,6 +13,7 @@ internal static class HelpWriter
     output.WriteLine("       dotask help [TARGET]");
     output.WriteLine("       dotask completion <bash|zsh|fish|powershell>");
     output.WriteLine("       dotask --init [--use-dir PATH]");
+    output.WriteLine("       dotask --create-task [--use-dir PATH]");
     output.WriteLine("       dotask --list [SELECTION...] | --save SELECTION... | --add SELECTION...");
     output.WriteLine("       dotask --sync [SELECTION...] | --remove SELECTION...");
     output.WriteLine();
@@ -22,6 +23,8 @@ internal static class HelpWriter
     output.WriteRow("  dotask help TARGET   ", "Show one target's details (also: dotask TARGET --help).");
     output.WriteRow("  dotask completion    ", "Print a completion script for the specified shell.");
     output.WriteRow("  dotask --init        ", "Create project configuration and a task directory here; preserve existing files.");
+    output.WriteLine();
+    output.WriteRow("  --create-task        ", "Interactively create a YAML task group; preview before saving.");
     output.WriteLine();
     output.WriteLine("Global options:");
     output.WriteRow("  --use-dir PATH  ", "Use this task directory (relative to the invocation directory).");

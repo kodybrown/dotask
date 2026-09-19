@@ -7,13 +7,13 @@ namespace DoTask.Cli.Metadata;
 
 internal static class TaskGroupReader
 {
-  public static TargetDefinition Read( string file, string directory )
+  public static TargetDefinition Read( string file, string directory, string? content = null )
   {
     var name = Path.GetFileNameWithoutExtension(file);
     string? shortName = null;
     try {
       (name, shortName) = MetadataReader.ReadName(file, directory);
-      using var reader = File.OpenText(file);
+      using var reader = new StringReader(content ?? File.ReadAllText(file));
       var yaml = new YamlStream();
       yaml.Load(reader);
       if (yaml.Documents.Count != 1 || yaml.Documents[0].RootNode is not YamlMappingNode root) {

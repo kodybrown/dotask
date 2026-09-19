@@ -1,7 +1,7 @@
 # dotask
 
 Portable project tasks written as individual C# files, with YAML `.task` groups
-for composing existing tasks. Put targets in `.tasks/`,
+for composing existing tasks. Use `dotask --create-task` for interactive group creation. Put targets in `.tasks/`,
 describe them with XML documentation, and keep project-specific settings in
 `.dotasks.yaml`. Copy the same target file between projects without a
 registration step.
