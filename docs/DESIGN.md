@@ -27,7 +27,8 @@ an error. `--use-dir` is an exact override; root config above the selected direc
 anchors paths, with parent-root fallback. See [usage](USAGE.md#project-layout-and-discovery).
 
 Discovery recurses through ordinary directories, excluding hidden/underscore
-entries, build output directories, and symlinks. Canonical names are task-relative
+entries (except the official task-root `_` directory), build output directories,
+and symlinks. Canonical names are task-relative
 paths, including source/group/task for shared copies. Exact names win; suffix
 shortcuts must be unique. Legacy space-grouped filenames retain their identities.
 There is no default group or imports registration. Help, completion, execution,
@@ -35,8 +36,11 @@ nested calls, defaults, and cycle detection share canonical identities.
 
 XML documentation on the entry-point type, or its static Main method,
 supplies the description, options, requirements, examples, and capabilities.
-Invalid metadata is isolated to its target. YAML configures values and optional
-defaults, not target registration or execution logic.
+Invalid metadata is isolated to its target. Project YAML configures values and optional defaults, not target registration.
+Separate `.task` YAML files declare ordered groups of existing targets; their
+strict metadata parser feeds the same catalog. The executor interprets groups
+directly, preserving cancellation, canonical call chains, child option binding,
+and failure exit codes. No C# compilation is needed for a group itself.
 
 Bare `dotask` and `dotask help` show only project information: the optional YAML
 `name`/`description`, shared settings, targets, and combined target options. The
@@ -47,8 +51,8 @@ CLI-only `dotask --help`/`-h` returns usage before any project discovery or read
 Project summaries and selected-target help read the source metadata, load YAML,
 validate effective defaults, and render the project's details. Help does not instantiate a
 compiler, create a compilation cache, restore packages, or launch child processes.
-The same Roslyn/XML parser is used for every invocation; there is no metadata
-cache. Metadata/default errors remain visible, but help does not determine whether
+C# uses Roslyn/XML metadata parsing; groups use strict YAML parsing. Both run
+on every invocation without a metadata cache. Metadata/default errors remain visible, but help does not determine whether
 a target compiles. Required arguments and execution requirements are not enforced
 during help. Target completion skips project configuration entirely.
 
@@ -75,7 +79,7 @@ the compile lock. This prevents concurrent recompilation from modifying running
 binaries, including on Windows. The lock is released before running target code,
 so nested calls do not hold locks for their entire execution.
 
-Each target runs in a child .NET process, with its working directory set to the
+Each C# target runs in a child .NET process, with its working directory set to the
 project root. A private JSON context file carries the configuration snapshot,
 parameters, original paths, and call chain. Its filename is passed through the
 environment. Nested calls invoke the same CLI with a private request file. Files

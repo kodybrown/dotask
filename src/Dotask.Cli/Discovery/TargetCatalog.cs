@@ -10,8 +10,9 @@ public sealed class TargetCatalog
 
   public TargetCatalog( string directory )
   {
-    var targets = (Directory.Exists(directory) ? EnumerateSources(directory) : [])
-      .Select(file => MetadataReader.Read(file, directory)).OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+    var targets = (Directory.Exists(directory) ? EnumerateSources(directory, includeGroups: true) : [])
+      .Select(file => Path.GetExtension(file).Equals(".task", StringComparison.OrdinalIgnoreCase)
+        ? TaskGroupReader.Read(file, directory) : MetadataReader.Read(file, directory)).OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
       .ThenBy(t => t.FilePath, StringComparer.Ordinal).ToArray();
     var duplicates = targets.GroupBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
       .Where(g => g.Count() > 1).ToDictionary(g => g.Key,
@@ -25,7 +26,7 @@ public sealed class TargetCatalog
       .ToDictionary(g => g.Key, g => g.Select(x => x.target).ToArray(), StringComparer.OrdinalIgnoreCase);
   }
 
-  internal static IEnumerable<string> EnumerateSources( string directory, bool taskRoot = true )
+  internal static IEnumerable<string> EnumerateSources( string directory, bool taskRoot = true, bool includeGroups = false )
   {
     foreach (var entry in new DirectoryInfo(directory).EnumerateFileSystemInfos().OrderBy(e => e.Name, StringComparer.Ordinal)) {
       if (entry.Name.StartsWith('.') || (entry.Name.StartsWith('_') && !(taskRoot && entry is DirectoryInfo && entry.Name == "_")) || (entry.Attributes & FileAttributes.ReparsePoint) != 0) {
@@ -35,10 +36,11 @@ public sealed class TargetCatalog
         if (child.Name is "bin" or "obj" or "node_modules") {
           continue;
         }
-        foreach (var file in EnumerateSources(child.FullName, false)) {
+        foreach (var file in EnumerateSources(child.FullName, false, includeGroups)) {
           yield return file;
         }
-      } else if (entry.Extension.Equals(".cs", StringComparison.OrdinalIgnoreCase)) {
+      } else if (entry.Extension.Equals(".cs", StringComparison.OrdinalIgnoreCase)
+        || (includeGroups && entry.Extension.Equals(".task", StringComparison.OrdinalIgnoreCase))) {
         yield return entry.FullName;
       }
     }

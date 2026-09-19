@@ -441,3 +441,21 @@ configuration, and library implementation. On Linux with .NET SDK 10.0.401:
 These were documentation smoke checks. No runtime source changed, and the full
 68-test suite was not rerun for this documentation update. Evaluated repository
 build/intermediate/publish paths remained outside the source checkout.
+
+## YAML task groups (2026-09-18)
+
+On Linux with .NET SDK 10.0.401, `./build.sh` passed all 303 Release tests,
+formatting, documentation, shared-catalog freshness, and bundled shim hashes.
+The 34 new group cases cover strict YAML parsing, discovery and completion,
+metadata-only help, sequential/repeated execution, explicit parameters and child
+defaults, optional absence versus failures, child exit codes, mixed C#/YAML
+cycles, empty-group policy, and cancellation. Shared-source enumeration still
+excludes project `.task` groups.
+
+`./build.sh --use-dir examples/basic/.tasks help greet` displayed the declared
+steps and parameters. `./build.sh --use-dir examples/basic/.tasks greet` ran the
+configuration check and greeting in order, printing `Hello from dotask, YAML group!`
+and `Host: Linux; configuration: Release`, and silently skipped the absent
+optional step. All 94 local links/anchors in the other changed Markdown files
+resolved, and `git diff --check` passed. Native Windows/macOS acceptance remains
+pending; these Linux results do not establish cross-platform acceptance.

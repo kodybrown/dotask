@@ -1,6 +1,7 @@
 # dotask
 
-Portable project tasks written as individual C# files. Put targets in `.tasks/`,
+Portable project tasks written as individual C# files, with YAML `.task` groups
+for composing existing tasks. Put targets in `.tasks/`,
 describe them with XML documentation, and keep project-specific settings in
 `.dotasks.yaml`. Copy the same target file between projects without a
 registration step.
@@ -385,7 +386,7 @@ NuGet packages and requires access to the configured feeds.
 
 The MSBuild copy hook lives in `.tasks/misc/bootstrap.targets` and is imported
 by the CLI project. It is build support data, so dotask does not discover it as a
-task. Only supported code extensions are considered; currently that means `.cs`.
+task. Discovery accepts `.cs` targets and declarative `.task` YAML groups.
 
 After adding, editing, renaming, or removing a shared task or one of its declared
 support files, run `./build.sh catalog` **after your final edits/formatting and
@@ -404,7 +405,7 @@ when changing documentation. Focused test runs may use `dotnet test dotask.slnx
 standard shared formatter; it checks the solution and standalone C# tasks.
 Without `--verify`, it applies formatting and runs the optional official
 `text/fixeol` task when installed. The shared library's canonical task sources
-live in `shared-tasks/`; the format, install, and pack copies under `.tasks/dotnet/`
+live in `shared-tasks/`; the format, install, and pack copies under `.tasks/_/dotnet/`
 are kept identical. Installation uses one `install.cs` file. `pack` creates local
 NuGet packages from `settings.project`, with `--output` defaulting to
 `artifacts/packages`; it does not publish to a feed.

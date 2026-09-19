@@ -78,22 +78,22 @@ public sealed record ProjectConfiguration( JsonElement Settings, JsonElement Tar
     return text.Length == 0 ? null : text;
   }
 
-  private static object? ConvertNode( YamlNode node, int depth )
+  internal static object? ConvertNode( YamlNode node, int depth, string source = "config.yaml" )
   {
     if (depth > 32) {
-      throw new TaskException("config.yaml nesting exceeds 32 levels (or contains a recursive alias).");
+      throw new TaskException($"{source} nesting exceeds 32 levels (or contains a recursive alias).");
     }
     switch (node) {
       case YamlMappingNode mapping:
         var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
         foreach (var pair in mapping.Children) {
-          if (pair.Key is not YamlScalarNode { Value: { Length: > 0 } key } || !result.TryAdd(key, ConvertNode(pair.Value, depth + 1))) {
-            throw new TaskException("config.yaml requires nonempty string keys unique regardless of case.");
+          if (pair.Key is not YamlScalarNode { Value: { Length: > 0 } key } || !result.TryAdd(key, ConvertNode(pair.Value, depth + 1, source))) {
+            throw new TaskException($"{source} requires nonempty string keys unique regardless of case.");
           }
         }
         return result;
       case YamlSequenceNode sequence:
-        return sequence.Children.Select(n => ConvertNode(n, depth + 1)).ToArray();
+        return sequence.Children.Select(n => ConvertNode(n, depth + 1, source)).ToArray();
       case YamlScalarNode scalar:
         var value = scalar.Value ?? "";
         if (scalar.Style is ScalarStyle.SingleQuoted or ScalarStyle.DoubleQuoted or ScalarStyle.Literal or ScalarStyle.Folded
@@ -114,7 +114,7 @@ public sealed record ProjectConfiguration( JsonElement Settings, JsonElement Tar
         }
         return value;
       default:
-        throw new TaskException("Unsupported YAML value in config.yaml.");
+        throw new TaskException($"Unsupported YAML value in {source}.");
     }
   }
 }

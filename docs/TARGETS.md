@@ -2,8 +2,8 @@
 
 This is the authoring contract for the current preview. See [usage](USAGE.md) for
 CLI behavior and [AI assistant guidance](AI-ASSISTANTS.md) for a task-writing
-workflow. A target is a C# file-based application that dotask compiles and runs
-with its helper library attached.
+workflow. A target is either a C# file-based application compiled with the helper
+library attached, or a declarative YAML `.task` group that calls existing targets.
 
 Jump to [a complete target](#a-complete-target), [reuse](#reuse-a-target),
 [options](#option-metadata), [YAML](#yaml-configuration),
@@ -13,7 +13,7 @@ Jump to [a complete target](#a-complete-target), [reuse](#reuse-a-target),
 ## Target names
 
 Tasks are discovered recursively under `.tasks`. Their project-relative paths
-without `.cs` are their full names. Directory/file identifiers start with an ASCII
+without `.cs` or `.task` are their full names. Directory/file identifiers start with an ASCII
 letter and then use letters, digits, `_`, or `-`; matching is case-insensitive.
 The reserved official source directory `_` is allowed at the task root.
 
@@ -42,6 +42,56 @@ Hidden/underscore-prefixed entries, `bin`, `obj`, `node_modules`, and symlinks a
 excluded from discovery, except for the task-root `_` directory for official tasks. Put helper C# files under `_support`, and reference them
 with source-relative `#:include` directives. See [shared task distribution](SHARED-TASKS.md)
 for installing copies, support-file declarations, and protected synchronization.
+
+## YAML task groups
+
+Create `.tasks/check.task` to compose existing tasks without writing C#:
+
+```yaml
+description: Check the project.
+require_at_least_1_step: true
+steps:
+  - run: _/dotnet/check
+  - run: _/git/check
+  - run: _/dotnet/test
+    optional: true
+    with:
+      configuration: Release
+```
+
+Run it with `dotask check`; `dotask help check` shows its description, source,
+ordered steps, parameters, and execution requirement without executing children.
+Groups use the same naming, shortcuts, completion, and cycle detection as C#
+targets. `check.cs` and `check.task` in the same directory are a duplicate-name
+error. Groups may call groups or C# targets, and C# target-call helpers can call
+or query groups.
+
+The file contains one YAML mapping. Keys are case-sensitive; unknown keys,
+duplicate keys (including case variants), invalid types, and multiple documents
+are errors. `description` is an optional string; `steps` is a required sequence
+and may be empty (`steps: []`). Each step requires a nonempty string `run`.
+
+- Steps execute sequentially in listed order, including repeated calls.
+- `optional` defaults to `false`. A missing required target fails; a missing
+  optional target is silently skipped. Ambiguity, invalid metadata, invalid
+  parameters, compilation errors, and execution failures always fail the group.
+- The first failure stops subsequent steps; child exit codes are preserved.
+- `require_at_least_1_step` defaults to `false`. When true, executing zero steps
+  fails. When false, an empty or entirely skipped group succeeds silently.
+  Invoking a child group counts as one step even if that child executes none.
+- `with` is an optional mapping of child parameter names to scalar strings,
+  booleans, or numbers. Quoted strings stay strings, including values such as
+  `'007'`. Child option binding validates/converts values using the child's
+  declared types; explicit values override that child's YAML and XML defaults.
+  Null, sequence, and mapping parameter values are rejected.
+
+Parameters are passed through the normal named-argument binding; values are not
+shell commands or expressions. No arguments are automatically forwarded, and
+groups do not declare their own CLI parameters. Use C# for dynamic orchestration.
+Names resolve against the project catalog, not relative to the group file;
+prefer source-qualified names such as `_/dotnet/test`. Execution never downloads
+missing targets. Shared-task add/sync/catalog distribution still manages C#
+tasks; `.task` groups are project-authored files.
 
 ## A complete target
 
@@ -113,8 +163,7 @@ Native SDK directives such as `#:package`, `#:project`, and `#:include` are supp
 Included files remain relative to the original target. Put shared `.cs` files
 under an underscore-prefixed subdirectory such as `_support` so they are not discovered as targets.
 
-Discovery uses a supported-code-extension allowlist: currently only `.cs` files
-are tasks. Files such as `.txt`, `.md`, `.target`, `.targets`, `.yaml`, `.yml`, and
+Discovery accepts `.cs` executable targets and `.task` YAML groups. Files such as `.txt`, `.md`, `.target`, `.targets`, `.yaml`, `.yml`, and
 `.json` are never targets, even when stored alongside tasks. Future `.rs`, `.py`,
 or `.go` support will add explicit language handlers, not execute arbitrary files.
 For example, this repository stores its MSBuild bootstrap hook in

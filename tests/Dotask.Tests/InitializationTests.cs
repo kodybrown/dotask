@@ -35,7 +35,7 @@ public sealed class InitializationTests
     var summary = await parent.RunFromAsync(root);
     Assert.Equal(0, summary.ExitCode);
     Assert.StartsWith(name + Environment.NewLine, summary.StandardOutput);
-    Assert.Contains("(no C# targets)", summary.StandardOutput);
+    Assert.Contains("(no targets)", summary.StandardOutput);
     var original = File.ReadAllBytes(configPath);
     File.SetLastWriteTimeUtc(configPath, new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc));
     var written = File.GetLastWriteTimeUtc(configPath);

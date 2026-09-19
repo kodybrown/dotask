@@ -111,13 +111,13 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   calls, or downloads. Preserve existing configuration/tasks/tracking; refuse
   legacy/invalid configuration, path-type conflicts, and symlink destinations.
   Custom task directories must stay beneath that root; the override is not saved.
-- One C# file per target; XML documentation owns target metadata. No target
-  registration in YAML is required.
-- Discovery only accepts supported code extensions (currently `.cs`); documents,
-  YAML, and MSBuild `.targets` files are not tasks. The bootstrap copy hook lives
+- One C# file per executable target; XML documentation owns C# target metadata.
+  Declarative `.task` YAML groups compose existing targets without registration.
+- Discovery accepts `.cs` targets and `.task` YAML groups; ordinary documents,
+  `.yaml` files, and MSBuild `.targets` files are not tasks. The bootstrap copy hook lives
   in `.tasks/misc/bootstrap.targets`.
 - Author reusable task changes in `shared-tasks/`. Keep the format/install/pack
-  copies under `.tasks/dotnet/` and `.tasks/git/check.cs` identical to their canonical sources.
+  copies under `.tasks/_/dotnet/` and `.tasks/_/git/check.cs` identical to their canonical sources.
 - Recursive task paths define full names; shared copies include source/group/task.
   The official source is `_`, the default for omitted sources; only the task-root
   `_` directory is exempt from underscore-prefixed discovery exclusions.

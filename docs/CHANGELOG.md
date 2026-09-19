@@ -77,3 +77,22 @@ acceptance, installation, and publication.
   `./build.sh` passed all 269 Release tests, formatting, documentation, catalog,
   and bundled shim checks; `git diff --check` passed. Windows and macOS
   acceptance not run.
+
+### 2026-09-18 Declarative YAML task groups
+
+- Added project-authored `.task` YAML groups to discovery, help, completion, and
+  execution, sharing canonical names and cycle detection with C# targets.
+  Ordered `run` steps accept explicit scalar parameters under `with`; optional
+  steps skip only absent targets. Failures stop execution and retain child exit codes.
+- Added `require_at_least_1_step` (default false), silent all-skipped success,
+  strict YAML schema validation, and nested groups that count as executed steps.
+  Groups require no compilation and do not implicitly forward CLI arguments.
+- Added a runnable basic example and updated authoring, usage, design, and agent
+  references. Pointed reusable-task test resources at canonical `shared-tasks/`
+  sources after the checkout moved its copies; downloaded copies still contain
+  older source-qualified calls and were preserved with their lock tracking.
+- Verification: `./build.sh` passed all 303 Release tests (34 group cases),
+  formatting, documentation, catalog freshness, and bundled shim hashes.
+  `./build.sh --use-dir examples/basic/.tasks help greet` and the same command
+  with `greet` passed; all 94 local links/anchors in changed Markdown resolved.
+  `git diff --check` passed. Windows and macOS acceptance remains pending.

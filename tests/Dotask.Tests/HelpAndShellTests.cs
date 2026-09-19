@@ -152,7 +152,7 @@ public sealed class HelpAndShellTests
     Assert.Equal(0, fallback.ExitCode);
     Assert.StartsWith(Path.GetFileName(project.Root) + Environment.NewLine, fallback.StandardOutput);
     Assert.Contains("  tasks: ./.tasks", fallback.StandardOutput);
-    Assert.Contains("(no C# targets)", fallback.StandardOutput);
+    Assert.Contains("(no targets)", fallback.StandardOutput);
     project.Write(".abc/config.yaml", "name: Custom project\ndescription: Selected task directory.");
     var selected = await project.RunAsync("--use-dir", ".abc");
     Assert.Equal(0, selected.ExitCode);

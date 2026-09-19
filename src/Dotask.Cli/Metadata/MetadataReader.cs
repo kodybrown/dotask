@@ -14,28 +14,7 @@ public static partial class MetadataReader
     var name = Path.GetFileNameWithoutExtension(file);
     string? shortName = null;
     try {
-      var parts = name.Split(' ');
-      if (parts.Length > 2 || parts.Any(part => !Identifier().IsMatch(part))) {
-        throw new TaskException($"Invalid target filename '{Path.GetFileName(file)}'. Expected '<target>.cs' or '<group> <target>.cs' with one space.");
-      }
-      if (parts.Length == 2) {
-        shortName = parts[1];
-        name = parts[0] + "-" + shortName;
-      }
-      if (taskDirectory is not null) {
-        var relative = Path.GetRelativePath(taskDirectory, file).Replace(Path.DirectorySeparatorChar, '/');
-        var parents = relative.Split('/')[..^1];
-        if (parents.Where(( parent, index ) => !(index == 0 && parent == "_")).Any(parent => !Identifier().IsMatch(parent))) {
-          throw new TaskException($"Invalid target directory in '{relative}'. Use letters, digits, underscores, or hyphens, starting with a letter.");
-        }
-        if (parents.Length > 0) {
-          shortName ??= name;
-          name = string.Join('/', parents.Append(name));
-        }
-      }
-      if (ReservedCommands.Contains(name, StringComparer.OrdinalIgnoreCase)) {
-        throw new TaskException($"Invalid or reserved target name '{name}'.");
-      }
+      (name, shortName) = ReadName(file, taskDirectory);
       var root = CSharpSyntaxTree.ParseText(File.ReadAllText(file),
         new CSharpParseOptions(LanguageVersion.Preview, DocumentationMode.Parse)).GetRoot();
       var main = root.DescendantNodes().OfType<MethodDeclarationSyntax>()
@@ -82,6 +61,35 @@ public static partial class MetadataReader
     } catch (Exception ex) when (ex is XmlException or TaskException or IOException or UnauthorizedAccessException) {
       return new(name, file, "", [], [], [], null, [], $"Metadata error: {ex.Message}", shortName);
     }
+  }
+
+  internal static (string Name, string? ShortName) ReadName( string file, string? taskDirectory )
+  {
+    var name = Path.GetFileNameWithoutExtension(file);
+    string? shortName = null;
+    var parts = name.Split(' ');
+    if (parts.Length > 2 || parts.Any(part => !Identifier().IsMatch(part))) {
+      throw new TaskException($"Invalid target filename '{Path.GetFileName(file)}'. Expected a target name or '<group> <target>' with one space.");
+    }
+    if (parts.Length == 2) {
+      shortName = parts[1];
+      name = parts[0] + "-" + shortName;
+    }
+    if (taskDirectory is not null) {
+      var relative = Path.GetRelativePath(taskDirectory, file).Replace(Path.DirectorySeparatorChar, '/');
+      var parents = relative.Split('/')[..^1];
+      if (parents.Where(( parent, index ) => !(index == 0 && parent == "_")).Any(parent => !Identifier().IsMatch(parent))) {
+        throw new TaskException($"Invalid target directory in '{relative}'. Use letters, digits, underscores, or hyphens, starting with a letter.");
+      }
+      if (parents.Length > 0) {
+        shortName ??= name;
+        name = string.Join('/', parents.Append(name));
+      }
+    }
+    if (ReservedCommands.Contains(name, StringComparer.OrdinalIgnoreCase)) {
+      throw new TaskException($"Invalid or reserved target name '{name}'.");
+    }
+    return (name, shortName);
   }
 
   public static readonly string[] ReservedCommands = ["help", "completion", "__complete", "__exec"];

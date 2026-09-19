@@ -1,0 +1,10 @@
+description: Check configuration and greet through a YAML task group.
+require_at_least_1_step: true
+steps:
+  - run: check
+  - run: hello
+    with:
+      name: YAML group
+      configuration: Release
+  - run: optional-check
+    optional: true

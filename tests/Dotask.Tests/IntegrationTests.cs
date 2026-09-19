@@ -11,7 +11,7 @@ public sealed class IntegrationTests
   public async Task ReusableDotnetCheckOnlyQueriesToolsWithoutLoadingTheProjectOrCallingOtherTargets()
   {
     using var project = new TestProject();
-    using var stream = typeof(IntegrationTests).Assembly.GetManifestResourceStream("DoTask.Tests.Targets.DotnetCheck.cs")!;
+    using var stream = typeof(IntegrationTests).Assembly.GetManifestResourceStream("Shared/dotnet/check.cs")!;
     using var reader = new StreamReader(stream);
     project.Write(".tasks/dotnet check.cs", await reader.ReadToEndAsync());
     project.Write("Broken.csproj", "This project must never be evaluated by check.");

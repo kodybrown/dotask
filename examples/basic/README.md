@@ -1,7 +1,7 @@
 # Basic dotask example
 
 This example needs the .NET 10 SDK required by dotask and a built or installed
-CLI. It demonstrates metadata, YAML defaults, typed settings, nested calls, and
+CLI. It demonstrates metadata, YAML defaults, typed settings, nested calls, YAML task groups, and
 writing a project-relative file. It does not need a separate sample application.
 
 | File                               | Purpose                                                                               |
@@ -9,6 +9,7 @@ writing a project-relative file. It does not need a separate sample application.
 | [.dotasks.yaml](.dotasks.yaml)     | Project name/description, shared greeting/output settings, and `hello`'s name default |
 | [.tasks/hello.cs](.tasks/hello.cs) | Greeting with `--name`/`-n` and `--configuration`/`-c`                                |
 | [.tasks/check.cs](.tasks/check.cs) | Require the `message` setting and print the project root                              |
+| [.tasks/greet.task](.tasks/greet.task) | Check configuration, greet with explicit parameters, and skip an absent optional task |
 | [.tasks/write.cs](.tasks/write.cs) | Call `check` and `hello`, then write the output file                                  |
 
 ## Run from the dotask checkout root
@@ -25,7 +26,7 @@ dotask --use-dir examples/basic/.tasks write
 ```
 
 The project summary should start with `dotask example` and its description, then
-show `tasks: ./.tasks`, the `message`/`output` settings, `check`/`hello`/`write`
+show `tasks: ./.tasks`, the `message`/`output` settings, `check`/`hello`/`write`/`greet`
 targets, and target options. `dotask help` shows the same summary when run in
 `examples/basic`.
 `dotask --help` shows CLI usage only, without those project details.
@@ -72,3 +73,17 @@ run `dotask hello`; normal upward discovery finds its `.tasks` directory.
 Continue with [task authoring](../../docs/TARGETS.md),
 [completion and troubleshooting](../../docs/USAGE.md), or the
 [AI assistant guide](../../docs/AI-ASSISTANTS.md).
+
+## Run the YAML group
+
+From the checkout root, without installing:
+
+```sh
+./build.sh --use-dir examples/basic/.tasks help greet
+./build.sh --use-dir examples/basic/.tasks greet
+```
+
+`greet` first prints the configuration check, then `Hello from dotask, YAML group!`
+and `Host: Linux; configuration: Release` (the host varies by operating system).
+The absent `optional-check` is silently skipped. See
+[YAML task groups](../../docs/TARGETS.md#yaml-task-groups) for the schema.

@@ -218,7 +218,7 @@ public sealed class TargetCallTests
 
   private static async Task CopyVerifyAsync( TestProject project )
   {
-    using var stream = typeof(TargetCallTests).Assembly.GetManifestResourceStream("DoTask.Tests.Targets.DotnetVerify.cs")!;
+    using var stream = typeof(TargetCallTests).Assembly.GetManifestResourceStream("Shared/dotnet/verify.cs")!;
     using var reader = new StreamReader(stream);
     project.Write(".tasks/_/dotnet/verify.cs", await reader.ReadToEndAsync());
   }

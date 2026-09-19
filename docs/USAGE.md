@@ -35,7 +35,7 @@ Tasks are discovered recursively. The task-root `_` directory contains official 
 Other hidden and underscore-prefixed entries,
 `bin`, `obj`, `node_modules`, and symbolic links/reparse points are skipped.
 
-The task's path relative to `.tasks`, without `.cs`, is its full name. For example,
+The task's path relative to `.tasks`, without `.cs` or `.task`, is its full name. For example,
 `_/dotnet/build.cs` is `_/dotnet/build`. `dotnet/build`
 and `build` work as shortcuts when unique. Exact project-relative names take
 precedence, so `.tasks/build.cs` owns `dotask build` and can orchestrate several
@@ -426,3 +426,12 @@ responsibility.
 Services, generated configuration properties, remote execution, and task graph
 scheduling are not available in this preview. See [current verification](VERIFICATION.md)
 for the distinction between implemented behavior and host/shell acceptance.
+
+## Run a YAML task group
+
+A `.tasks/check.task` YAML file appears as `check` in help and completion and runs
+with `dotask check`. It executes its listed existing targets in order; optional
+missing targets are silently skipped, while failures stop execution. Use
+`dotask help check` to inspect the steps and their explicit `with` parameters.
+See [YAML task groups](TARGETS.md#yaml-task-groups) for the schema and
+`require_at_least_1_step` behavior. Ordinary `.yaml` files are not targets.

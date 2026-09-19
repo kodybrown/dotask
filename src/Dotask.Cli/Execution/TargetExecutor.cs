@@ -15,6 +15,10 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
     if (File.Exists(Path.Combine(directory.DirectoryPath, ".dotask", "transaction", "journal.json"))) {
       throw new TaskException("A shared-task update is incomplete. Run dotask --sync to recover it before executing project tasks.");
     }
+    cancellationToken.ThrowIfCancellationRequested();
+    if (target.Error is not null) {
+      throw new TaskException(target.Error);
+    }
     var chain = parentChain ?? [];
     if (chain.Contains(target.Name, StringComparer.OrdinalIgnoreCase)) {
       throw new TaskException($"Target cycle: {string.Join(" -> ", chain.Append(target.Name))}");
@@ -30,6 +34,30 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
     var executionDirectory = Path.Combine(sessionDirectory, Guid.NewGuid().ToString("N"));
     string? contextPath = null;
     try {
+      if (target.Group is { } group) {
+        var executed = 0;
+        foreach (var step in group.Steps) {
+          cancellationToken.ThrowIfCancellationRequested();
+          var catalog = new TargetCatalog(directory.DirectoryPath);
+          var child = catalog.Find(step.Run);
+          if (child is null && step.Optional) {
+            continue;
+          }
+          child ??= catalog.Get(step.Run);
+          var childArguments = step.Parameters.EnumerateObject()
+            .Select(p => p.Name + "=" + Values.ToArgument(p.Value)).ToArray();
+          var exitCode = await ExecuteAsync(child, childArguments, cancellationToken,
+            [.. chain, target.Name], sessionDirectory);
+          if (exitCode != 0) {
+            return exitCode;
+          }
+          executed++;
+        }
+        if (group.RequireAtLeastOneStep && executed == 0) {
+          throw new TaskException($"Target '{target.Name}' requires at least one step to execute; no steps were executed.");
+        }
+        return 0;
+      }
       var compilation = await compiler.CompileAsync(target, cancellationToken, executionDirectory);
       if (!compilation.Success) {
         throw new TaskException($"Compilation failed for '{target.Name}':\n{compilation.Diagnostics}");

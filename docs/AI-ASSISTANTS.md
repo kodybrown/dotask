@@ -84,6 +84,16 @@ check/test/format targets in sequence. Verification skips missing targets, stops
 on failures, and fails if no checks are available. Read a consuming
 project's actual target rather than assuming that every `check` has this behavior.
 
+## Compose existing tasks
+
+For static orchestration, write a YAML `.task` group; see
+[YAML task groups](TARGETS.md#yaml-task-groups). Use ordered `steps` with `run`,
+optional `optional: true`, and explicit scalar parameters under `with`.
+`require_at_least_1_step: true` rejects all-skipped execution; its default is
+false. Only missing optional targets are skipped, never failures or ambiguity.
+Groups have no CLI parameters or automatic forwarding. Use source-qualified
+names and keep dynamic logic in C#. Group help and completion remain metadata-only.
+
 ## Write a task
 
 Start from the [complete run target](TARGETS.md#a-complete-target) or copy an

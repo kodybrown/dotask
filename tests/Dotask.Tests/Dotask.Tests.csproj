@@ -17,8 +17,6 @@
     <EmbeddedResource Include="../../build.sh;../../build.cmd;../../.tasks/misc/bootstrap.targets"
                       LogicalName="Bootstrap/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../shared-tasks/**/*" LogicalName="Shared/%(RecursiveDir)%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../../.tasks/dotnet/check.cs" LogicalName="DoTask.Tests.Targets.DotnetCheck.cs" />
-    <EmbeddedResource Include="../../.tasks/dotnet/verify.cs" LogicalName="DoTask.Tests.Targets.DotnetVerify.cs" />
     <ProjectReference Include="../../src/Dotask.Cli/Dotask.Cli.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="xunit" Version="2.9.3" />

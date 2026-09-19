@@ -108,6 +108,16 @@ internal static class HelpWriter
       output.WriteLine();
       output.WriteRow("  ", target.Remarks);
     }
+    if (target.Group is { } group) {
+      Section(output, "Steps");
+      output.WriteLine($"  Require at least one step: {group.RequireAtLeastOneStep.ToString().ToLowerInvariant()}");
+      foreach (var step in group.Steps) {
+        output.WriteRow("  - ", step.Run + (step.Optional ? " (optional)" : " (required)"));
+        foreach (var parameter in step.Parameters.EnumerateObject()) {
+          output.WriteRow("    with " + parameter.Name + ": ", parameter.Value.GetRawText());
+        }
+      }
+    }
     if (target.Options.Count > 0) {
       Section(output, "Options");
       WriteOptions(output, target.Options.Select(option => new OptionHelp(option,

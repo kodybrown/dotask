@@ -70,7 +70,7 @@ public static class CliApplication
           helpOutput.WriteRow($"  {catalog.AliasFor(target) ?? target.Name,-18} ", diagnostic ?? target.Description);
         }
         if (catalog.Targets.Count == 0) {
-          helpOutput.WriteLine("  (no C# targets)");
+          helpOutput.WriteLine("  (no targets)");
         }
         HelpWriter.CombinedOptions(helpOutput, catalog.Targets, config);
         helpOutput.WriteLine();
