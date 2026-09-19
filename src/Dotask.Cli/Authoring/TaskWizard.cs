@@ -11,6 +11,10 @@ namespace DoTask.Cli.Authoring;
 
 internal sealed class TaskWizard( TextReader input, TextWriter output, CancellationToken token )
 {
+  private bool _addingStep;
+
+  private sealed class BackFromStepException : Exception;
+
   public async Task RunAsync( TaskDirectory directory )
   {
     var catalog = new TargetCatalog(directory.DirectoryPath);
@@ -34,86 +38,93 @@ internal sealed class TaskWizard( TextReader input, TextWriter output, Cancellat
     var description = await Ask("Description (Enter to omit): ");
     var steps = new List<TaskStep>();
     while (await YesNo("Add a step? [Y/n]: ", true)) {
-      TargetDefinition? target = null;
-      string run;
-      while (true) {
-        var search = await Ask("Search task names/descriptions (Enter lists all; :manual enters an absent task): ");
-        if (search == ":manual") {
-          run = (await Ask("Task name: ")).Trim();
-          if (run.Length == 0 || run.Equals(name, StringComparison.OrdinalIgnoreCase)) {
-            output.WriteLine("Enter a nonempty task name other than this group.");
-            continue;
-          }
-          try {
-            target = catalog.Find(run);
-            if (target is not null) {
-              if (target.Error is not null) {
-                throw new TaskException(target.Error);
-              }
-              run = target.Name;
+      _addingStep = true;
+      try {
+        TargetDefinition? target = null;
+        string run;
+        while (true) {
+          var search = await Ask("Search task names/descriptions (Enter lists all; :manual enters an absent task): ");
+          if (search == ":manual") {
+            run = (await Ask("Task name: ")).Trim();
+            if (run.Length == 0 || run.Equals(name, StringComparison.OrdinalIgnoreCase)) {
+              output.WriteLine("Enter a nonempty task name other than this group.");
+              continue;
             }
-            break;
-          } catch (TaskException ex) {
-            output.WriteLine(ex.Message);
+            try {
+              target = catalog.Find(run);
+              if (target is not null) {
+                if (target.Error is not null) {
+                  throw new TaskException(target.Error);
+                }
+                run = target.Name;
+              }
+              break;
+            } catch (TaskException ex) {
+              output.WriteLine(ex.Message);
+              continue;
+            }
+          }
+          var matches = catalog.Targets.Where(t => t.Error is null &&
+            (t.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || t.Description.Contains(search, StringComparison.OrdinalIgnoreCase))).ToArray();
+          for (var i = 0; i < matches.Length; i++) {
+            output.WriteLine($"  {i + 1}. {matches[i].Name} — {matches[i].Description}");
+          }
+          if (matches.Length == 0) {
+            output.WriteLine("No matching tasks. Search again or use :manual.");
             continue;
           }
-        }
-        var matches = catalog.Targets.Where(t => t.Error is null &&
-          (t.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || t.Description.Contains(search, StringComparison.OrdinalIgnoreCase))).ToArray();
-        for (var i = 0; i < matches.Length; i++) {
-          output.WriteLine($"  {i + 1}. {matches[i].Name} — {matches[i].Description}");
-        }
-        if (matches.Length == 0) {
-          output.WriteLine("No matching tasks. Search again or use :manual.");
-          continue;
-        }
-        var selection = await Ask("Task number (Enter to search again): ");
-        if (!int.TryParse(selection, out var index) || index < 1 || index > matches.Length) {
-          continue;
-        }
-        target = matches[index - 1];
-        run = target.Name;
-        break;
-      }
-      var optional = await YesNo("Optional (skip only when absent)? [y/N]: ", false);
-      if (target is null) {
-        output.WriteLine("Task is not installed; its parameter names and types cannot be checked.");
-      }
-      var parameters = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
-      if (target is not null) {
-        var defaults = config.DefaultsFor(target.Name);
-        foreach (var option in target.Options) {
-          output.WriteLine($"  {option.Name} ({option.Type}) — {option.Description}");
-          if (option.Choices.Length > 0) {
-            output.WriteLine("  Choices: " + string.Join(", ", option.Choices));
-          }
-          var effective = defaults.GetValueOrDefault(option.Name) ?? option.Default;
-          output.WriteLine("  Default: " + (effective ?? (option.Type == "bool" ? "false" : "none")));
-          var value = await Parameter(target, option, directory.RootDirectory, option.Required && effective is null);
-          if (value is { } supplied) {
-            parameters.Add(option.Name, supplied);
-          }
-        }
-        OptionBinder.Bind(target, config, Arguments(parameters), directory.RootDirectory);
-      } else {
-        while (await YesNo("Add a parameter? [y/N]: ", false)) {
-          var key = (await Ask("Parameter name: ")).Trim();
-          if (!Regex.IsMatch(key, "^[a-zA-Z][a-zA-Z0-9_-]*$") || parameters.ContainsKey(key)) {
-            output.WriteLine("Use a unique parameter name starting with a letter.");
+          var selection = await Ask("Task number (Enter to search again): ");
+          if (!int.TryParse(selection, out var index) || index < 1 || index > matches.Length) {
             continue;
           }
-          var type = await Ask("Type [string/bool/int/number] (Enter for string): ");
-          type = type.Length == 0 ? "string" : type;
-          if (type is not ("string" or "bool" or "int" or "number")) {
-            output.WriteLine("Unknown type.");
-            continue;
-          }
-          var option = new OptionDefinition(key, null, type, "", null, true, [], null);
-          var placeholder = new TargetDefinition(run, "", "", [option], [], [], null, []);
-          parameters.Add(key, (await Parameter(placeholder, option, directory.RootDirectory, true))!.Value);
+          target = matches[index - 1];
+          run = target.Name;
+          break;
         }
+        var optional = await YesNo("Optional (skip only when absent)? [y/N]: ", false);
+        if (target is null) {
+          output.WriteLine("Task is not installed; its parameter names and types cannot be checked.");
+        }
+        var parameters = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
+        if (target is not null) {
+          var defaults = config.DefaultsFor(target.Name);
+          foreach (var option in target.Options) {
+            output.WriteLine($"  {option.Name} ({option.Type}) — {option.Description}");
+            if (option.Choices.Length > 0) {
+              output.WriteLine("  Choices: " + string.Join(", ", option.Choices));
+            }
+            var effective = defaults.GetValueOrDefault(option.Name) ?? option.Default;
+            output.WriteLine("  Default: " + (effective ?? (option.Type == "bool" ? "false" : "none")));
+            var value = await Parameter(target, option, directory.RootDirectory, option.Required && effective is null);
+            if (value is { } supplied) {
+              parameters.Add(option.Name, supplied);
+            }
+          }
+          OptionBinder.Bind(target, config, Arguments(parameters), directory.RootDirectory);
+        } else {
+          while (await YesNo("Add a parameter? [y/N]: ", false)) {
+            var key = (await Ask("Parameter name: ")).Trim();
+            if (!Regex.IsMatch(key, "^[a-zA-Z][a-zA-Z0-9_-]*$") || parameters.ContainsKey(key)) {
+              output.WriteLine("Use a unique parameter name starting with a letter.");
+              continue;
+            }
+            var type = await Ask("Type [string/bool/int/number] (Enter for string): ");
+            type = type.Length == 0 ? "string" : type;
+            if (type is not ("string" or "bool" or "int" or "number")) {
+              output.WriteLine("Unknown type.");
+              continue;
+            }
+            var option = new OptionDefinition(key, null, type, "", null, true, [], null);
+            var placeholder = new TargetDefinition(run, "", "", [option], [], [], null, []);
+            parameters.Add(key, (await Parameter(placeholder, option, directory.RootDirectory, true))!.Value);
+          }
+        }
+        steps.Add(new(run, optional, JsonSerializer.SerializeToElement(parameters)));
+      } catch (BackFromStepException) {
+        output.WriteLine("Unfinished step discarded; previously added steps kept.");
+      } finally {
+        _addingStep = false;
       }
-      steps.Add(new(run, optional, JsonSerializer.SerializeToElement(parameters)));
     }
     for (var i = 0; i < steps.Count; i++) {
       output.WriteLine($"  {i + 1}. {steps[i].Run}" + (steps[i].Optional ? " (optional)" : ""));
@@ -185,12 +196,15 @@ internal sealed class TaskWizard( TextReader input, TextWriter output, Cancellat
   private async Task<string> Ask( string prompt )
   {
     token.ThrowIfCancellationRequested();
-    output.Write(prompt);
+    output.Write(_addingStep ? prompt.TrimEnd() + " [:back discards this step] " : prompt);
     output.Flush();
     // Console.In blocks even through ReadLineAsync; keep Ctrl+C responsive.
     var line = await Task.Run(input.ReadLine, CancellationToken.None).WaitAsync(token);
     if (line is null or ":cancel") {
       throw new OperationCanceledException();
+    }
+    if (_addingStep && line.Trim().Equals(":back", StringComparison.OrdinalIgnoreCase)) {
+      throw new BackFromStepException();
     }
     return line;
   }

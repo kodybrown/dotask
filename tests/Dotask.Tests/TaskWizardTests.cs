@@ -16,6 +16,39 @@ public sealed class TaskWizardTests
     return output.ToString();
   }
 
+  [Theory]
+  [InlineData(":back")]
+  [InlineData("run\n:back")]
+  [InlineData(":manual\n:back")]
+  [InlineData("run\n1\n:back")]
+  [InlineData("run\n1\nn\n:back")]
+  [InlineData(":manual\nabsent\ny\n:back")]
+  [InlineData(":manual\nabsent\ny\ny\n:back")]
+  [InlineData(":manual\nabsent\ny\ny\nvalue\n:back")]
+  [InlineData(":manual\nabsent\ny\ny\nvalue\nstring\n:back")]
+  public async Task BackDiscardsOnlyTheUnfinishedStep( string unfinished )
+  {
+    using var project = new TestProject();
+    project.Target("run", metadata: "/// <option name=\"message\" />");
+    var output = await Run(project, "checks", "Keep my work", "y", "run", "1", "n", "saved",
+      "y", unfinished, "n", "y", "y");
+    var target = new TargetCatalog(project.Tasks).Get("checks");
+    Assert.Equal("Keep my work", target.Description);
+    var step = Assert.Single(target.Group!.Steps);
+    Assert.Equal("run", step.Run);
+    Assert.Equal("saved", step.Parameters.GetProperty("message").GetString());
+    Assert.Contains(":back discards this step", output);
+    Assert.Contains("previously added steps kept", output);
+  }
+
+  [Fact]
+  public async Task BackFromFirstStepAllowsAnEmptyGroup()
+  {
+    using var project = new TestProject();
+    await Run(project, "checks", "", "y", ":back", "n", "n", "y");
+    Assert.Empty(new TargetCatalog(project.Tasks).Get("checks").Group!.Steps);
+  }
+
   [Fact]
   public async Task KnownTargetsUseCanonicalNamesAndOnlyExplicitParameters()
   {

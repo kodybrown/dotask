@@ -106,10 +106,17 @@ acceptance, installation, and publication.
   files/targets, reject symlink destinations, and leave no task file on
   cancellation or declined save. Redirected sessions receive actionable guidance;
   command help and completion remain available without a project.
+- Added `:back` at every step-entry prompt to discard an unfinished step and
+  return to the add-step choice while preserving completed steps, name, and
+  description. Whole-wizard cancellation remains separate.
 - Added wizard tests and updated CLI, authoring, and agent documentation.
-- Verification: `./build.sh` passed all 316 Release tests (13 wizard cases),
+- Verification: `./build.sh` passed all 326 Release tests (23 wizard cases),
   formatting, documentation, catalog, and shim checks. A Linux PTY session
   verified search, typed parameters, preview-before-write, final save, and
   immediate Ctrl+C cancellation (exit 130). All 83 local links/anchors in changed
   Markdown resolved; `git diff --check` passed. Native Windows/macOS acceptance
   remains pending.
+
+- Follow-up verification: a Linux PTY session backed out of an accidental extra
+  step at task selection and saved the completed step and description intact.
+  All 28 local links/anchors in the updated authoring and usage references resolved.

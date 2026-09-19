@@ -684,6 +684,12 @@ including scripts. For automation, write the YAML file directly.
    whether at least one step must execute (default no).
 5. Review the complete YAML preview and explicitly confirm save (default no).
 
+At any prompt while adding a step, enter `:back` to discard that unfinished step
+and return to `Add a step?`. Previously completed steps, the name, and description
+are preserved. Answer `n` there to continue to ordering and preview. This also
+works during manual task/parameter entry. `:cancel` and Ctrl+C still cancel the
+entire wizard.
+
 Task selection and validation read metadata only. The wizard does not execute,
 compile, restore, download, or install targets. It validates the generated file
 with the same `.task` parser used by discovery. It never overwrites an existing

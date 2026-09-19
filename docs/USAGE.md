@@ -448,6 +448,7 @@ The creation wizard searches project tasks, prompts for explicit step parameters
 lets you reorder steps, and previews YAML before saving a new `.task` file.
 It requires a terminal and an existing project; use `dotask --init` first for a
 new project. It never runs selected tasks or overwrites existing files. Enter
-`:cancel` or press Ctrl+C to cancel. See the [wizard reference](TARGETS.md#interactive-group-creation)
+`:back` during step entry to discard only that step and keep earlier work;
+`:cancel` or Ctrl+C cancels the entire wizard. See the [wizard reference](TARGETS.md#interactive-group-creation)
 for prompts, defaults, and manual entry of absent tasks. Scripts should write YAML
 directly; redirected wizard input/output is rejected with guidance.

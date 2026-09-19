@@ -462,8 +462,8 @@ pending; these Linux results do not establish cross-platform acceptance.
 
 ## Interactive group wizard (2026-09-18)
 
-On Linux with .NET SDK 10.0.401, `./build.sh` passed 316 Release tests, formatting,
-documentation, catalog freshness, and bundled shim checks. The 13 wizard cases
+On Linux with .NET SDK 10.0.401, `./build.sh` passed 326 Release tests, formatting,
+documentation, catalog freshness, and bundled shim checks. The 23 wizard cases
 cover canonical selection, effective defaults, typed values, manual entry,
 reordering, cancellation/EOF, declined saves, file and target conflicts, symlink
 protection, portable paths, help/completion, and redirected-input guidance.
@@ -474,3 +474,10 @@ explicit save producing a valid `.task` file. A second PTY session verified that
 Ctrl+C interrupts a blocked console read immediately with exit code 130.
 All 83 local links/anchors in the other changed Markdown files resolved, and
 `git diff --check` passed. Native Windows/macOS wizard acceptance remains pending.
+
+The step-back follow-up passed the full gate and a Linux PTY scenario that added
+one step, accidentally started another, used `:back` at task selection, then
+saved the original step and description intact. Regression cases cover `:back`
+at search, selection, optional choice, and every manual parameter prompt, plus
+backing out of the first step. All 28 local links/anchors in the updated authoring
+and usage references resolved.
