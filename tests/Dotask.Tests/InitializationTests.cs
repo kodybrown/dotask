@@ -32,7 +32,7 @@ public sealed class InitializationTests
     Assert.Null(config.Description);
     Assert.Empty(config.Settings.EnumerateObject());
     Assert.Empty(config.TargetDefaults.EnumerateObject());
-    var summary = await parent.RunFromAsync(root);
+    var summary = await parent.RunFromAsync(root, "--verbose");
     Assert.Equal(0, summary.ExitCode);
     Assert.StartsWith(name + Environment.NewLine, summary.StandardOutput);
     Assert.Contains("(no targets)", summary.StandardOutput);
@@ -170,7 +170,7 @@ public sealed class InitializationTests
     Assert.True(Directory.Exists(Path.Combine(project.Root, "build support/tasks")));
     Assert.False(Directory.Exists(project.Tasks));
     Assert.True(File.Exists(Path.Combine(project.Root, ".dotasks.yaml")));
-    var summary = await project.RunAsync("--use-dir=build support/tasks");
+    var summary = await project.RunAsync("--use-dir=build support/tasks", "--verbose");
     Assert.Equal(0, summary.ExitCode);
     Assert.Contains("tasks: './build support/tasks'", summary.StandardOutput);
   }

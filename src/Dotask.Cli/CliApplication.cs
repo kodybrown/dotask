@@ -71,6 +71,9 @@ public static class CliApplication
         return 0;
       }
       if (sharedCommand) {
+        if (command.Verbose) {
+          error.WriteLine($"[dotask] Shared-task command: {command.Command}; invocation: {invocationDirectory}");
+        }
         return await new SharedTaskCommand(new SharedTaskStore(sharedTaskOptions ?? SharedTaskOptions.FromEnvironment()), output)
           .RunAsync(command, invocationDirectory, cancellationToken);
       }
@@ -79,8 +82,11 @@ public static class CliApplication
       var config = ProjectConfiguration.Load(directory.DirectoryPath, directory.RootDirectory);
       var targetName = helpCommand ? command.Arguments.FirstOrDefault() : command.Command;
       if (targetName is null) {
-        HelpWriter.Project(helpOutput, config, directory.RootDirectory, directory.DirectoryPath);
-        helpOutput.WriteLine("\nTargets:");
+        if (command.Verbose) {
+          HelpWriter.Project(helpOutput, config, directory.RootDirectory, directory.DirectoryPath);
+          helpOutput.WriteLine();
+        }
+        helpOutput.WriteLine("Targets:");
         foreach (var target in catalog.Targets) {
           cancellationToken.ThrowIfCancellationRequested();
           var diagnostic = GetHelpDiagnostic(target, config, directory.RootDirectory);
@@ -89,7 +95,9 @@ public static class CliApplication
         if (catalog.Targets.Count == 0) {
           helpOutput.WriteLine("  (no targets)");
         }
-        HelpWriter.CombinedOptions(helpOutput, catalog.Targets, config);
+        if (command.Verbose) {
+          HelpWriter.CombinedOptions(helpOutput, catalog.Targets, config);
+        }
         helpOutput.WriteLine();
         helpOutput.WriteLine("See `dotask help <target>` for detailed information on each target.");
         return 0;
@@ -102,7 +110,10 @@ public static class CliApplication
           directory.RootDirectory);
         return 0;
       }
-      return await new TargetExecutor(directory, config, new TargetCompiler()).ExecuteAsync(selected, command.Arguments, cancellationToken);
+      if (command.Verbose) {
+        error.WriteLine($"[dotask] Project: {directory.RootDirectory}; tasks: {directory.DirectoryPath}");
+      }
+      return await new TargetExecutor(directory, config, new TargetCompiler(), command.Verbose ? error : null).ExecuteAsync(selected, command.Arguments, cancellationToken);
     } catch (OperationCanceledException) {
       await error.WriteLineAsync("Cancelled.");
       return 130;

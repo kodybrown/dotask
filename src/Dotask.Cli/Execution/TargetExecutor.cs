@@ -7,7 +7,7 @@ using DoTask.Runtime;
 
 namespace DoTask.Cli.Execution;
 
-internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfiguration config, TargetCompiler compiler )
+internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfiguration config, TargetCompiler compiler, TextWriter? trace = null )
 {
   public async Task<int> ExecuteAsync( TargetDefinition target, IReadOnlyList<string> arguments,
     CancellationToken cancellationToken, string[]? parentChain = null, string? sessionDirectory = null )
@@ -26,6 +26,7 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
     if (Requirements.HostName() == "unknown") {
       throw new TaskException("Target execution supports Windows, Linux, and macOS.");
     }
+    trace?.WriteLine($"[dotask] Target: {target.Name}; source: {target.FilePath}");
     var parameters = OptionBinder.Bind(target, config, arguments, directory.RootDirectory);
     Requirements.Validate(target, config, directory.RootDirectory);
     var ownsSession = sessionDirectory is null;
@@ -41,6 +42,7 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
           var catalog = new TargetCatalog(directory.DirectoryPath);
           var child = catalog.Find(step.Run);
           if (child is null && step.Optional) {
+            trace?.WriteLine($"[dotask] Skipping absent optional target: {step.Run}");
             continue;
           }
           child ??= catalog.Get(step.Run);
@@ -56,8 +58,10 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
         if (group.RequireAtLeastOneStep && executed == 0) {
           throw new TaskException($"Target '{target.Name}' requires at least one step to execute; no steps were executed.");
         }
+        trace?.WriteLine($"[dotask] Completed group: {target.Name}; executed steps: {executed}");
         return 0;
       }
+      trace?.WriteLine($"[dotask] Compiling: {target.Name}");
       var compilation = await compiler.CompileAsync(target, cancellationToken, executionDirectory);
       if (!compilation.Success) {
         throw new TaskException($"Compilation failed for '{target.Name}':\n{compilation.Diagnostics}");
@@ -74,9 +78,11 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
         Settings = config.Settings,
         Parameters = parameters,
         TargetDefaults = config.TargetDefaults,
+        Verbose = trace is not null,
         CallChain = [.. chain, target.Name]
       };
       contextPath = await ContextFile.WriteAsync(sessionDirectory, data, cancellationToken);
+      trace?.WriteLine($"[dotask] Executing: {target.Name}");
       var result = await ProcessRunner.RunAsync(new ProcessDefinition {
         Executable = data.DotnetExecutable,
         Arguments = [compilation.AssemblyPath!],
@@ -87,6 +93,7 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
       if (result.ExitCode != 0) {
         Console.Error.WriteLine($"Target '{target.Name}' failed with exit code {result.ExitCode}.");
       }
+      trace?.WriteLine($"[dotask] Completed: {target.Name}; exit code: {result.ExitCode}");
       return result.ExitCode;
     } finally {
       if (contextPath is not null) {
@@ -127,6 +134,9 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
       try {
         var target = catalog.Find(call.Target);
         if (target is null) {
+          if (context.Verbose) {
+            Console.Error.WriteLine($"[dotask] Skipping absent optional target: {call.Target}");
+          }
           reply = new(false);
         } else {
           if (target.Error is not null) {
@@ -148,7 +158,7 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
     ProjectConfiguration config, TargetDefinition target, CancellationToken cancellationToken )
   {
     var arguments = call.Parameters.EnumerateObject().Select(p => p.Name + "=" + Values.ToArgument(p.Value)).ToArray();
-    return await new TargetExecutor(directory, config, new TargetCompiler()).ExecuteAsync(target,
+    return await new TargetExecutor(directory, config, new TargetCompiler(), call.Context.Verbose ? Console.Error : null).ExecuteAsync(target,
       arguments, cancellationToken, call.Context.CallChain, call.Context.SessionDirectory);
   }
 }

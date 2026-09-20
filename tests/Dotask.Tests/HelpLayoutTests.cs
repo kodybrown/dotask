@@ -71,7 +71,7 @@ public sealed class HelpLayoutTests
       /// <requires setting="solution" />
       /// <example>dotask build --configuration Release</example>
       """);
-    foreach (var command in new[] { "", "help", "build --help", "--help" }) {
+    foreach (var command in new[] { "", "help", "--verbose", "help --verbose", "build --help", "--help" }) {
       var output = new StringWriter();
       var error = new StringWriter();
       var code = await CliApplication.RunAsync(command.Split(' ', StringSplitOptions.RemoveEmptyEntries),
@@ -106,7 +106,7 @@ public sealed class HelpLayoutTests
     project.Target("build", metadata: options);
     project.Target("test", metadata: options);
     var output = new StringWriter();
-    Assert.Equal(0, await CliApplication.RunAsync([], project.Root, output, new StringWriter(), consoleWidth: 96));
+    Assert.Equal(0, await CliApplication.RunAsync(["--verbose"], project.Root, output, new StringWriter(), consoleWidth: 96));
     var text = output.ToString().Replace("\r\n", "\n");
     Assert.Contains("  project: src/App/App.csproj\n", text);
     Assert.Contains("  solution: 'My Application.slnx'\n", text);

@@ -42,8 +42,10 @@ strict metadata parser feeds the same catalog. The executor interprets groups
 directly, preserving cancellation, canonical call chains, child option binding,
 and failure exit codes. No C# compilation is needed for a group itself.
 
-Bare `dotask` and `dotask help` show only project information: the optional YAML
-`name`/`description`, shared settings, targets, and combined target options. The
+Bare `dotask` and `dotask help` show Targets and the detailed-help hint.
+`--verbose` adds the optional YAML `name`/`description`, shared settings, and
+combined target options. Execution verbosity travels in the private context to
+nested calls and emits diagnostics on stderr without altering task parameters. The
 name falls back to the project root directory's name. Identity fields remain
 separate from the runtime `project.Config` settings.
 

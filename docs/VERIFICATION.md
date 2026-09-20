@@ -492,3 +492,16 @@ Dry runs preserve idle state, recognized orphan staging is cleaned, and unknown
 files or custom ignore contents are preserved. The checkout's old idle directory
 was removed only after verifying its two generated marker files. `git diff --check`
 passed. Native Windows/macOS acceptance remains pending.
+
+## Verbose output (2026-09-20)
+
+On Linux with .NET SDK 10.0.401, 93 focused tests and `./build.sh` passed. The full
+gate ran 340 Release tests, formatting, documentation, catalog freshness, and
+bundled shim checks. Coverage verifies concise and verbose summaries,
+metadata-only help, global parsing/completion, and diagnostics inherited through
+C# calls and YAML groups without changing task stdout or exit codes.
+
+The source-built CLI displayed the expected concise and verbose help for
+`examples/basic/.tasks`, retaining the detailed-help hint in both modes. All 79
+checked local Markdown links/anchors resolved, and `git diff --check` passed.
+Native Windows/macOS acceptance remains pending. No installation was changed.

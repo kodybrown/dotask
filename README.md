@@ -274,7 +274,8 @@ for YAML target defaults and reusable nested calls;
 see [target naming](docs/TARGETS.md#target-names).
 
 `dotask` and `dotask help` show only the current project's name, description,
-shared settings, targets, and target options. `dotask --help` (or `-h`) shows only
+shared settings, targets, and target options when `--verbose` is supplied.
+By default they show only Targets and the detailed-help hint. `dotask --help` (or `-h`) shows only
 CLI usage and works without a project. `dotask help build` shows just that target.
 Set the optional project identity in `.dotasks.yaml`:
 

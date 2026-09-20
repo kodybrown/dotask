@@ -11,7 +11,7 @@ public sealed class ConfigurationAndBindingTests
     /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug" />
     /// <option name="name" alias="n" />
     /// <option name="count" type="int" />
-    /// <option name="verbose" alias="v" type="bool" />
+    /// <option name="detailed" alias="v" type="bool" />
     /// <option name="output" type="path" />
     """;
 
@@ -127,7 +127,7 @@ public sealed class ConfigurationAndBindingTests
       ["name=A=B=c", "--count", "-42", "-v", "output=some\\Path.txt"], project.Root), project.Root);
     Assert.Equal("A=B=c", result.Get<string>("name"));
     Assert.Equal(-42, result.Get<int>("count"));
-    Assert.True(result.Get<bool>("verbose"));
+    Assert.True(result.Get<bool>("detailed"));
     Assert.Equal(Path.Combine(project.Root, "some", "Path.txt"), result.GetPath("output"));
     var empty = new Values(OptionBinder.Bind(target, ProjectConfiguration.Empty, ["name="], project.Root), project.Root);
     Assert.Equal("", empty.Get<string>("name"));
@@ -137,7 +137,7 @@ public sealed class ConfigurationAndBindingTests
   [InlineData("configuration=invalid")]
   [InlineData("missing=value")]
   [InlineData("count=abc")]
-  [InlineData("verbose=maybe")]
+  [InlineData("detailed=maybe")]
   [InlineData("--name")]
   public void InvalidArgumentsAreRejected( string argument )
   {

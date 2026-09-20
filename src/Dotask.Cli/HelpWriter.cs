@@ -18,7 +18,7 @@ internal static class HelpWriter
     output.WriteLine("       dotask --sync [SELECTION...] | --remove SELECTION...");
     output.WriteLine();
     output.WriteLine("Commands:");
-    output.WriteRow("  dotask, dotask help   ", "Show the project's name, description, settings, targets, and options.");
+    output.WriteRow("  dotask, dotask help   ", "Show project targets; --verbose adds identity, settings, and options.");
     output.WriteRow("  dotask TARGET        ", "Run a target with its declared options.");
     output.WriteRow("  dotask help TARGET   ", "Show one target's details (also: dotask TARGET --help).");
     output.WriteRow("  dotask completion    ", "Print a completion script for the specified shell.");
@@ -29,6 +29,7 @@ internal static class HelpWriter
     output.WriteLine("Global options:");
     output.WriteRow("  --use-dir PATH  ", "Use this task directory (relative to the invocation directory).");
     output.WriteRow("  --help, -h      ", "Show CLI help, or target help when a target is given.");
+    output.WriteRow("  --verbose       ", "Show full project summaries and execution diagnostics.");
     output.WriteRow("  --version       ", "Show version.");
     output.WriteLine();
     output.WriteLine("Shared tasks:");

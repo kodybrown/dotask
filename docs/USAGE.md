@@ -125,7 +125,7 @@ directory: `build.sh`/`build.cmd` always change to the DoTask source checkout.
 
 | Command                                                       | Behavior                                                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `dotask`, `dotask help`                                       | Show only project name, description, shared settings, targets, and combined target options |
+| `dotask`, `dotask help`                                       | Show Targets and the detailed-help hint; add `--verbose` for identity, settings, and combined target options |
 | `dotask --help`, `dotask -h`                                  | Show only CLI usage; no project directory is required or inspected                         |
 | `dotask --init`                                               | Create missing project configuration and a task directory in the current directory        |
 | `dotask help build`, `dotask build --help`, `dotask build -h` | Show one target's description, options, requirements, and examples                         |
@@ -165,7 +165,7 @@ available. This optional behavior is not the source repository's gate. The detai
 [task reference](TARGETS.md#reuse-a-target) describes the scope and SDK bootstrap
 limitation; another project's `check` can have its own behavior.
 
-The project summary uses the optional top-level `name` and `description` from
+With `--verbose`, the project summary uses the optional top-level `name` and `description` from
 `.dotasks.yaml`. Without a nonempty name, it uses the project root directory's name;
 an absent description is omitted. `Settings` shows shared values first, preserving
 nested objects. String values such as `project: src/App/App.csproj` are unquoted
@@ -195,7 +195,7 @@ targets remain usable. Invalid project YAML can prevent the whole listing.
 If neither project configuration nor a task directory is found, `dotask` and `dotask help` report an error (exit 1)
 without printing CLI usage. Use `dotask --help` for the CLI reference.
 
-Combined help groups options when their names, aliases, types, choices,
+Verbose combined help groups options when their names, aliases, types, choices,
 required flags, and completion rules agree. Differences in descriptions or
 effective defaults do not repeat the option. Each entry shows the option name,
 alias, and declared choices in an aligned left column, with its description and
@@ -452,3 +452,34 @@ new project. It never runs selected tasks or overwrites existing files. Enter
 `:cancel` or Ctrl+C cancels the entire wizard. See the [wizard reference](TARGETS.md#interactive-group-creation)
 for prompts, defaults, and manual entry of absent tasks. Scripts should write YAML
 directly; redirected wizard input/output is rejected with guidance.
+
+## Verbose output
+
+`--verbose` is a global flag, accepted before or after a command. It takes no
+value and has no short alias; `-v` remains available for task options.
+The option name `verbose` is reserved and cannot be declared by a task.
+
+```sh
+dotask
+dotask help
+dotask --verbose
+dotask help --verbose
+dotask build --verbose
+```
+
+The first two commands show only Targets and the line
+
+> See `dotask help <target>` for detailed information on each target.
+
+Verbose summaries additionally show the project name, description, Settings,
+and combined Target options. Both forms still validate metadata and effective
+YAML defaults, without compiling or executing tasks. Target-specific help remains
+detailed by default. `--help` still shows CLI usage without project discovery.
+
+During task execution, verbose diagnostics go to stderr with a `[dotask]` prefix:
+project/task paths, target resolution, compilation, execution, completion, and
+skipped optional targets. Verbosity follows C# nested calls and YAML groups;
+it is not passed to task parameters or child tools. Normal task stdout and
+failure exit codes are unchanged. Shared-task management reports its action and
+invocation directory. No parameter or settings values are dumped by execution
+tracing; verbose project summaries intentionally show configured settings.

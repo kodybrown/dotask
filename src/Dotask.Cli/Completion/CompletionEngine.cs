@@ -11,6 +11,7 @@ public static class CompletionEngine
 {
   private static readonly CompletionCandidate[] Globals = [
     new("--use-dir", "option", "Select a task directory"), new("--help", "option", "Show help"),
+    new("--verbose", "option", "Show full summaries and execution diagnostics"),
     new("--version", "option", "Show version"),
     new("--init", "option", "Initialize a project in the current directory"),
     new("--create-task", "option", "Interactively create a YAML task group"),
@@ -41,6 +42,7 @@ public static class CompletionEngine
         words.RemoveAt(index--);
       }
     }
+    words.RemoveAll(word => word.Equals("--verbose", StringComparison.OrdinalIgnoreCase));
     if (current.StartsWith("--use-dir=", StringComparison.OrdinalIgnoreCase)) {
       return Prefix(Paths(current[10..], invocationDirectory, true), current[..10]);
     }
@@ -49,7 +51,7 @@ public static class CompletionEngine
     }
     if (words.FirstOrDefault()?.Equals("--init", StringComparison.OrdinalIgnoreCase) == true
       || words.FirstOrDefault()?.Equals("--create-task", StringComparison.OrdinalIgnoreCase) == true) {
-      return Filter(Globals.Where(c => c.Value is "--help" or "--version" || (c.Value == "--use-dir" && useDir is null)), current);
+      return Filter(Globals.Where(c => c.Value is "--help" or "--version" or "--verbose" || (c.Value == "--use-dir" && useDir is null)), current);
     }
     TargetCatalog? catalog = null;
     TaskDirectory? directory = null;
@@ -86,7 +88,7 @@ public static class CompletionEngine
       if (action == "--sync") {
         candidates.Add(new("--accept-merge", "option", "Record an already reviewed manual merge"));
       }
-      return Filter(candidates, current);
+      return Filter(candidates.Concat(Globals.Where(c => c.Value == "--verbose")), current);
     }
     if (words.Count == 0 || words[0].Equals("help", StringComparison.OrdinalIgnoreCase)) {
       var candidates = targets.SelectMany(t => catalog!.NamesFor(t)
@@ -95,7 +97,7 @@ public static class CompletionEngine
         candidates = candidates.Concat(Globals).Concat([
           new("help", "command", "Show target help"), new("completion", "command", "Print shell integration")]);
       }
-      return Filter(candidates, current);
+      return Filter(candidates.Concat(Globals.Where(c => c.Value == "--verbose")), current);
     }
     TargetDefinition? target;
     try {

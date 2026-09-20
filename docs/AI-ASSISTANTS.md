@@ -30,7 +30,7 @@ both tracked diffs without changing files or requiring a clean working tree.
    [source or local-preview instructions](../README.md); there is no public
    package release to assume. Check the SDK selected from the task directory
    with `dotnet --version`.
-3. Run `dotask` (or `dotask help`) for the project's name, description, shared
+3. Run `dotask --verbose` (or `dotask help --verbose`) for the project's name, description, shared
    settings, targets, and combined options. Use `dotask help TARGET` for one target
    and `dotask --help` for CLI usage only; `--help` does not inspect the project. Read
    diagnostics, not just exit status: help can exit 0 while reporting individual
@@ -57,7 +57,7 @@ With a custom task directory, include `--use-dir PATH` consistently. Relative
 paths resolve from where the CLI was invoked. The nearest root `.dotasks.yaml` above the selected directory anchors the project;
 otherwise its parent is the root. Legacy directory-local configuration retains
 its parent-root behavior. Shared-task management requires a project subdirectory.
-The summary's `Settings` section ends with `tasks: ./.tasks` (or the selected
+The verbose summary's `Settings` section ends with `tasks: ./.tasks` (or the selected
 directory) relative to that root; this display entry is not a shared configuration
 key. String settings omit quotes unless empty or containing whitespace/control
 characters, in which case they use single quotes; arrays retain JSON formatting.

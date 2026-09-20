@@ -134,3 +134,18 @@ acceptance, installation, and publication.
 - Verification: all 40 focused shared-task tests and `./build.sh` passed;
   the full gate ran 331 Release tests plus formatting, documentation, catalog,
   and shim checks. `git diff --check` passed. Windows/macOS acceptance remains pending.
+
+### 2026-09-20 Verbose output and concise target summaries
+
+- Bare `dotask` and `dotask help` now show only Targets and the detailed-help hint.
+  Global `--verbose` restores identity, description, Settings, and Target options;
+  target-specific help remains detailed and all help remains metadata-only.
+- Added stderr execution diagnostics, inherited by YAML groups and C# nested
+  calls, including optional skips and completion. Shared management identifies
+  its action and invocation directory. Task output and exit codes are preserved.
+- Reserved the `verbose` option name, retained task-defined `-v` aliases, and
+  updated completion, tests, and reference documentation.
+- Verification: 93 focused tests and `./build.sh` passed; the full gate ran 340
+  Release tests plus formatting, documentation, catalog, and shim checks. Live
+  example help matched both layouts; all 79 checked local links/anchors resolved.
+  `git diff --check` passed. Windows/macOS acceptance remains pending.

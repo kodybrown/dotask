@@ -11,7 +11,7 @@ public sealed class CompletionTests
   [InlineData("dotask run -c r", "Release")]
   [InlineData("dotask run Configuration=r", "Configuration=Release")]
   [InlineData("dotask run --configuration=r", "--configuration=Release")]
-  [InlineData("dotask run --verbose ", "false")]
+  [InlineData("dotask run --detailed ", "false")]
   [InlineData("dotask completion p", "powershell")]
   public void SuggestionsUseTargetMetadata( string line, string expected )
   {
@@ -19,7 +19,7 @@ public sealed class CompletionTests
     project.Target("run", "ThisDeliberatelyDoesNotCompile();", """
       /// <summary>Run app.</summary>
       /// <option name="configuration" alias="c" choices="Debug,Release" />
-      /// <option name="verbose" type="bool" />
+      /// <option name="detailed" type="bool" />
       """);
     Assert.Contains(CompletionEngine.Complete(line, project.Root), c => c.Value == expected);
     Assert.False(Directory.Exists(Path.Combine(project.Tasks, "obj")));

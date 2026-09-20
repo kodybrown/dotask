@@ -1,6 +1,6 @@
 namespace DoTask.Cli.Parsing;
 
-public sealed record CommandLine( string? UseDirectory, string? Command, string[] Arguments, bool Help, bool Version )
+public sealed record CommandLine( string? UseDirectory, string? Command, string[] Arguments, bool Help, bool Version, bool Verbose = false )
 {
   public static CommandLine Parse( IReadOnlyList<string> arguments )
   {
@@ -8,6 +8,7 @@ public sealed record CommandLine( string? UseDirectory, string? Command, string[
     var remaining = new List<string>();
     var help = false;
     var version = false;
+    var verbose = false;
     for (var index = 0; index < arguments.Count; index++) {
       var argument = arguments[index];
       if (argument.Equals("--use-dir", StringComparison.OrdinalIgnoreCase)
@@ -28,12 +29,14 @@ public sealed record CommandLine( string? UseDirectory, string? Command, string[
         }
       } else if (argument.Equals("--help", StringComparison.OrdinalIgnoreCase) || argument.Equals("-h", StringComparison.OrdinalIgnoreCase)) {
         help = true;
+      } else if (argument.Equals("--verbose", StringComparison.OrdinalIgnoreCase)) {
+        verbose = true;
       } else if (argument.Equals("--version", StringComparison.OrdinalIgnoreCase)) {
         version = true;
       } else {
         remaining.Add(argument);
       }
     }
-    return new(directory, remaining.FirstOrDefault(), remaining.Skip(1).ToArray(), help, version);
+    return new(directory, remaining.FirstOrDefault(), remaining.Skip(1).ToArray(), help, version, verbose);
   }
 }

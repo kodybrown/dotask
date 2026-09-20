@@ -129,7 +129,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - Share metadata between help, validation, and shell completion. Help reports
   metadata/configuration errors; compilation errors are reported on execution.
 - Help and completion never compile, restore packages, or execute target code.
-- Bare `dotask` and `dotask help` show project identity, settings, and targets;
+- Bare `dotask` and `dotask help` show targets and the detailed-help hint;
+  `--verbose` adds project identity, settings, and combined target options;
   project/target help reads YAML and checks effective defaults.
 - CLI-only `--help`/`-h` skips project discovery and reads; target completion skips project configuration; management completion stays local.
 - Keep YAML declarative and keep services deferred.

@@ -291,12 +291,17 @@ c=Release
 ```
 
 A value may contain additional `=` characters. Use `name=` for an empty string.
-Boolean flags support `--verbose`, `--verbose false`, and `verbose=false`; an
+Boolean flags support `--detailed`, `--detailed false`, and `detailed=false`; an
 unspecified optional boolean is false. Repeated options (including alias/full-name
 duplicates), unknown options, and invalid values fail before execution. Short
 option bundles and positional arguments are not supported in this version.
 Global options are reserved throughout the command line; use `name=VALUE` when
 a literal value would otherwise look like a global option.
+
+`--verbose` is reserved globally for dotask diagnostics and full project summaries;
+do not declare a task option named `verbose`. A task may still use alias `-v`
+for another option. Verbosity is inherited by nested calls without forwarding a
+task parameter. See [verbose output](USAGE.md#verbose-output).
 
 `int` is a signed 32-bit integer; `number` is a finite double. Choice values are
 returned using their declared spelling. Path options are resolved relative to
@@ -305,7 +310,7 @@ the project root. Arbitrary strings retain their original contents.
 | Declared type | Read the value with                                                                 |
 | ------------- | ----------------------------------------------------------------------------------- |
 | `string`      | `project.Parameters.Get<string>("name")`                                            |
-| `bool`        | `project.Parameters.Get<bool>("verbose")`                                           |
+| `bool`        | `project.Parameters.Get<bool>("detailed")`                                           |
 | `int`         | `project.Parameters.Get<int>("retries")`                                            |
 | `number`      | `project.Parameters.Get<double>("ratio")`                                           |
 | `path`        | `project.Parameters.GetPath("output")` or `Get<string>("output")`; already absolute |

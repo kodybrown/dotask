@@ -16,6 +16,7 @@ internal sealed record ExecutionContextData
   public required JsonElement Settings { get; init; }
   public required JsonElement Parameters { get; init; }
   public required JsonElement TargetDefaults { get; init; }
+  public bool Verbose { get; init; }
   public string[] CallChain { get; init; } = [];
 }
 

@@ -25,9 +25,9 @@ dotask --use-dir examples/basic/.tasks hello -n "Ada Lovelace" configuration=rel
 dotask --use-dir examples/basic/.tasks write
 ```
 
-The project summary should start with `dotask example` and its description, then
+With `--verbose`, the project summary should start with `dotask example` and its description, then
 show `tasks: ./.tasks`, the `message`/`output` settings, `check`/`hello`/`write`/`greet`
-targets, and target options. `dotask help` shows the same summary when run in
+targets, and target options. `dotask help --verbose` shows the same summary when run in
 `examples/basic`.
 `dotask --help` shows CLI usage only, without those project details.
 `hello`'s help should show

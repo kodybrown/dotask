@@ -11,6 +11,8 @@ public sealed class HelpAndShellTests
   [Theory]
   [InlineData("")]
   [InlineData("help")]
+  [InlineData("--verbose")]
+  [InlineData("help --verbose")]
   [InlineData("help run")]
   [InlineData("run --help")]
   [InlineData("run -h")]
@@ -53,9 +55,11 @@ public sealed class HelpAndShellTests
     Assert.Equal(0, result.ExitCode);
     Assert.Equal("", result.StandardError);
     Assert.Contains("Describe this target without building it.", result.StandardOutput);
-    Assert.Contains("--configuration, -c", result.StandardOutput);
-    Assert.Contains("default: Release", result.StandardOutput);
-    Assert.Contains("--input", result.StandardOutput);
+    if (command is not ("" or "help")) {
+      Assert.Contains("--configuration, -c", result.StandardOutput);
+      Assert.Contains("default: Release", result.StandardOutput);
+      Assert.Contains("--input", result.StandardOutput);
+    }
     Assert.False(File.Exists(Path.Combine(project.Root, "target-ran")));
     Assert.False(Directory.Exists(Path.Combine(temporary, "_dotnet", "dotask")));
   }
@@ -116,7 +120,7 @@ public sealed class HelpAndShellTests
       /// <summary>Run the project.</summary>
       /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build mode.</option>
       """);
-    var result = await project.RunAsync(command.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+    var result = await project.RunAsync([.. command.Split(' ', StringSplitOptions.RemoveEmptyEntries), "--verbose"]);
     Assert.Equal(0, result.ExitCode);
     Assert.Equal("", result.StandardError);
     Assert.StartsWith("Example project" + Environment.NewLine + "Project description.", result.StandardOutput);
@@ -148,13 +152,13 @@ public sealed class HelpAndShellTests
   public async Task ProjectSummaryUsesDirectoryNameWithoutConfigAndHonorsDirectoryOverride()
   {
     using var project = new TestProject();
-    var fallback = await project.RunAsync();
+    var fallback = await project.RunAsync("--verbose");
     Assert.Equal(0, fallback.ExitCode);
     Assert.StartsWith(Path.GetFileName(project.Root) + Environment.NewLine, fallback.StandardOutput);
     Assert.Contains("  tasks: ./.tasks", fallback.StandardOutput);
     Assert.Contains("(no targets)", fallback.StandardOutput);
     project.Write(".abc/config.yaml", "name: Custom project\ndescription: Selected task directory.");
-    var selected = await project.RunAsync("--use-dir", ".abc");
+    var selected = await project.RunAsync("--use-dir", ".abc", "--verbose");
     Assert.Equal(0, selected.ExitCode);
     Assert.StartsWith("Custom project" + Environment.NewLine + "Selected task directory.", selected.StandardOutput);
     Assert.Contains("  tasks: ./.abc", selected.StandardOutput);
@@ -245,7 +249,7 @@ public sealed class HelpAndShellTests
       /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug" />
       """);
     project.Write(".tasks/config.yaml", "targets: { dotnet-run: { defaults: { configuration: Release } } }");
-    var listing = await project.RunAsync();
+    var listing = await project.RunAsync("--verbose");
     Assert.Equal(0, listing.ExitCode);
     var targetLine = Assert.Single(listing.StandardOutput.Split('\n'), line => line.Contains("Run the app."));
     Assert.StartsWith("  run ", targetLine);

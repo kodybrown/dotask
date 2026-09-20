@@ -93,7 +93,7 @@ public static partial class MetadataReader
   }
 
   public static readonly string[] ReservedCommands = ["help", "completion", "__complete", "__exec"];
-  public static readonly string[] ReservedOptions = ["help", "h", "use-dir", "version"];
+  public static readonly string[] ReservedOptions = ["help", "h", "use-dir", "version", "verbose"];
 
   private static string? Documentation( SyntaxNode? node ) => node?.GetLeadingTrivia()
     .FirstOrDefault(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia)
