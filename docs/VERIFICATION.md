@@ -513,5 +513,7 @@ catalog freshness, and bundled shim checks. New tests cover aligned descriptions
 tracked/untracked/missing/absent tasks, actual cache comparison after catalog
 refresh, unavailable cached files, private support-file changes, and listing
 outside a project without creating task files. A source-built CLI listing using
-an isolated cache and the repository catalog confirmed the column layout.
+an isolated cache and the repository catalog confirmed the compact `I`/`M`
+column layout and legend. Updated regression assertions cover ✓, X, ?, and —
+indicators for each project/cache state.
 `git diff --check` passed. Native Windows/macOS acceptance remains pending.

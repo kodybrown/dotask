@@ -192,8 +192,7 @@ internal sealed class SharedTaskCommand( SharedTaskStore store, TextWriter outpu
       tracking.Tasks.TryGetValue(id, out var installed);
       var entry = SharedTaskFiles.Resolve(project.DirectoryPath, id + ".cs");
       var present = File.Exists(entry);
-      var status = present ? installed is null ? "Untracked" : "Installed"
-        : installed is null ? "Not in project" : "Missing";
+      var status = present ? installed is null ? "?" : "✓" : "—";
       var comparison = "—";
       if (present) {
         var paths = task.Files.Select(f => source + "/" + f.Path)
@@ -203,16 +202,20 @@ internal sealed class SharedTaskCommand( SharedTaskStore store, TextWriter outpu
           Cached: SharedTaskFiles.HashFile(SharedTaskFiles.Resolve(
             source == "private-tasks" ? store.Options.PrivateDirectory : store.Options.CacheDirectory,
             source == "private-tasks" ? path[(source.Length + 1)..] : path)))).ToArray();
-        comparison = pairs.Any(p => p.Cached is null) ? "Unavailable"
-          : pairs.All(p => p.Project == p.Cached) ? source == "private-tasks" ? "Matches original" : "Matches cache" : "Differs";
+        comparison = pairs.Any(p => p.Cached is null) ? "?"
+          : pairs.All(p => p.Project == p.Cached) ? "✓" : "X";
       }
       return (Id: id, Status: status, Comparison: comparison, task.Description);
     }).ToArray();
     var width = Math.Max(4, rows.Max(r => r.Id.Length));
-    output.WriteLine($"{"Task".PadRight(width)}  {"Project",-14}  {"Comparison",-16}  Description");
+    output.WriteLine($"{"Task".PadRight(width)}  I  M  Description");
     foreach (var row in rows) {
-      output.WriteLine($"{row.Id.PadRight(width)}  {row.Status,-14}  {row.Comparison,-16}  {row.Description}");
+      output.WriteLine($"{row.Id.PadRight(width)}  {row.Status}  {row.Comparison}  {row.Description}");
     }
+    output.WriteLine();
+    output.WriteLine("I = Installed");
+    output.WriteLine("M = Matches cache (private tasks: matches original)");
+    output.WriteLine("✓ = Yes; X = Differs; ? = Unknown/untracked; — = Not applicable");
   }
 
   private static Dictionary<string, string> FileMap( TaskLock data ) => data.Tasks.Values.SelectMany(t => t.Files)

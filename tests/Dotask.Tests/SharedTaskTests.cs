@@ -23,8 +23,11 @@ public sealed class SharedTaskTests
     var before = File.ReadAllBytes(fixture.LockPath);
     var listing = await fixture.Run("--list");
     Assert.Equal(0, listing.Code);
-    Assert.Contains("Installed       Matches cache", listing.Output);
-    Assert.Contains("Not in project", listing.Output);
+    Assert.Contains("✓  ✓", listing.Output);
+    Assert.Contains("I  M  Description", listing.Output);
+    Assert.Contains("I = Installed", listing.Output);
+    Assert.Contains("M = Matches cache", listing.Output);
+    Assert.Contains("—  —", listing.Output);
     var rows = listing.Output.Split('\n').Where(line => line.Contains("Example task")).ToArray();
     Assert.Equal(2, rows.Length);
     Assert.Equal(rows[0].IndexOf("Example task", StringComparison.Ordinal), rows[1].IndexOf("Example task", StringComparison.Ordinal));
@@ -32,13 +35,13 @@ public sealed class SharedTaskTests
     fixture.CatalogTasks.Clear();
     fixture.Online("tools/one", "Console.WriteLine(123);");
     fixture.WriteCatalog();
-    Assert.Contains("Matches cache", (await fixture.Run("--list")).Output);
+    Assert.Contains("✓  ✓", (await fixture.Run("--list")).Output);
     File.AppendAllText(fixture.Installed("_/tools/one"), "// local edit");
-    Assert.Contains("Differs", (await fixture.Run("--list")).Output);
+    Assert.Contains("✓  X", (await fixture.Run("--list")).Output);
     File.Delete(Path.Combine(fixture.Options.CacheDirectory, "_/tools/one.cs"));
-    Assert.Contains("Unavailable", (await fixture.Run("--list")).Output);
+    Assert.Contains("✓  ?", (await fixture.Run("--list")).Output);
     File.Delete(fixture.Installed("_/tools/one"));
-    Assert.Contains("Missing", (await fixture.Run("--list")).Output);
+    Assert.Contains("—  —", (await fixture.Run("--list")).Output);
     Assert.Equal(before, File.ReadAllBytes(fixture.LockPath));
     Assert.False(Directory.Exists(Path.Combine(fixture.Project.Tasks, ".dotask")));
   }
@@ -51,14 +54,14 @@ public sealed class SharedTaskTests
     var support = Path.Combine(fixture.Options.PrivateDirectory, "tools/data.txt");
     File.WriteAllText(support, "original");
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/one")).Code);
-    Assert.Contains("Matches original", (await fixture.Run("--list", "private-tasks/*")).Output);
+    Assert.Contains("✓  ✓", (await fixture.Run("--list", "private-tasks/*")).Output);
     File.WriteAllText(support, "changed");
-    Assert.Contains("Differs", (await fixture.Run("--list", "private-tasks/*")).Output);
+    Assert.Contains("✓  X", (await fixture.Run("--list", "private-tasks/*")).Output);
     File.Delete(fixture.LockPath);
-    Assert.Contains("Untracked", (await fixture.Run("--list", "private-tasks/*")).Output);
+    Assert.Contains("?  X", (await fixture.Run("--list", "private-tasks/*")).Output);
     Directory.Delete(fixture.Project.Tasks, true);
     File.Delete(Path.Combine(fixture.Project.Root, ".dotasks.yaml"));
-    Assert.Contains("Not in project", (await fixture.Run("--list", "private-tasks/*")).Output);
+    Assert.Contains("—  —", (await fixture.Run("--list", "private-tasks/*")).Output);
     Assert.False(Directory.Exists(fixture.Project.Tasks));
   }
 

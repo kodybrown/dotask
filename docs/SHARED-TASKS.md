@@ -87,18 +87,26 @@ it is excluded from discovery. Do not place handwritten files there.
 
 ## Shared-task listing status
 
-`dotask --list` aligns task names, project status, comparison, and descriptions.
-Project status is `Installed` for a tracked entry point, `Untracked` for an
-existing copy without tracking, `Missing` for a deleted tracked entry point, or
-`Not in project`. Discovery walks upward; `--use-dir` selects an exact directory.
-Listing also works outside a project and does not write project files.
+`dotask --list` aligns task names, compact `I` and `M` indicators, and descriptions.
+The legend below the list defines `I = Installed` and `M = Matches cache`
+(or matches the original for private tasks).
 
-Comparison checks the task and its support files against actual downloaded local
-cache files (`Matches cache` or `Differs`), or private originals (`Matches original`
-or `Differs`). `Unavailable` means required comparison files are not cached;
-`—` means there is no project entry point to compare. The online catalog is still
-refreshed, but listing does not download task files or claim that a matching local
-cache is the latest published version. Use `--save` to refresh cached task files.
+| State | I | M |
+| ----- | - | - |
+| Tracked task present, matches cache | ✓ | ✓ |
+| Tracked task present, differs | ✓ | X |
+| Tracked task present, comparison files unavailable | ✓ | ? |
+| No project entry point, including a deleted tracked task | — | — |
+| Untracked project copy | ? | ✓, X, or ? |
+
+`?` means unknown/untracked; `—` means not applicable. Comparison includes support
+files and checks actual downloaded local cache files, or private originals.
+Discovery walks upward; `--use-dir` selects an exact directory. Listing also
+works outside a project and does not write project files.
+
+The online catalog is still refreshed, but listing does not download task files
+or claim that a matching local cache is the latest published version.
+Use `--save` to refresh cached task files.
 
 ## Names and calls between tasks
 
