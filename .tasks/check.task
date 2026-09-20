@@ -1,0 +1,7 @@
+description: Run checks for git and dotnet
+require_at_least_1_step: true
+steps:
+  - run: "_/git/check"
+    optional: true
+  - run: "_/dotnet/check"
+    optional: true
