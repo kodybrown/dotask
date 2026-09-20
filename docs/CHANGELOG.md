@@ -149,3 +149,13 @@ acceptance, installation, and publication.
   Release tests plus formatting, documentation, catalog, and shim checks. Live
   example help matched both layouts; all 79 checked local links/anchors resolved.
   `git diff --check` passed. Windows/macOS acceptance remains pending.
+
+### 2026-09-20 Shared-task listing status
+
+- Align descriptions in `--list` and show installed, untracked, missing, and absent
+  project tasks alongside comparisons with local cache files or private originals.
+- Compare support files as well as entry points without changing project tracking
+  or downloading task files. Keep listing available outside a project.
+- Verification: `./build.sh` passed all 342 Release tests, formatting, documentation,
+  catalog freshness, and shim checks. A source-built listing confirmed alignment;
+  `git diff --check` passed. Windows/macOS acceptance remains pending.

@@ -29,12 +29,13 @@ internal sealed class SharedTaskCommand( SharedTaskStore store, TextWriter outpu
     }
     if (action is "--list" or "--save") {
       var tasks = await SelectAvailableAsync(selections, refresh: true, includeDependencies: action == "--save", token);
+      if (action == "--list" && tasks.Count > 0) {
+        WriteList(tasks, invocation, command.UseDirectory, token);
+      }
       foreach (var (id, task) in tasks) {
         if (action == "--save") {
           await store.SaveAsync(id.Split('/')[0], task, token);
           output.WriteLine($"Saved {id}");
-        } else {
-          output.WriteLine($"{id}  {task.Description}");
         }
       }
       if (tasks.Count == 0) {
@@ -175,6 +176,43 @@ internal sealed class SharedTaskCommand( SharedTaskStore store, TextWriter outpu
       output.WriteLine(changes.Count == 0 ? "Project tasks are up to date." : "Project tasks and tracking updated. Review and commit the changes.");
     }
     return 0;
+  }
+
+  private void WriteList( SortedDictionary<string, SharedTask> tasks, string invocation, string? useDirectory, CancellationToken token )
+  {
+    var project = TaskDirectory.Locate(invocation, useDirectory, allowMissing: useDirectory is null);
+    var prefix = Path.GetRelativePath(project.RootDirectory, project.DirectoryPath).Replace(Path.DirectorySeparatorChar, '/');
+    var lockPath = SharedTaskFiles.Resolve(project.RootDirectory, ".dotasks-lock.yaml");
+    var tracking = TaskLock.Read(File.Exists(lockPath) ? File.ReadAllBytes(lockPath) : null, prefix);
+    var rows = tasks.Select(pair =>
+    {
+      token.ThrowIfCancellationRequested();
+      var (id, task) = pair;
+      var source = id.Split('/')[0];
+      tracking.Tasks.TryGetValue(id, out var installed);
+      var entry = SharedTaskFiles.Resolve(project.DirectoryPath, id + ".cs");
+      var present = File.Exists(entry);
+      var status = present ? installed is null ? "Untracked" : "Installed"
+        : installed is null ? "Not in project" : "Missing";
+      var comparison = "—";
+      if (present) {
+        var paths = task.Files.Select(f => source + "/" + f.Path)
+          .Union(installed?.Files.Keys.AsEnumerable() ?? [], StringComparer.Ordinal).ToArray();
+        var pairs = paths.Select(path => (
+          Project: SharedTaskFiles.HashFile(SharedTaskFiles.Resolve(project.DirectoryPath, path)),
+          Cached: SharedTaskFiles.HashFile(SharedTaskFiles.Resolve(
+            source == "private-tasks" ? store.Options.PrivateDirectory : store.Options.CacheDirectory,
+            source == "private-tasks" ? path[(source.Length + 1)..] : path)))).ToArray();
+        comparison = pairs.Any(p => p.Cached is null) ? "Unavailable"
+          : pairs.All(p => p.Project == p.Cached) ? source == "private-tasks" ? "Matches original" : "Matches cache" : "Differs";
+      }
+      return (Id: id, Status: status, Comparison: comparison, task.Description);
+    }).ToArray();
+    var width = Math.Max(4, rows.Max(r => r.Id.Length));
+    output.WriteLine($"{"Task".PadRight(width)}  {"Project",-14}  {"Comparison",-16}  Description");
+    foreach (var row in rows) {
+      output.WriteLine($"{row.Id.PadRight(width)}  {row.Status,-14}  {row.Comparison,-16}  {row.Description}");
+    }
   }
 
   private static Dictionary<string, string> FileMap( TaskLock data ) => data.Tasks.Values.SelectMany(t => t.Files)

@@ -505,3 +505,13 @@ The source-built CLI displayed the expected concise and verbose help for
 `examples/basic/.tasks`, retaining the detailed-help hint in both modes. All 79
 checked local Markdown links/anchors resolved, and `git diff --check` passed.
 Native Windows/macOS acceptance remains pending. No installation was changed.
+
+## Shared-task listing status (2026-09-20)
+
+On Linux, `./build.sh` passed 342 Release tests, formatting, documentation,
+catalog freshness, and bundled shim checks. New tests cover aligned descriptions,
+tracked/untracked/missing/absent tasks, actual cache comparison after catalog
+refresh, unavailable cached files, private support-file changes, and listing
+outside a project without creating task files. A source-built CLI listing using
+an isolated cache and the repository catalog confirmed the column layout.
+`git diff --check` passed. Native Windows/macOS acceptance remains pending.

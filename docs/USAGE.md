@@ -483,3 +483,11 @@ it is not passed to task parameters or child tools. Normal task stdout and
 failure exit codes are unchanged. Shared-task management reports its action and
 invocation directory. No parameter or settings values are dumped by execution
 tracing; verbose project summaries intentionally show configured settings.
+
+## Shared-task listing status
+
+`dotask --list` aligns descriptions and shows whether each task is installed,
+untracked, missing, or absent from the project. It compares project task/support
+files with downloaded cache files (or private originals), reporting a match,
+difference, or unavailable comparison. See [listing status](SHARED-TASKS.md#shared-task-listing-status)
+for the labels and cache behavior.

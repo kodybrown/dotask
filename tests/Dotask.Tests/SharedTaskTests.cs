@@ -12,6 +12,56 @@ namespace DoTask.Tests;
 
 public sealed class SharedTaskTests
 {
+  [Fact]
+  public async Task ListingAlignsDescriptionsAndComparesActualCacheWithoutChangingProject()
+  {
+    using var fixture = new Fixture();
+    fixture.Online("tools/one");
+    fixture.Online("tools/longer");
+    fixture.WriteCatalog();
+    Assert.Equal(0, (await fixture.Run("--add", "tools/one")).Code);
+    var before = File.ReadAllBytes(fixture.LockPath);
+    var listing = await fixture.Run("--list");
+    Assert.Equal(0, listing.Code);
+    Assert.Contains("Installed       Matches cache", listing.Output);
+    Assert.Contains("Not in project", listing.Output);
+    var rows = listing.Output.Split('\n').Where(line => line.Contains("Example task")).ToArray();
+    Assert.Equal(2, rows.Length);
+    Assert.Equal(rows[0].IndexOf("Example task", StringComparison.Ordinal), rows[1].IndexOf("Example task", StringComparison.Ordinal));
+    // Refreshing the online catalog must not change the comparison with downloaded files.
+    fixture.CatalogTasks.Clear();
+    fixture.Online("tools/one", "Console.WriteLine(123);");
+    fixture.WriteCatalog();
+    Assert.Contains("Matches cache", (await fixture.Run("--list")).Output);
+    File.AppendAllText(fixture.Installed("_/tools/one"), "// local edit");
+    Assert.Contains("Differs", (await fixture.Run("--list")).Output);
+    File.Delete(Path.Combine(fixture.Options.CacheDirectory, "_/tools/one.cs"));
+    Assert.Contains("Unavailable", (await fixture.Run("--list")).Output);
+    File.Delete(fixture.Installed("_/tools/one"));
+    Assert.Contains("Missing", (await fixture.Run("--list")).Output);
+    Assert.Equal(before, File.ReadAllBytes(fixture.LockPath));
+    Assert.False(Directory.Exists(Path.Combine(fixture.Project.Tasks, ".dotask")));
+  }
+
+  [Fact]
+  public async Task ListingDetectsPrivateSupportChangesAndUntrackedCopies()
+  {
+    using var fixture = new Fixture();
+    fixture.Private("tools/one", metadata: "/// <requires file=\"tools/data.txt\" />");
+    var support = Path.Combine(fixture.Options.PrivateDirectory, "tools/data.txt");
+    File.WriteAllText(support, "original");
+    Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/one")).Code);
+    Assert.Contains("Matches original", (await fixture.Run("--list", "private-tasks/*")).Output);
+    File.WriteAllText(support, "changed");
+    Assert.Contains("Differs", (await fixture.Run("--list", "private-tasks/*")).Output);
+    File.Delete(fixture.LockPath);
+    Assert.Contains("Untracked", (await fixture.Run("--list", "private-tasks/*")).Output);
+    Directory.Delete(fixture.Project.Tasks, true);
+    File.Delete(Path.Combine(fixture.Project.Root, ".dotasks.yaml"));
+    Assert.Contains("Not in project", (await fixture.Run("--list", "private-tasks/*")).Output);
+    Assert.False(Directory.Exists(fixture.Project.Tasks));
+  }
+
   [Theory]
   [InlineData("dotnet/build")]
   [InlineData("_/dotnet/build")]
