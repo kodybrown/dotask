@@ -13,7 +13,7 @@ registration step.
   build.cs
   _/dotnet/build.cs
   _/dotnet/run.cs
-  release.cs
+  create-installer.cs
 ```
 
 This is a **0.1.0 local preview**, with no public package release yet. Windows,
@@ -77,12 +77,13 @@ From this checkout after the build succeeds:
 .\build.cmd install
 ```
 
-The task publishes a self-contained Release application for your host and
-installs it without administrator access. Each version/build gets a separate
+The task executes the project's `create-installer`, then runs the resulting
+standalone installer. Dotask's installer contains a self-contained Release
+application for your host and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and
 `.shim` file; Linux/macOS get a symlink. No shim compiler is needed.
 
-The command directory is `--bin-dir` when provided, otherwise the `BIN`
+The command directory is the installer’s `--bin-dir` when provided, otherwise the `BIN`
 environment variable, otherwise the platform default below. If it is not already
 on PATH, add **that one directory** once:
 
@@ -92,6 +93,8 @@ on PATH, add **that one directory** once:
 - **Windows:** add `%LOCALAPPDATA%\bin` to your **user Path** in Environment
   Variables, then open a new terminal.
 
+Pass installer options through `--installer-args` as a JSON array; see the
+[installer examples](docs/INSTALLATION.md#install-dotask-from-its-source).
 For a custom command directory, substitute its path. The installer prints the
 selected locations and PATH diagnostics; it never edits PATH or shell profiles.
 Then run `dotask --version` (expected: `dotask 0.1.0`).

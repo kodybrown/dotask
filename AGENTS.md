@@ -134,8 +134,10 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   project/target help reads YAML and checks effective defaults.
 - CLI-only `--help`/`-h` skips project discovery and reads; target completion skips project configuration; management completion stays local.
 - Keep YAML declarative and keep services deferred.
-- Application installation takes published files through `InstallationDefinition`;
-  .NET publishing stays inside the shared `dotnet/install.cs` task. See `docs/INSTALLATION.md`.
+- Shared `dotnet/install` requires a project `create-installer` returning an
+  `InstallerArtifact`, then launches it. It never falls back to copying files.
+  Dotask’s own standalone installer uses `InstallationDefinition` and preserves
+  existing ownership; publishing stays in `.tasks/create-installer.cs`. See `docs/INSTALLATION.md`.
   Preserve installation ownership, immutable builds, and activation recovery journals.
   Test with explicit temporary install/bin roots; do not modify the user's active install.
 - Use an ambient `BuildContext.Current`, ordinary composition, and no DI container.

@@ -8,7 +8,7 @@ run your first example. The preview is not yet published to a public package fee
 | Build and verify the source checkout                 | [Build instructions](../README.md#build-and-verify)               |
 | Install after building                               | [Install dotask](../README.md#install-dotask)                     |
 | Initialize a project                                 | [Project setup](USAGE.md#initialize-a-project)                    |
-| Install applications, choose directories, or migrate a global tool | [Current-user installation](INSTALLATION.md) |
+| Install applications, choose directories, or migrate a global tool | [Application installers](INSTALLATION.md) |
 | Try an example without installing                    | [Source preview](../README.md#try-the-example-without-installing) |
 | Run tasks and understand CLI behavior                 | [Usage guide](USAGE.md)                                          |
 | Download, share, update, or remove tasks safely       | [Shared tasks](SHARED-TASKS.md)                                  |

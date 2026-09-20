@@ -161,3 +161,22 @@ acceptance, installation, and publication.
 - Verification: `./build.sh` passed all 342 Release tests, formatting, documentation,
   catalog freshness, and shim checks. A source-built listing confirmed alignment;
   `git diff --check` passed. Windows/macOS acceptance remains pending.
+
+### 2026-09-20 Installer-driven application installation
+
+- Replace the shared .NET install task's direct publication/copy workflow with a
+  required project `create-installer`, for both console and GUI applications.
+  Add invocation-scoped installer results, platform validation, executable/MSI/
+  POSIX script/.NET assembly launchers, and token-preserving `installer-args`
+  overrides. Missing, ambiguous, failed, or resultless creators never fall back.
+- Add dotask's project-owned creator and standalone installer package, preserving
+  existing dotask installation ownership, immutable builds, and recovery records.
+  Creation respects evaluated output paths and snapshots a distributable directory.
+- Document installer-author responsibilities, custom task delegation, migration,
+  argument defaults, and native acceptance limits. Preserve unrelated task changes.
+- Verification: `./build.sh` passed 347 Release tests plus formatting, docs,
+  catalog, shim, and whitespace checks. Real isolated Linux installation/update,
+  repeat activation, installed version and greeting checks passed; evaluated
+  output paths remain under `/tmp/_dotnet`. All 81 checked documentation links
+  and anchors resolved. Windows/macOS and PTS GUI acceptance remain pending.
+  The active user installation was not changed; nothing was published or pushed.

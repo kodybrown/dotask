@@ -1,44 +1,165 @@
-# Install applications for the current user
+# Application installers
 
-The reusable `dotnet/install.cs` task publishes a console application and passes
-the output to DoTask's installation library. It does not require NuGet tool
-packaging. Windows, Linux, and macOS are supported by the implementation; consult
-[verification status](VERIFICATION.md) for the hosts actually exercised.
+`dotask install` creates and runs the project's installer for the current OS and
+architecture. Console and GUI applications follow the same workflow. There is no
+OutputType check, direct-copy fallback, installer discovery, or freshness guess.
+The project installer owns its application files, updates, shortcuts, and removal.
+Windows, Linux, and macOS have implementation support; see
+[verification status](VERIFICATION.md) for native acceptance.
+
+## Reuse the .NET task
+
+Add `dotnet/install` from the configured source, or update an existing tracked copy:
+
+```sh
+dotask --sync _/dotnet/install
+```
+
+Use the documented [local/private source workflow](SHARED-TASKS.md) when the newer
+catalog is not published. Updating the CLI alone does not update project tasks.
+The new task requires a library version exposing the installer APIs below.
+
+Create a project-owned `.tasks/create-installer.cs`. It builds an installer using
+your packaging technology, then calls `SetInstallerResultAsync` exactly once.
+It must not launch the installer. For example, after your build has produced an
+executable installer:
+
+```csharp
+await project.SetInstallerResultAsync(new InstallerArtifact {
+    FilePath = installerPath,
+    Kind = InstallerKind.Executable,
+    OS = project.OS,
+    Architecture = project.Architecture,
+    DefaultArguments = []
+});
+```
+
+Use the artifact's actual platform metadata, not the host values if your build
+cross-compiles. This installation contract rejects non-host artifacts. An empty
+argument list means the installer provides its normal interactive/default behavior;
+the library never adds silent, elevation, or scope flags.
+
+The shared task resolves `create-installer` through the normal catalog, executes
+it on every invocation, reads its structured result, validates it, and launches
+it. Only genuine absence produces missing-target guidance; ambiguity, build
+failure, invalid results, and cycles fail. The result is stored in a private,
+invocation-scoped session and removed afterward. It cannot be reused by a later
+invocation. A YAML group can wrap a producer, but must return exactly one artifact.
+C# wrappers can use `CreateInstallerAsync("packaging/create-installer")` followed
+by `SetInstallerResultAsync(artifact)` to forward a nested producer's result.
+
+The single shared option is `--installer-args`: a JSON array of string tokens.
+Explicit tokens replace `DefaultArguments`; they do not append. `[]` clears the
+defaults. Spaces, quotes, empty strings, Unicode, and shell metacharacters remain
+literal. Platform launch arguments, such as MSI's `/i` and the artifact path,
+are not removed. Invalid JSON or token values fail before creating an installer.
+
+```sh
+dotask install
+dotask install --installer-args '["--scope","user"]'
+```
+
+An exact `.tasks/install.cs` or `.tasks/install.task` overrides the short `install`
+name. Delegate explicitly to `_/dotnet/install` to avoid recursion:
+
+```csharp
+await BuildContext.Current.ExecTargetAsync("_/dotnet/install",
+    new Dictionary<string, string> { ["installer-args"] = "[\"--scope\",\"user\"]" });
+```
+
+A future `deploy` task can own deployment to a target environment. `release` has
+no special installation meaning. Existing publishing/packaging tasks are not
+renamed automatically; `dotnet publish` remains a build primitive.
+
+## Installer library contract
+
+`InstallerArtifact` contains an absolute `FilePath`, `Kind`, `OS`, `Architecture`,
+and optional `DefaultArguments`. `BuildContext.SetInstallerResultAsync` resolves
+relative artifact paths against the project root. The standalone
+`InstallerRunner` requires an absolute path. The artifact must exist and match
+the host OS and OS architecture; unknown kinds and invalid arguments fail.
+
+| Kind | Launch behavior |
+| --- | --- |
+| `Executable` | Execute the artifact; Windows requires `.exe`, Unix requires execute permissions |
+| `Msi` | Windows system `msiexec.exe /i <artifact>`; `.msi` required |
+| `ShellScript` | Linux/macOS `/bin/sh <artifact>`; script must be POSIX sh compatible |
+| `DotNetAssembly` | `dotnet <artifact>`; suitable runtime must be available |
+
+Package formats without a built-in kind require a project-authored installer
+wrapper. There is no universal package generator, privilege escalation, desktop
+shortcut generation, or shell command inference in the shared task.
+
+- `CreateInstallerAsync(target = "create-installer", parameters = null, cancellationToken)`
+  builds and returns the artifact using normal target resolution and parameter binding.
+- `SetInstallerResultAsync(artifact, cancellationToken)` returns one artifact.
+- `RunInstallerAsync(artifact, arguments = null, cancellationToken)` runs it;
+  null uses defaults, while an explicit list replaces them.
+- `InstallerRunner.ParseArguments(json)` decodes argument tokens for task options.
+- `InstallerRunner.RunAsync` also works outside an ambient task context.
+
+Launches use the artifact’s parent as the working directory and wait for the
+launched process. Windows executable installers use shell activation, honoring
+the installer’s elevation manifest without forcing `runas`; UAC cancellation is a
+launch failure. Other kinds inherit the environment and standard streams. Nonzero exit codes
+propagate as failures, including installer cancellation. MSI 1641 and 3010 are
+successful restart-required outcomes and are reported explicitly. Task cancellation
+attempts to stop the process tree; an elevated Windows installer may remain
+running if access is denied, which is reported. Installer rollback is the
+installer’s responsibility.
+The shared task reports the observed exit code, not independently verified
+installation success. An installer that detaches must supply a wrapper which
+waits for completion if that guarantee is needed.
 
 ## Install dotask from its source
-
-From the dotask checkout:
 
 ```sh
 ./build.sh install
 ```
 
-On Windows:
+On Windows, use `.\build.cmd install`. These launchers bootstrap the current
+library before calling the shared task. Run `./build.sh` / `build.cmd` first for
+the complete verification gate; installation does not run all tests.
 
-```powershell
-.\build.cmd install
-```
-
-These launchers build a temporary runner from the current source and execute the
-install task. The task publishes Release output for the host OS/architecture,
-self-contained by default. No installed dotask or shim compiler is required.
-Run `./build.sh` / `build.cmd` first when you also want the full verification gate;
-the install task itself publishes and installs without running all tests.
-
-Once this installation API is present in your installed dotask, `dotask install`
-works from the checkout too. An older installed dotask may not expose the new API:
-use the bootstrap launcher for the first upgrade, or whenever updating the shim
-binary while the installed Windows shim is running.
-
-To exercise installation without changing your normal command:
+Dotask's project-owned `create-installer` publishes the application and a standalone
+`dotask-installer` executable in Release for the current x64/ARM64 host. Both are
+self-contained by default. It respects evaluated MSBuild `PublishDir` values,
+then snapshots the installer and its payload into a unique sibling `installers`
+directory outside the publish directory. The next publish cannot change that
+snapshot. Distribute the entire printed directory, not just the executable.
+Creating it does not install anything and requires no installed dotask or shim compiler.
 
 ```sh
-./build.sh install --install-root ./artifacts/install-test/apps --bin-dir ./artifacts/install-test/bin
-./artifacts/install-test/bin/dotask --version
+./build.sh create-installer
+./build.sh create-installer --self-contained=false
 ```
 
-The Windows equivalents use `.\build.cmd` and
-`.\artifacts\install-test\bin\dotask.exe`.
+The framework-dependent variant requires .NET 10 on the destination. Configure
+creator options in `.dotasks.yaml` under `targets.create-installer.defaults`;
+the shared install task does not forward build options implicitly.
+
+Dotask's standalone installer accepts `--install-root PATH` and `--bin-dir PATH`.
+Use absolute paths for these arguments, since the working directory is the
+installer package directory. To test without changing the active installation:
+
+```sh
+./build.sh install --installer-args '["--install-root","/tmp/dotask-test/apps","--bin-dir","/tmp/dotask-test/bin"]'
+/tmp/dotask-test/bin/dotask --version
+```
+
+PowerShell equivalent (use an unused test directory):
+
+```powershell
+.\build.cmd install --installer-args '["--install-root","C:/Temp/dotask-test/apps","--bin-dir","C:/Temp/dotask-test/bin"]'
+C:/Temp/dotask-test/bin/dotask.exe --version
+```
+
+The following ownership and directory rules describe **dotask's installer**, not
+arbitrary project installers. It retains the old dotask installation identity and
+receipt format, so existing owned installations are updated rather than duplicated.
+Keep the original command directory and location overrides. Existing NuGet global
+tools and unrelated installers are never adopted. Rollback/pruning/uninstall
+commands remain deferred for dotask's installer.
 
 ## Locations and command lookup
 
@@ -157,46 +278,12 @@ original spelling when updating.
 Dedicated relocation, rollback, pruning and uninstall commands are deferred.
 Normal installation does not delete older builds.
 
-## Reuse the .NET task
+## Low-level installation engine
 
-Add the shared task when the online catalog is published, or use the documented
-[local/private source workflow](SHARED-TASKS.md) during development:
-
-```sh
-dotask --add dotnet/install
-dotask help _/dotnet/install
-dotask _/dotnet/install
-```
-
-The task is self-contained in `install.cs`, including its .NET publishing and
-MSBuild metadata queries. Copy that one file if copying manually; there is no
-separate `DotNetInstall.cs` helper. Configure `settings.project` in `.dotasks.yaml`
-with the `.csproj` path.
-The task supports console applications (`OutputType=Exe`) on x64 and ARM64 hosts.
-Linux selects `linux-musl` when running on a musl .NET host; otherwise it selects
-`linux`. Platform-specific acceptance is listed in the verification document.
-It reads the evaluated `PublishDir` after publishing, respecting custom MSBuild
-output policies. No `bin/Release` path is assumed or overridden.
-
-| Option | Default / behavior |
-| --- | --- |
-| `--configuration`, `-c` | `Release`; accepts `Debug` or `Release` |
-| `--self-contained` | `true`; includes the runtime |
-| `--framework` | Required for multi-target projects without a selected framework |
-| `--dotnet` | `dotnet` executable |
-| `--bin-dir` | Explicit command directory override |
-| `--install-root` | Application root override |
-| `--app-id` | Evaluated `AssemblyName` |
-| `--command` | Evaluated `ToolCommandName`, otherwise `AssemblyName` |
-
-Use `--self-contained=false` for a framework-dependent application. Installing a
-self-contained dotask does **not** eliminate its SDK requirement: dotask still
-compiles C# tasks. This task does not create desktop shortcuts, install services,
-register a system package, or implement Windows Apps & Features registration.
-
-## Library contract
-
-The application files must already be published. C# tasks call:
+This API remains available for installer authors and compatibility. The shared
+install task never calls it as a fallback. Dotask's own generated installer uses
+it, retaining the same ownership and recovery format as older dotask installations.
+The application files must already be published:
 
 ```csharp
 var project = BuildContext.Current;
@@ -226,7 +313,8 @@ directories at the project root and links cancellation to the task lifetime.
 `UserInstaller.InstallAsync(definition, cancellationToken)` is also available
 without an ambient context; relative paths then use the process working directory.
 
-The library owns installation and command activation. The shared .NET task owns
-publishing and project metadata. The shim only launches an executable. The
-definition is serializable, but no public JSON installation CLI or non-C# task
-runtime is implemented yet. See the [shim source and build instructions](../src/Dotask.Shim/README.md).
+Other applications migrating from the old shared task must explicitly choose how
+their installer handles existing `.dotask-install.json` ownership. An MSI or other
+installer does not automatically understand those records. Do not overwrite or
+adopt such installations merely because the destination matches. There is no
+automatic cross-installer migration or removal in the shared task.

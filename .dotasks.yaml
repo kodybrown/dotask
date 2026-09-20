@@ -5,6 +5,6 @@ settings:
   solution: dotask.slnx
   project: src/Dotask.Cli/Dotask.Cli.csproj
 targets:
-  dotnet-publish:
+  create-installer:
     defaults:
       self-contained: true

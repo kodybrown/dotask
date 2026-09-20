@@ -20,12 +20,12 @@ internal sealed record ExecutionContextData
   public string[] CallChain { get; init; } = [];
 }
 
-internal enum TargetCallOperation { Execute, Exists, ExecuteIfExists }
+internal enum TargetCallOperation { Execute, Exists, ExecuteIfExists, CreateInstaller }
 
 internal sealed record TargetCall( ExecutionContextData Context, string Target, JsonElement Parameters,
   TargetCallOperation Operation = TargetCallOperation.Execute );
 
-internal sealed record TargetCallReply( bool Exists, int? ExitCode = null, string? Error = null );
+internal sealed record TargetCallReply( bool Exists, int? ExitCode = null, string? Error = null, InstallerArtifact? Installer = null );
 
 internal static class ContextFile
 {

@@ -28,10 +28,9 @@ public sealed class InstallationIntegrationTests
   }
 
   [Fact]
-  public async Task SharedInstallTaskPublishesRunsAndUpdatesWithCustomOutputPaths()
+  public async Task PublishedApplicationInstallerRunsAndUpdatesWithCustomOutputPaths()
   {
     using var project = new TestProject();
-    CopyShared(project, "dotnet/install.cs");
     project.Write(".dotasks.yaml", "version: 1\nsettings:\n  project: 'source app/Probe.csproj'\n");
     // Isolated fixture properties, outside the source checkout; intentionally
     // use a nonstandard PublishDir to catch any bin/Release assumptions.
@@ -95,8 +94,30 @@ public sealed class InstallationIntegrationTests
       """);
     var bin = Path.Combine(project.Root, "commands with spaces 日本語");
     var root = Path.Combine(project.Root, "installed apps 日本語");
-    string[] install = ["install", "--self-contained=false", "--bin-dir", bin, "--install-root", root];
-    var result = await project.RunAsync(install);
+    async Task<ProcessResult> Install()
+    {
+      var publish = await ProcessRunner.RunAsync(new ProcessDefinition {
+        Executable = "dotnet",
+        Arguments = ["publish", Path.Combine(project.Root, "source app/Probe.csproj"), "--self-contained=false", "-p:UseAppHost=true"],
+        WorkingDirectory = project.Root,
+        CaptureOutput = true,
+        ThrowOnError = false
+      }, CancellationToken.None);
+      if (publish.ExitCode != 0) {
+        return publish with { StandardError = publish.StandardOutput + publish.StandardError };
+      }
+
+      var installed = await UserInstaller.InstallAsync(new InstallationDefinition {
+        AppId = "installed-probe",
+        Version = "2.3.4",
+        SourceDirectory = Path.Combine(project.Root, "custom published files"),
+        Commands = [new InstalledCommand("probe", OperatingSystem.IsWindows() ? "installed-probe.exe" : "installed-probe")],
+        BinDirectory = bin,
+        InstallRoot = root
+      });
+      return new ProcessResult(0, installed.Reused ? "Activated existing" : "Installed", "");
+    }
+    var result = await Install();
     Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
     var app = Path.Combine(root, "installed-probe");
     var first = Assert.Single(Directory.GetDirectories(app));
@@ -115,12 +136,12 @@ public sealed class InstallationIntegrationTests
         InstallationFiles.PhysicalDirectory(output.RootElement.GetProperty("Cwd").GetString()!));
       Assert.Equal("first build", output.RootElement.GetProperty("Data").GetString());
     }
-    result = await project.RunAsync(install);
+    result = await Install();
     Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
     Assert.Contains("Activated existing", result.StandardOutput);
     Assert.Single(Directory.GetDirectories(app));
     project.Write("source app/data.txt", "second build");
-    result = await project.RunAsync(install);
+    result = await Install();
     Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
     Assert.Equal(2, Directory.GetDirectories(app).Length);
     Assert.Equal("first build", File.ReadAllText(Path.Combine(first, "data.txt")));
@@ -128,7 +149,7 @@ public sealed class InstallationIntegrationTests
 
     // A compiler failure must leave the existing command usable.
     project.Write("source app/Program.cs", "this is not valid C#;");
-    result = await project.RunAsync(install);
+    result = await Install();
     Assert.NotEqual(0, result.ExitCode);
     Assert.Contains("error", result.StandardError);
     Assert.Contains("second build", (await RunProbe(command, project.Root, [])).StandardOutput);
@@ -177,10 +198,4 @@ public sealed class InstallationIntegrationTests
     return new(process.ExitCode, await stdout, await stderr);
   }
 
-  private static void CopyShared( TestProject project, string relative )
-  {
-    using var stream = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;
-    using var reader = new StreamReader(stream);
-    project.Write(".tasks/_/" + relative, reader.ReadToEnd());
-  }
 }

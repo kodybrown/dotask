@@ -58,12 +58,12 @@
     {
       "id": "dotnet/install",
       "entryPoint": "dotnet/install.cs",
-      "description": "Publish and install the configured application for the current user.",
+      "description": "Create and run the project's installer for this OS and architecture.",
       "runtime": "csharp",
       "files": [
         {
           "path": "dotnet/install.cs",
-          "sha256": "0279bebf58253c5dd950190e4c8415e917c81bc4f632201df13593715bb28330"
+          "sha256": "d5814de76fe4e7f8997fd5ec4676103c6d3a3f12b8cb9e2940fe7ded1274bc82"
         }
       ],
       "requires": []

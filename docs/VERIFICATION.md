@@ -1,5 +1,37 @@
 # Verification
 
+## Installer-driven installation (2026-09-20)
+
+The shared `_/dotnet/install` now requires the project's `create-installer` and
+runs its structured result. It has no console/GUI distinction or direct-copy
+fallback. Dotask's own creator builds a standalone installer directory; the
+installer retains the previous ownership/receipt format.
+
+`./build.sh` passed 347 Release tests, formatting, required documentation,
+shared catalog freshness, bundled shim hashes, and Git whitespace checks on Linux.
+New coverage includes missing/ambiguous/failed/resultless creators, cycle handling,
+fresh invocation results, exact argument replacement, custom install delegation,
+artifact/platform validation, native executable and POSIX script execution, and
+standalone dotask installer upgrades of existing owned installations. Existing
+real published-app and shim integration coverage remains exercised through the
+low-level installation engine.
+
+Real `./build.sh install --installer-args ...` runs used only
+`/tmp/dotask-installer-acceptance-20260920/apps` and its sibling `bin` directory.
+Fresh installation and a changed build both succeeded, and rerunning the generated
+standalone installer reported `Activated existing`. The installed `--version`
+and basic greeting example passed. Evaluated installer `BaseOutputPath`,
+`BaseIntermediateOutputPath`, and `PublishDir` remain under `/tmp/_dotnet`.
+All 81 checked relative documentation links/anchors resolved.
+
+Windows executable shell activation/UAC, MSI restart/cancellation outcomes, macOS,
+and PTS GUI installation require native acceptance. No active user installation,
+PATH, PTS task, or user-maintained note was changed. This work was not published,
+pushed, or deployed. Installer directory distribution is implemented; automatic
+package generation for other projects and migration from unrelated installers
+are not provided.
+
+
 ## Missing installed launcher repair (2026-09-18)
 
 Reinstalling now recreates missing owned launchers while preserving the refusal

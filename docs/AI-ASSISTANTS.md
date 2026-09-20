@@ -142,19 +142,20 @@ the library before claiming it exists. Ordinary .NET APIs can fill gaps.
 ## Rules that prevent common mistakes
 
 For installation tasks, read [the installation contract](INSTALLATION.md).
-`BuildContext.InstallAsync(InstallationDefinition, CancellationToken)` installs
-already published files; publishing and language-specific metadata stay in the
-task sources. The reusable `dotnet/install.cs` contains its publishing/query
-methods in the same file; it needs no separate helper source. Use the bootstrap
-launcher for the initial upgrade from an older library, and explicit temporary
-`--install-root` / `--bin-dir` directories for isolated tests. Do not remove
-ownership/recovery records, edit hashes, or overwrite an existing global-tool
-launcher to bypass a conflict. If an owned launcher was deleted, rerun the
-bootstrap install with its original command directory to recreate it. Existing
-modified launchers remain protected; no force flag is needed for a missing one.
-Installation never edits PATH, removes old builds,
-or retargets an existing `dt` shortcut automatically. Other task languages and a
-public JSON installation interface remain deferred.
+The shared `_/dotnet/install` always invokes the project's `create-installer`,
+then runs its returned `InstallerArtifact`. It does not publish or copy the
+application itself. `create-installer` must build only, then call
+`SetInstallerResultAsync` once. Use `CreateInstallerAsync` and `RunInstallerAsync`
+for custom orchestration; do not scrape stdout or guess artifact paths.
+`installer-args` is a JSON string array replacing default installer arguments.
+An exact project `install` can delegate to `_/dotnet/install` explicitly.
+
+Dotask's own standalone installer retains its previous ownership records and
+versioned layout. Use the bootstrap launcher when upgrading an older CLI/library,
+and pass explicit temporary absolute install/bin paths via `--installer-args`
+for tests. Never remove ownership/recovery records or overwrite an unrelated
+launcher to bypass conflicts. `UserInstaller` / `InstallationDefinition` remain
+low-level APIs for installer authors, not a fallback for missing creator tasks.
 
 | Need                       | Use / behavior                                                                                                                       |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |

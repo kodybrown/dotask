@@ -198,9 +198,14 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `_/dotnet/check`   | Checks solution presence and SDK/MSBuild/formatter versions                                      |
 | `_/dotnet/verify`  | Runs installed official check/test/format tasks; skips missing ones and stops on failure         |
 | `_/dotnet/publish` | `settings.project`; publishes for the requested OS/architecture                                  |
-| `_/dotnet/install` | `settings.project`; publishes and installs for the current user; all task logic is in one file   |
+| `_/dotnet/install` | Executes the project's `create-installer`, validates its result, and runs its installer   |
 | `_/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
 | `_/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
+
+`install` requires a project-owned `create-installer` for console and GUI apps.
+See [installer contracts and customization](INSTALLATION.md) for structured
+results, `installer-args`, and overriding the default task. No application files
+are copied directly by the shared task.
 
 The build/test/format targets need the `dotnet` executable. The publish target
 also uses `dotnet`; it creates publish output, not a public package release or
@@ -420,7 +425,10 @@ Use `var project = BuildContext.Current; var config = project.Config;` in `Main`
 | `Config`, `Parameters`                                  | Read-only typed configuration and validated parameters                                  |
 | `CancellationToken`                                     | Cancellation for the running target                                                     |
 | `Files`                                                 | Filesystem helpers                                                                      |
-| `InstallAsync(definition, cancellationToken)` | Install published files for the current user; see [installation definitions and results](INSTALLATION.md#library-contract) |
+| `CreateInstallerAsync(target, parameters, cancellationToken)` | Build and read the project's installer result; see [installer contract](INSTALLATION.md#installer-library-contract) |
+| `SetInstallerResultAsync(artifact, cancellationToken)` | Return one installer artifact to the calling task |
+| `RunInstallerAsync(artifact, arguments, cancellationToken)` | Validate and run the installer, using defaults unless arguments are supplied |
+| `InstallAsync(definition, cancellationToken)` | Install published files for the current user; see [installation definitions and results](INSTALLATION.md#low-level-installation-engine) |
 | `Path(...)`                                             | Resolve explicit portable path components against the root                              |
 | `DirSeparator`, `InvalidFileChars`, `InvalidDirChars`   | Host path facts; directory-name characters, not complete path validation                |
 

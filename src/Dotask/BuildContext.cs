@@ -56,6 +56,33 @@ public sealed class BuildContext
     }, linked.Token);
   }
 
+  /// <summary>Build a fresh installer using the project's target and read its invocation-scoped result.</summary>
+  public async Task<InstallerArtifact> CreateInstallerAsync( string target = "create-installer", object? parameters = null,
+    CancellationToken cancellationToken = default )
+  {
+    if (!await TargetExistsAsync(target, cancellationToken)) {
+      throw new TaskException($"Installation requires a '{target}' target. Create one that builds an installer and calls SetInstallerResultAsync.");
+    }
+    return (await InvokeTargetAsync(target, parameters, TargetCallOperation.CreateInstaller, cancellationToken))!.Installer!;
+  }
+
+  /// <summary>Return one installer artifact to the caller; relative paths start at the project root.</summary>
+  public async Task SetInstallerResultAsync( InstallerArtifact artifact, CancellationToken cancellationToken = default )
+  {
+    using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
+    artifact = artifact with { FilePath = Path(artifact.FilePath) };
+    InstallerRunner.Validate(artifact);
+    await ContextFile.WriteToAsync(System.IO.Path.Combine(_data.SessionDirectory, "installer-result.json"), artifact, linked.Token);
+  }
+
+  /// <summary>Run an installer with its defaults, or replace those defaults with explicit argument tokens.</summary>
+  public async Task<ProcessResult> RunInstallerAsync( InstallerArtifact artifact, IReadOnlyList<string>? arguments = null,
+    CancellationToken cancellationToken = default )
+  {
+    using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
+    return await InstallerRunner.RunAsync(artifact with { FilePath = Path(artifact.FilePath) }, arguments, linked.Token);
+  }
+
   public Task<ProcessResult> RunAsync( string executable, IReadOnlyList<string> arguments,
     CancellationToken cancellationToken = default ) => RunAsync(new ProcessDefinition {
       Executable = executable,
@@ -108,6 +135,16 @@ public sealed class BuildContext
         Arguments = [_data.CliAssembly, "__exec", file],
         WorkingDirectory = RootDirectory
       }, linked.Token);
+      if (operation == TargetCallOperation.CreateInstaller) {
+        var resultPath = System.IO.Path.Combine(callDirectory, "installer-result.json");
+        if (!File.Exists(resultPath)) {
+          throw new TaskException($"Target '{target}' did not return an installer. Call SetInstallerResultAsync after creating it.");
+        }
+        var artifact = JsonSerializer.Deserialize<InstallerArtifact>(await File.ReadAllTextAsync(resultPath, linked.Token))
+          ?? throw new TaskException("Invalid installer result.");
+        InstallerRunner.Validate(artifact);
+        return new TargetCallReply(true, Installer: artifact);
+      }
       if (operation == TargetCallOperation.Execute) {
         return null;
       }

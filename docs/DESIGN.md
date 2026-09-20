@@ -143,11 +143,19 @@ merge, source naming, and preview publishing contracts.
 
 ## Application installation
 
-The shared `dotnet/install.cs` task owns .NET publication and evaluated project
-metadata, with its private publishing/query methods in the same file. It queries
-the actual `PublishDir` after publishing;
-the generic library has no MSBuild dependency. `InstallationDefinition` describes
-published files, identity/version and command entry points.
+The shared `dotnet/install.cs` coordinates a project-owned `create-installer`
+and launches its structured `InstallerArtifact`. Console and GUI apps use the
+same contract; there is no direct-copy fallback or search for existing packages.
+Creation and launching are separate, and invocation-scoped results prevent stale
+handoffs. The library validates platform identity and launches supported installer
+kinds with tokenized defaults or explicit replacements. Projects own packaging,
+installer UI/elevation requirements, shortcuts, and application lifecycle.
+
+Dotask's own creator publishes a standalone installer plus application payload,
+respecting evaluated output paths. That installer uses `InstallationDefinition`
+and the existing ownership engine, so the transition updates existing dotask
+installations rather than creating a competing installation. Other applications
+need an explicit migration plan for older dotask-managed installs.
 
 `UserInstaller` copies verified snapshots to immutable version/fingerprint
 directories, records ownership, and activates commands under per-root/bin locks.
