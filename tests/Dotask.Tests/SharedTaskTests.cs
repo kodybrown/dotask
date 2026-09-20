@@ -30,6 +30,49 @@ public sealed class SharedTaskTests
   }
 
   [Fact]
+  public async Task SharedManagementRemovesIdleStateAndDryRunPreservesIt()
+  {
+    using var fixture = new Fixture();
+    fixture.Private("tools/one");
+    Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/one")).Code);
+    var state = Path.Combine(fixture.Project.Tasks, ".dotask");
+    Assert.False(Directory.Exists(state));
+    fixture.Project.Write(".tasks/.dotask/owner", "dotask shared-task transaction state v1\n");
+    fixture.Project.Write(".tasks/.dotask/.gitignore", "*\n");
+    Assert.Equal(0, (await fixture.Run("--sync", "--dry-run")).Code);
+    Assert.True(Directory.Exists(state));
+    Assert.Equal(0, (await fixture.Run("--sync")).Code);
+    Assert.False(Directory.Exists(state));
+    Assert.Equal(0, (await fixture.Run("--remove", "private-tasks/tools/one")).Code);
+    Assert.False(Directory.Exists(state));
+  }
+
+  [Theory]
+  [InlineData("notes.txt", "keep")]
+  [InlineData("transaction/notes.txt", "keep")]
+  [InlineData(".gitignore", "custom")]
+  public void IdleCleanupPreservesUnrecognizedFiles( string path, string content )
+  {
+    using var project = new TestProject();
+    project.Write(".tasks/.dotask/owner", "dotask shared-task transaction state v1\n");
+    var file = project.Write(".tasks/.dotask/" + path, content);
+    new ProjectTaskTransaction(TaskDirectory.Locate(project.Root)).Apply([], CancellationToken.None);
+    Assert.Equal(content, File.ReadAllText(file));
+    Assert.True(File.Exists(Path.Combine(project.Tasks, ".dotask/owner")));
+  }
+
+  [Fact]
+  public void IdleCleanupRemovesRecognizedOrphanStaging()
+  {
+    using var project = new TestProject();
+    project.Write(".tasks/.dotask/owner", "dotask shared-task transaction state v1\n");
+    project.Write(".tasks/.dotask/transaction/0.original", "backup");
+    project.Write(".tasks/.dotask/transaction/1.new", "staged");
+    new ProjectTaskTransaction(TaskDirectory.Locate(project.Root)).Apply([], CancellationToken.None);
+    Assert.False(Directory.Exists(Path.Combine(project.Tasks, ".dotask")));
+  }
+
+  [Fact]
   public async Task OfficialCatalogMatchesSourcesAndEveryPublishedTaskCompiles()
   {
     using var project = new TestProject();
@@ -485,6 +528,7 @@ public sealed class SharedTaskTests
     Assert.Equal("old lock", File.ReadAllText(Path.Combine(project.Root, ".dotasks-lock.yaml")));
     Assert.False(File.Exists(Path.Combine(project.Tasks, "tools/two.cs")));
     Assert.False(transaction.HasPending);
+    Assert.False(Directory.Exists(Path.Combine(project.Tasks, ".dotask")));
   }
 
   [Fact]
@@ -506,6 +550,7 @@ public sealed class SharedTaskTests
     transaction.Recover();
     Assert.Equal("original", File.ReadAllText(Path.Combine(project.Tasks, "tools/one.cs")));
     Assert.False(transaction.HasPending);
+    Assert.False(Directory.Exists(Path.Combine(project.Tasks, ".dotask")));
   }
 
   [Fact]

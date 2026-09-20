@@ -481,3 +481,14 @@ saved the original step and description intact. Regression cases cover `:back`
 at search, selection, optional choice, and every manual parameter prompt, plus
 backing out of the first step. All 28 local links/anchors in the updated authoring
 and usage references resolved.
+
+## Temporary recovery state (2026-09-19)
+
+On Linux, all 40 focused shared-task tests passed. `./build.sh` passed all 331
+Release tests, formatting, documentation, catalog freshness, and shim hashes.
+Coverage verifies removal after add/remove, no-change sync, rollback, and
+successful recovery; pending recovery and later user edits remain protected.
+Dry runs preserve idle state, recognized orphan staging is cleaned, and unknown
+files or custom ignore contents are preserved. The checkout's old idle directory
+was removed only after verifying its two generated marker files. `git diff --check`
+passed. Native Windows/macOS acceptance remains pending.

@@ -120,3 +120,17 @@ acceptance, installation, and publication.
 - Follow-up verification: a Linux PTY session backed out of an accidental extra
   step at task selection and saved the completed step and description intact.
   All 28 local links/anchors in the updated authoring and usage references resolved.
+
+### 2026-09-19 Temporary shared-task recovery state
+
+- Remove recognized `.tasks/.dotask` recovery state after successful shared-task
+  changes, rollback, or recovery. No-change management operations clean up older
+  idle state and recognized orphan staging; dry runs remain read-only.
+- Keep pending/failed recovery data and unrecognized contents. Cleanup uses only
+  known files and nonrecursive directory removal; unrecognized transaction files
+  block reuse rather than being deleted.
+- Removed this checkout's pre-existing idle directory after verifying that it
+  contained only the generated owner and ignore markers.
+- Verification: all 40 focused shared-task tests and `./build.sh` passed;
+  the full gate ran 331 Release tests plus formatting, documentation, catalog,
+  and shim checks. `git diff --check` passed. Windows/macOS acceptance remains pending.

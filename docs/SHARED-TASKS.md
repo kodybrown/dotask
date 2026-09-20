@@ -81,7 +81,7 @@ A typical project becomes:
 ```
 
 Commit the configuration, lock file, and task source/support files. The generated
-`.tasks/.dotask/` directory contains transaction state and ignores itself in Git;
+`.tasks/.dotask/` directory temporarily contains transaction state and ignores itself in Git;
 it is excluded from discovery. Do not place handwritten files there.
 
 ## Names and calls between tasks
@@ -260,7 +260,17 @@ in the directory are never recursively removed.
 ## Interrupted updates
 
 Project updates use an exclusive management lease and a durable rollback journal
-under the task directory's `.dotask/` folder. An ordinary failure rolls back files
+under the task directory's `.dotask/` folder. Successful updates and completed
+rollback/recovery remove the journal, backups, and recognized internal directory,
+including its `owner` and `.gitignore` files. No idle directory is needed.
+A later non-dry-run management operation also removes recognized idle state from
+older versions or staging left after an interruption without a pending journal.
+Unrecognized files, directories, modified markers, and custom ignore contents
+are preserved; leftover unrecognized transaction files prevent a new update.
+Dry runs never clean up state. Pending or failed recovery retains its journal
+and backups until recovery succeeds.
+
+An ordinary failure rolls back files
 and tracking. On the next management operation, an interrupted update is rolled
 back before new work begins. Task execution refuses an incomplete journal.
 

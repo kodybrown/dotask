@@ -88,12 +88,13 @@ internal sealed class ProjectTaskTransaction( TaskDirectory project )
       }
     }
     File.Delete(JournalPath);
-    Directory.Delete(JournalDirectory, recursive: true);
+    CleanupIdleState();
   }
 
   public void Apply( IReadOnlyList<TaskFileChange> changes, CancellationToken token, Action<int>? afterWrite = null )
   {
     if (changes.Count == 0) {
+      CleanupIdleState();
       return;
     }
     if (HasPending) {
@@ -106,10 +107,10 @@ internal sealed class ProjectTaskTransaction( TaskDirectory project )
       change.After is null ? null : SharedTaskFiles.Hash(change.After), index + ".original")).ToArray();
     var journal = new Journal(1, entries);
     Validate(journal);
+    CleanupIdleState();
     EnsureStateDirectory();
     if (Directory.Exists(JournalDirectory)) {
-      // No journal means this is staging left before any destination was changed.
-      Directory.Delete(JournalDirectory, recursive: true);
+      throw new TaskException($"Unrecognized files remain in {JournalDirectory}; they were preserved. Review them before retrying.");
     }
     Directory.CreateDirectory(JournalDirectory);
     var ignore = SharedTaskFiles.Resolve(project.RootDirectory, TaskPrefix + "/.dotask/.gitignore");
@@ -153,9 +154,44 @@ internal sealed class ProjectTaskTransaction( TaskDirectory project )
       Recover();
       throw;
     }
-    if (Directory.Exists(JournalDirectory)) {
-      Directory.Delete(JournalDirectory, recursive: true);
+    CleanupIdleState();
+  }
+
+  private void CleanupIdleState()
+  {
+    if (HasPending) {
+      return;
     }
+    var state = SharedTaskFiles.Resolve(project.RootDirectory, TaskPrefix + "/.dotask");
+    if (!Directory.Exists(state)) {
+      return;
+    }
+    var marker = SharedTaskFiles.Resolve(state, "owner");
+    if (!File.Exists(marker) || File.ReadAllText(marker) != Owner) {
+      return;
+    }
+    if (Directory.Exists(JournalDirectory)) {
+      // Without a journal, recognized staging files are no longer needed for recovery.
+      foreach (var file in new DirectoryInfo(JournalDirectory).EnumerateFileSystemInfos()) {
+        if (file is FileInfo && (file.Attributes & FileAttributes.ReparsePoint) == 0
+          && int.TryParse(Path.GetFileNameWithoutExtension(file.Name), out var index) && index >= 0
+          && Path.GetExtension(file.Name) is ".original" or ".new") {
+          File.Delete(file.FullName);
+        }
+      }
+      if (Directory.EnumerateFileSystemEntries(JournalDirectory).Any()) {
+        return;
+      }
+      Directory.Delete(JournalDirectory);
+    }
+    var ignore = SharedTaskFiles.Resolve(state, ".gitignore");
+    if (Directory.EnumerateFileSystemEntries(state).Any(path => path != marker && path != ignore)
+      || Directory.Exists(ignore) || (File.Exists(ignore) && File.ReadAllText(ignore) != "*\n")) {
+      return;
+    }
+    File.Delete(ignore);
+    File.Delete(marker);
+    Directory.Delete(state);
   }
 
   private void VerifyBefore( TaskFileChange change )
