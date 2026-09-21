@@ -124,9 +124,22 @@ the complete verification gate; installation does not run all tests.
 Dotask's project-owned `create-installer` publishes the application and a standalone
 `dotask-installer` executable in Release for the current x64/ARM64 host. Both are
 self-contained by default. It respects evaluated MSBuild `PublishDir` values,
-then snapshots the installer and its payload into a unique sibling `installers`
-directory outside the publish directory. The next publish cannot change that
-snapshot. Distribute the entire printed directory, not just the executable.
+then copies the complete installer and its payload to `settings.installer-output`.
+This setting is required by dotask's project-owned creator. The checkout sets:
+
+```yaml
+settings:
+  installer-output: artifacts/installers
+```
+
+Relative paths start at the project root; absolute directories are also accepted.
+Each run creates `<installer-output>/<os>-<architecture>/<unique-id>/`, preserving
+previous packages. The printed path and returned installer artifact point to this
+final copy, so `dotask install` runs it from there. The output cannot be inside
+either publish directory, including through directory links. Build/intermediate/
+publish paths still follow the MSBuild output policy; only the final deliverable
+is copied into the project. `artifacts/` is ignored by Git. The next publish cannot
+change an existing package. Distribute the entire printed directory, not just the executable.
 Creating it does not install anything and requires no installed dotask or shim compiler.
 
 ```sh

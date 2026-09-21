@@ -1,5 +1,24 @@
 # Verification
 
+## Configurable installer output (2026-09-21)
+
+`settings.installer-output` now controls the final complete installer directory,
+with `artifacts/installers` configured for this checkout. Live Linux checks passed
+for project-relative output and an absolute destination containing spaces and
+Unicode. The copied payload's `dotask --version` succeeded; earlier package hashes
+and Unix permissions were unchanged after a subsequent build. A destination
+inside the evaluated publish directory through a symlink was rejected before
+copying. Evaluated installer build/intermediate/publish paths remain under
+`/tmp/_dotnet`; the new setting changes only the final package destination.
+
+`./build.sh` passed all 347 Release tests, formatting, docs, catalog, shim hashes,
+and whitespace checks. For that gate only, the unrelated pre-existing catalog
+edit was temporarily replaced with the committed catalog, then restored
+byte-for-byte. That existing edit still makes normal catalog verification report
+a stale catalog; it was not included in this change. All 18 checked local links
+and anchors passed. Native Windows/macOS acceptance remains pending; no active
+installation or PTS files were changed.
+
 ## Installer-driven installation (2026-09-20)
 
 The shared `_/dotnet/install` now requires the project's `create-installer` and

@@ -4,6 +4,7 @@ description: Portable, cross-platform tasks written in the language of your choi
 settings:
   solution: dotask.slnx
   project: src/Dotask.Cli/Dotask.Cli.csproj
+  installer-output: artifacts/installers
 targets:
   create-installer:
     defaults:

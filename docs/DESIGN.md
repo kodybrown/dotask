@@ -152,7 +152,8 @@ kinds with tokenized defaults or explicit replacements. Projects own packaging,
 installer UI/elevation requirements, shortcuts, and application lifecycle.
 
 Dotask's own creator publishes a standalone installer plus application payload,
-respecting evaluated output paths. That installer uses `InstallationDefinition`
+respecting evaluated output paths and copying the final package beneath
+`settings.installer-output`. That installer uses `InstallationDefinition`
 and the existing ownership engine, so the transition updates existing dotask
 installations rather than creating a competing installation. Other applications
 need an explicit migration plan for older dotask-managed installs.

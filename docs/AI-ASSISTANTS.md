@@ -151,7 +151,9 @@ for custom orchestration; do not scrape stdout or guess artifact paths.
 An exact project `install` can delegate to `_/dotnet/install` explicitly.
 
 Dotask's own standalone installer retains its previous ownership records and
-versioned layout. Use the bootstrap launcher when upgrading an older CLI/library,
+versioned layout. Its creator copies final packages beneath the project-relative
+or absolute `settings.installer-output` directory (`artifacts/installers` here),
+without redirecting MSBuild outputs. Use the bootstrap launcher when upgrading an older CLI/library,
 and pass explicit temporary absolute install/bin paths via `--installer-args`
 for tests. Never remove ownership/recovery records or overwrite an unrelated
 launcher to bypass conflicts. `UserInstaller` / `InstallationDefinition` remain

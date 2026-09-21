@@ -180,3 +180,20 @@ acceptance, installation, and publication.
   output paths remain under `/tmp/_dotnet`. All 81 checked documentation links
   and anchors resolved. Windows/macOS and PTS GUI acceptance remain pending.
   The active user installation was not changed; nothing was published or pushed.
+
+### 2026-09-21 Configurable final installer output
+
+- Add `settings.installer-output` to dotask's creator, configured as
+  `artifacts/installers` in this checkout. Relative paths start at the project
+  root; absolute paths are supported. Each run preserves previous packages in
+  separate OS/architecture and unique-ID directories, and returns the executable
+  from the complete final copy. MSBuild output locations remain unchanged.
+- Reject final destinations inside either publish directory, including aliases
+  through directory links, before copying to prevent recursive packages.
+- Verification: `./build.sh` passed all 347 Release tests and required checks
+  using the committed catalog temporarily; the unrelated existing catalog edit
+  was restored byte-for-byte afterward. Relative/absolute output, spaces/Unicode,
+  executable payload, preservation of earlier packages, and symlink-overlap
+  rejection passed live Linux checks. MSBuild paths remain under `/tmp/_dotnet`;
+  18 local documentation links/anchors passed. Native Windows/macOS acceptance
+  remains pending. No application was installed or pushed.

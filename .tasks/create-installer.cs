@@ -6,12 +6,17 @@ using DoTask;
 /// <option name="configuration" alias="c" choices="Debug,Release" default="Release">Build configuration.</option>
 /// <option name="self-contained" type="bool" default="true">Include the .NET runtime in the application and installer.</option>
 /// <requires tool="dotnet" />
+/// <requires setting="installer-output" />
 /// <example>dotask create-installer</example>
 public static class Target
 {
   public static async Task Main()
   {
     var project = BuildContext.Current;
+    if (string.IsNullOrWhiteSpace(project.Config.Get<string>("installer-output"))) {
+      throw new TaskException("settings.installer-output must name a directory.");
+    }
+    var outputDirectory = PhysicalDirectory(project.Config.GetPath("installer-output"));
     var system = project.OS switch {
       HostOS.Windows => "win",
       HostOS.Linux => RuntimeInformation.RuntimeIdentifier.StartsWith("linux-musl-", StringComparison.Ordinal) ? "linux-musl" : "linux",
@@ -39,8 +44,13 @@ public static class Target
       "-getProperty:PublishDir,AssemblyName"]);
     var installerDirectory = Path.GetFullPath(installer["PublishDir"], Path.GetDirectoryName(installerProject)!);
     // A physical snapshot survives the next publish and can be distributed as a directory.
-    var package = Path.Combine(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(installerDirectory))!,
-      "installers", system + "-" + architecture, Guid.NewGuid().ToString("N"));
+    var package = Path.Combine(outputDirectory, system + "-" + architecture, Guid.NewGuid().ToString("N"));
+    foreach (var source in new[] { applicationDirectory, installerDirectory }) {
+      var relative = Path.GetRelativePath(PhysicalDirectory(source), package);
+      if (!Path.IsPathRooted(relative) && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
+        throw new TaskException("settings.installer-output must place the final package outside the application and installer publish directories.");
+      }
+    }
     CopyTree(installerDirectory, package);
     CopyTree(applicationDirectory, Path.Combine(package, "payload"));
     var definition = new InstallationDefinition {
@@ -93,6 +103,23 @@ public static class Target
       return json.RootElement.GetProperty("Properties").EnumerateObject()
         .ToDictionary(p => p.Name, p => p.Value.GetString() ?? "");
     }
+  }
+
+  private static string PhysicalDirectory( string path )
+  {
+    var full = Path.GetFullPath(path);
+    var current = Path.GetPathRoot(full)!;
+    foreach (var part in full[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)) {
+      current = Path.Combine(current, part);
+      var directory = new DirectoryInfo(current);
+      if (directory.LinkTarget is not null) {
+        current = directory.ResolveLinkTarget(true)?.FullName ?? throw new TaskException($"Broken directory link: {current}");
+      }
+      if (File.Exists(current)) {
+        throw new TaskException($"Expected an installer output directory: {current}");
+      }
+    }
+    return current;
   }
 
   private static void CopyTree( string source, string destination )
