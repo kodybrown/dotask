@@ -8,6 +8,23 @@ namespace DoTask.Tests;
 public sealed class RepositoryTaskTests
 {
   [Fact]
+  public async Task InstalledSharedTasksMatchCanonicalSources()
+  {
+    // Compilation alone misses stale nested calls. Compare the actual runnable
+    // repository copies so a source rename cannot leave the build gate behind.
+    var assembly = typeof(RepositoryTaskTests).Assembly;
+    const string prefix = "InstalledShared/";
+    var copies = assembly.GetManifestResourceNames().Where(name => name.StartsWith(prefix, StringComparison.Ordinal)).ToArray();
+    Assert.NotEmpty(copies);
+    foreach (var copy in copies) {
+      using var installed = assembly.GetManifestResourceStream(copy)!;
+      using var canonical = assembly.GetManifestResourceStream("Shared/" + copy[prefix.Length..]);
+      Assert.NotNull(canonical);
+      Assert.Equal(await SHA256.HashDataAsync(canonical), await SHA256.HashDataAsync(installed));
+    }
+  }
+
+  [Fact]
   public async Task CatalogPreservesMetadataHashesSupportAndStableOrderingWithoutExecutingTasks()
   {
     using var project = CatalogProject();
@@ -134,10 +151,13 @@ public sealed class RepositoryTaskTests
     using var project = new TestProject();
     Copy(project, "verify.cs");
     project.Target("check", "File.AppendAllText(\"order\", \"check;\");");
-    project.Target("dotnet/test", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
+    project.Target("_/dotnet/test", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
       "/// <option name=\"configuration\" choices=\"Debug,Release\" />");
-    project.Target("dotnet/format", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
+    project.Target("_/dotnet/format", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
       "/// <option name=\"verify\" type=\"bool\" />");
+    // Exact project-local names must not intercept calls to official tasks.
+    project.Target("dotnet/test", "Environment.Exit(91);");
+    project.Target("dotnet/format", "Environment.Exit(92);");
     project.Target("verify-docs", "File.AppendAllText(\"order\", \"docs;\");");
     project.Target("catalog", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\").ToString());",
       "/// <option name=\"verify\" type=\"bool\" />");
@@ -153,7 +173,7 @@ public sealed class RepositoryTaskTests
     Assert.Equal(1, result.ExitCode);
     Assert.Equal("check;Release;True;", File.ReadAllText(order));
     File.Delete(order);
-    project.Target("dotnet/format", "Environment.Exit(23);", "/// <option name=\"verify\" type=\"bool\" />");
+    project.Target("_/dotnet/format", "Environment.Exit(23);", "/// <option name=\"verify\" type=\"bool\" />");
     Assert.Equal(23, (await project.RunAsync("verify")).ExitCode);
     Assert.Equal("check;Release;", File.ReadAllText(order));
   }
@@ -174,12 +194,13 @@ public sealed class RepositoryTaskTests
   public async Task DocumentationCheckDelegatesGitWhitespaceAndPreservesFailures( int exitCode )
   {
     using var project = DocumentationProject();
-    project.Target("git/check", $$"""
+    project.Target("_/git/check", $$"""
       var project = BuildContext.Current;
       project.Files.WriteText("git-check-called", project.Parameters.Get<bool>("whitespace").ToString());
       Environment.Exit({{exitCode}});
       """, "/// <option name=\"whitespace\" type=\"bool\" default=\"false\" />");
     var metadata = MetadataReader.Read(Path.Combine(project.Tasks, "verify-docs.cs"), project.Tasks);
+    project.Target("git/check", "Environment.Exit(93);");
     Assert.Contains(new Requirement("task", "git/check"), metadata.Requirements);
     var result = await project.RunAsync("verify-docs");
     Assert.Equal(exitCode, result.ExitCode);
@@ -193,7 +214,7 @@ public sealed class RepositoryTaskTests
     using var project = DocumentationProject();
     var result = await project.RunAsync("verify-docs");
     Assert.Equal(1, result.ExitCode);
-    Assert.Contains("Unknown target 'git/check'", result.StandardError);
+    Assert.Contains("Unknown target '_/git/check'", result.StandardError);
     Assert.DoesNotContain("Required documentation exists", result.StandardOutput);
   }
 

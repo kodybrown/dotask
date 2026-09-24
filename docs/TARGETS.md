@@ -221,13 +221,13 @@ behavior.
 exit code. These read-only checks find whitespace errors in tracked changes;
 they allow a dirty tree and do not examine untracked files. The repository's
 `verify-docs.cs` declares `<requires task="git/check" />` and explicitly calls
-`await project.ExecTargetAsync("git/check", new { Whitespace = true })` after
+`await project.ExecTargetAsync("_/git/check", new { Whitespace = true })` after
 checking required documents. The declaration alone does not run the task.
 
 `shared-tasks/` is the canonical authoring location in the DoTask repository.
-The corresponding `.tasks/` files are runnable project copies. The standard
-`dotnet/format.cs`, `dotnet/install.cs`, `dotnet/pack.cs`, and `git/check.cs` copies are kept
-identical. In consuming projects, shared-task synchronization still protects
+The corresponding `.tasks/_/` files are runnable project copies. All installed
+official C# task copies in this repository are kept byte-identical to their
+canonical sources, enforced by the test suite. In consuming projects, shared-task synchronization still protects
 local edits; this convention does not authorize overwriting modified copies.
 
 `dotask format` runs the solution formatter, then checks/formats C# whitespace

@@ -4,11 +4,11 @@ directory: .tasks
 tasks:
   _/dotnet/build:
     source: _
-    revision: 37d4671abbb03d7b1f53a344a2208d1505ac03a9cf5c9cf57478f1d0d9e18640
+    revision: 5f2cc44738ce47d410fe36a1f30670614b7bba3fb2701a47588c70c0117ca37b
     requires:
     - _/dotnet/restore
     files:
-      _/dotnet/build.cs: 43e2e4208cc7df2cf95eb61bfafb021b267936fc6e96f0121ca37936d76ffda3
+      _/dotnet/build.cs: ff0d138f301ea8717a7b649b4ea210f960e7b61b12ebb43215d9cc16a121b8b7
   _/dotnet/check:
     source: _
     revision: bffda71051a47b318d245396cce41fb446e683bff124b543a032d9b4ffcfe000
@@ -23,10 +23,10 @@ tasks:
       _/dotnet/clean.cs: 49c33b2bdb77c4675b01d62293ece03bd803cdf9b43326219e6fb51bef69aa64
   _/dotnet/format:
     source: _
-    revision: 06ef7099c3ed46f527e925b332f706d722a4d9f52e0271a4f469d46ed61a411f
+    revision: f23050da3bbebca820699efc4e96715466849f5a7c9a74691cc00d48f57d6b5e
     requires: []
     files:
-      _/dotnet/format.cs: ea70e7076ecf03648cb152c9522be95701a44578bd0edaac5214ec48dfc66ee5
+      _/dotnet/format.cs: afa96372cfefffe8c2ba829b0156f076159e80676ebc80caaefb963a61ab9500
   _/dotnet/install:
     source: _
     revision: c43378d9ff7976b80e8561a8c438b434a7a6dcb96d59532d6cf6366330105105
@@ -47,7 +47,7 @@ tasks:
       _/dotnet/publish.cs: 471803f7615b4dc443a2cae67a0b8cf108a00af5e83a767145d3d6d3f8fd21af
   _/dotnet/restore:
     source: _
-    revision: c31e8dc97df00ded3a87a90d59f5a08c24226535e0a6593ad9f4aaceee0a34e0
+    revision: 00ad1833a9b36f15b19ab6d02e2cb31b931a5ece1b0d152628a010226e3a88b2
     requires: []
     files:
       _/dotnet/restore.cs: c9b9e9603ba82820482cdf4ce4452a811a143193cbe84d5faeea6413e13c3b01
@@ -65,10 +65,10 @@ tasks:
       _/dotnet/test.cs: 57cfa1d1f229d3d8b0b5443c4191ecab39e748746ae74c2dfec42b48389fef09
   _/dotnet/verify:
     source: _
-    revision: de4d9a1c8689c0c923e5daecdc74dabd1c0699cc0e259574866781c590fb5cbd
+    revision: 5a74df894bd06738cf52a6735d19446a40f1d23fe68c9acd86117887ad335905
     requires: []
     files:
-      _/dotnet/verify.cs: 213f093dafb8201d0e742283497f43d9ad2d02d710e9a3828d63094623e72715
+      _/dotnet/verify.cs: 2f18e13096df82fa9668352f67a20dbba035ead6d2aebc94f45e966b63cdd424
   _/git/check:
     source: _
     revision: 9959b6ae5f93b99202a7da0c4b49dfc483a6791975b2b85ab31f7a4ef0c427f9

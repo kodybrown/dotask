@@ -212,3 +212,20 @@ acceptance, installation, and publication.
   catalog, shim hashes, and whitespace checks on Windows; `build.cmd pack`
   produced the local NuGet package. Evaluated build/intermediate/publish paths
   remain under `C:\tmp\_dotnet`. Linux/macOS acceptance remains pending.
+
+### 2026-09-24 Synchronize official task references
+
+- Synchronize the repository's installed build, format, and verify tasks with
+  their canonical sources so nested official calls use `_/`; refresh their
+  tracking records and the restore dependency's catalog revision.
+- Qualify the repository verification and documentation tasks' official calls
+  so project-local names cannot intercept them. Keep same-source dependency
+  declarations in their documented group/task format.
+- Add a regression comparing every installed official C# task with its canonical
+  source, and exercise verification with conflicting project-local task names.
+- Verification: `build.cmd build` now succeeds with zero warnings or errors.
+  All 21 focused repository-task tests passed; `build.cmd` passed all 349 Release
+  tests plus formatting, docs, catalog freshness, shim hashes, and whitespace
+  checks. All 13 installed official task copies match their canonical sources.
+  Evaluated build paths remain under `C:\tmp\_dotnet`. Linux/macOS verification
+  of this change remains pending; nothing was installed, published, or pushed.

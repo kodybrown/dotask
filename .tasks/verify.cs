@@ -12,8 +12,8 @@ public static class Target
     var project = BuildContext.Current;
     await project.ExecTargetAsync("check");
     // dotnet test builds the solution before running its tests.
-    await project.ExecTargetAsync("dotnet/test", new { Configuration = project.Parameters.Get<string>("configuration") });
-    await project.ExecTargetAsync("dotnet/format", new { Verify = true });
+    await project.ExecTargetAsync("_/dotnet/test", new { Configuration = project.Parameters.Get<string>("configuration") });
+    await project.ExecTargetAsync("_/dotnet/format", new { Verify = true });
     await project.ExecTargetAsync("verify-docs");
     await project.ExecTargetAsync("catalog", new { Verify = true });
     await project.ExecTargetAsync("shim", new { Verify = true });
