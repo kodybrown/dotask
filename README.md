@@ -94,9 +94,9 @@ on PATH, add **that one directory** once:
   Variables, then open a new terminal.
 
 Pass installer options through `--installer-args` as a JSON array; see the
-[installer examples](docs/INSTALLATION.md#install-dotask-from-its-source).
+[installer examples](docs/INSTALLATION.md#build-and-install-dotask-itself).
 For a custom command directory, substitute its path. The installer prints the
-selected locations and PATH diagnostics; it never edits PATH or shell profiles.
+selected installation location; it never edits PATH or shell profiles.
 Then run `dotask --version` (expected: `dotask 0.1.0`).
 
 The installation is independent of this source checkout. To check which command
@@ -170,7 +170,10 @@ reusable `build`, `test`, `format`, `check`, `verify`, and `publish` targets in 
 Here, `check` requires Git and the configured solution's SDK/tools. Run `test` for
 tests or `format --verify` to check solution whitespace. The project-specific
 `verify` requires every check, including docs and catalog validation; failures
-stop the sequence. The reusable `dotnet/verify` target still offers optional
+stop the sequence. It also requires Rust 1.95+, rustfmt, and clippy to build/test
+the standalone installer before the .NET integration suite. Destination machines
+do not need Rust. See [installer tasks and schema](docs/INSTALLATION.md).
+The reusable `dotnet/verify` target still offers optional
 checks for consuming projects. Use the launchers for work on dotask itself so
 rebuilds run from a separate executable snapshot.
 

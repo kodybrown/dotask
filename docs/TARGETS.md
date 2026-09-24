@@ -201,7 +201,9 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `_/dotnet/check`   | Checks solution presence and SDK/MSBuild/formatter versions                                      |
 | `_/dotnet/verify`  | Runs installed official check/test/format tasks; skips missing ones and stops on failure         |
 | `_/dotnet/publish` | `settings.project`; publishes for the requested OS/architecture                                  |
-| `_/dotnet/install` | Executes the project's `create-installer`, validates its result, and runs its installer   |
+| `_/dotask-installer/install` | Executes `create-installer`, validates its result, and runs its installer |
+| `_/dotask-installer/create-installer` | Packages a prepared payload and YAML with a supplied Rust engine |
+| `_/dotask-installer/uninstall` | Runs the retained engine without rebuilding the application |
 | `_/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
 | `_/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
 

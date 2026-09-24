@@ -8,6 +8,7 @@ DoTask Notes.mdx
 .vs/
 .idea/
 **/artifacts/
+**/target/
 *.nupkg
 *.snupkg
 

@@ -39,7 +39,10 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: Prepare Rust toolchain
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
       - name: Bootstrap and verify
+        # The Rust engine and native integration tests are part of the same gate.
         shell: ${{ matrix.shell }}
         run: ${{ matrix.launcher }}
       - name: Package

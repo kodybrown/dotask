@@ -163,19 +163,21 @@ public sealed class RepositoryTaskTests
       "/// <option name=\"verify\" type=\"bool\" />");
     project.Target("shim", "File.AppendAllText(\"order\", \";shim:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\"));",
       "/// <option name=\"verify\" type=\"bool\" />");
+    project.Target("installer-engine", "File.AppendAllText(\"order\", \"rust:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
+      "/// <option name=\"verify\" type=\"bool\" />");
     var result = await project.RunAsync("verify", "-c", "Debug");
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
-    Assert.Equal("check;Debug;True;docs;True;shim:True", File.ReadAllText(order));
+    Assert.Equal("check;rust:True;Debug;True;docs;True;shim:True", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify-docs.cs"));
     result = await project.RunAsync("verify");
     Assert.Equal(1, result.ExitCode);
-    Assert.Equal("check;Release;True;", File.ReadAllText(order));
+    Assert.Equal("check;rust:True;Release;True;", File.ReadAllText(order));
     File.Delete(order);
     project.Target("_/dotnet/format", "Environment.Exit(23);", "/// <option name=\"verify\" type=\"bool\" />");
     Assert.Equal(23, (await project.RunAsync("verify")).ExitCode);
-    Assert.Equal("check;Release;", File.ReadAllText(order));
+    Assert.Equal("check;rust:True;Release;", File.ReadAllText(order));
   }
 
   [Fact]

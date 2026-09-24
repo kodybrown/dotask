@@ -142,16 +142,17 @@ the library before claiming it exists. Ordinary .NET APIs can fill gaps.
 ## Rules that prevent common mistakes
 
 For installation tasks, read [the installation contract](INSTALLATION.md).
-The shared `_/dotnet/install` always invokes the project's `create-installer`,
+The shared `_/dotask-installer/install` always invokes `create-installer`,
 then runs its returned `InstallerArtifact`. It does not publish or copy the
 application itself. `create-installer` must build only, then call
 `SetInstallerResultAsync` once. Use `CreateInstallerAsync` and `RunInstallerAsync`
 for custom orchestration; do not scrape stdout or guess artifact paths.
 `installer-args` is a JSON string array replacing default installer arguments.
-An exact project `install` can delegate to `_/dotnet/install` explicitly.
+An exact project `install` can delegate to `_/dotask-installer/install` explicitly.
 
-Dotask's own standalone installer retains its previous ownership records and
-versioned layout. Its creator copies final packages beneath the project-relative
+Dotask's standalone Rust installer uses YAML receipts and the `installer/` plus
+`app/<build>/` layout. Existing JSON-owned installations require explicit
+`--migrate-legacy`. Its creator copies packages beneath the project-relative
 or absolute `settings.installer-output` directory (`artifacts/installers` here),
 without redirecting MSBuild outputs. Use the bootstrap launcher when upgrading an older CLI/library,
 and pass explicit temporary absolute install/bin paths via `--installer-args`
@@ -212,7 +213,7 @@ low-level APIs for installer authors, not a fallback for missing creator tasks.
 
 In the DoTask source repository, `shared-tasks/` is the canonical source of
 reusable tasks; `.tasks/` contains the copies used by the repository itself.
-Keep the `dotnet/format.cs`, `dotnet/install.cs`, `dotnet/pack.cs`, and `git/check.cs` copies
+Keep the `dotnet/format.cs`, `dotask-installer/*.cs`, `dotnet/pack.cs`, and `git/check.cs` copies
 identical when updating them, and regenerate the catalog. The standard formatter
 formats the solution and C# files throughout the selected tasks directory;
 `--verify` checks both without running optional `_/text/fixeol`.

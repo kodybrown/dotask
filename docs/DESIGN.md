@@ -143,7 +143,7 @@ merge, source naming, and preview publishing contracts.
 
 ## Application installation
 
-The shared `dotnet/install.cs` coordinates a project-owned `create-installer`
+The shared `dotask-installer/install.cs` coordinates `create-installer`
 and launches its structured `InstallerArtifact`. Console and GUI apps use the
 same contract; there is no direct-copy fallback or search for existing packages.
 Creation and launching are separate, and invocation-scoped results prevent stale
@@ -151,12 +151,11 @@ handoffs. The library validates platform identity and launches supported install
 kinds with tokenized defaults or explicit replacements. Projects own packaging,
 installer UI/elevation requirements, shortcuts, and application lifecycle.
 
-Dotask's own creator publishes a standalone installer plus application payload,
-respecting evaluated output paths and copying the final package beneath
-`settings.installer-output`. That installer uses `InstallationDefinition`
-and the existing ownership engine, so the transition updates existing dotask
-installations rather than creating a competing installation. Other applications
-need an explicit migration plan for older dotask-managed installs.
+Dotask's creator publishes its application and packages the Rust engine, YAML,
+and payload using the shared creator. It respects evaluated output paths and
+copies the package beneath `settings.installer-output`. Explicit legacy import
+preserves ownership of older dotask-managed installations. The following
+paragraphs describe the retained legacy .NET installation API.
 
 `UserInstaller` copies verified snapshots to immutable version/fingerprint
 directories, records ownership, and activates commands under per-root/bin locks.
@@ -178,12 +177,11 @@ atomic to observers. Old builds are retained. PATH editing, existing global-tool
 removal and command-directory relocation are not automatic. See
 [installation](INSTALLATION.md) for the public API and ownership contract.
 
-## Planned standalone installer
+## Standalone installer design
 
-This section records design decisions from the installer discussion, not
-implemented behavior. The current implementation remains described above and in
-[Application installers](INSTALLATION.md). The YAML schema, engine delivery, and
-migration details still require design and implementation.
+This section records the agreed design and deliberately deferred features.
+The implemented interface and native acceptance limits are documented in
+[Application installers](INSTALLATION.md) and [verification](VERIFICATION.md).
 
 ### Task and distribution boundaries
 
@@ -229,7 +227,7 @@ flag. The installed engine and records must suffice without the original payload
 ### Installation layout and receipts
 
 Keep management files in a visible `installer/` directory beneath the application
-root. The proposed uniform payload layout is `app/<version>-<build-id>/`:
+root. The uniform payload layout is `app/<version>-<build-id>/`:
 
 ```text
 pts/
@@ -255,20 +253,20 @@ build keeps an immutable receipt and a snapshot of its installer YAML. Uninstall
 uses the corresponding installed configuration together with actual ownership
 records, rather than recomputing locations from defaults or assuming the newest
 configuration describes all older builds. Reserved metadata names must not
-collide with payload files. Exact schemas and compatibility rules remain open.
+collide with payload files. Schema 1 and legacy import are in the public reference.
 
-Always using version directories would replace the earlier fixed-location layout
-proposal. This remains a proposal: retaining multiple builds and an application's
+Always using version directories replaces the earlier fixed-location layout
+proposal. Retaining multiple builds and an application's
 ability to run from a version-specific path are separate concerns. Directory
 layout alone cannot make incompatible application paths or data formats work.
 Keep application settings in their normal locations; do not redirect XDG/AppData
 settings through links into individual builds.
 
-Optional convenience launchers in the application root remain under discussion:
+Convenience commands and optional shortcuts live in the application root:
 for example `pts.lnk`, `pts.exe` plus `pts.shim`, or a Unix command symlink and
-desktop launcher/alias. The current proposal is independent local and external
+desktop launcher/alias. There are independent local and external
 launchers targeting the active application build directly. External shortcuts
-would still be refreshed on installation, without chaining through local ones.
+are refreshed on installation, without chaining through local ones.
 Both sets require ownership tracking, collision checks, and uninstall handling.
 
 Encourage versioned installations. `--prune-old-versions`, a YAML default, or an
@@ -306,5 +304,5 @@ service binary validation, or service installation functionality in this first v
 Also deferred: generated C# properties for YAML keys, remote execution, caching
 of completed tasks, runtime dependency scheduling, additional task languages,
 third-party/authenticated remote sources, CLI self-update, parallel scheduling,
-installation rollback/pruning/uninstall commands, a JSON installation interface, and global installation
+installation rollback/version-switch commands, a JSON installation interface, and global installation
 or publishing as part of repository verification.

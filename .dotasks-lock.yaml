@@ -2,6 +2,24 @@
 version: 1
 directory: .tasks
 tasks:
+  _/dotask-installer/create-installer:
+    source: _
+    revision: e033bcd9579b47173224cf4dc33893a83ac9f0a133016378a7f9de5eeb2a52f4
+    requires: []
+    files:
+      _/dotask-installer/create-installer.cs: 68faf24d3f86f67dec885aed2d5738d0bc17ad3b96b196a21a9a2e157209bd21
+  _/dotask-installer/install:
+    source: _
+    revision: df3ff16fd62bbcf6a1eecf01338205b7040e6e3c6b237b7c0ac93e6d59407f21
+    requires: []
+    files:
+      _/dotask-installer/install.cs: fbf34f42c6f61a81b17ae24300dbabb9291c4c5738069684456e7cadf46eb88e
+  _/dotask-installer/uninstall:
+    source: _
+    revision: 02625ff1559cbba27f8127ccead8bbbb92a8973e0050030eca911a85cd74cccc
+    requires: []
+    files:
+      _/dotask-installer/uninstall.cs: 4474317cb4c183d37a8f5df0e49218b258b7301aedd76ce03bd95a5637574cc2
   _/dotnet/build:
     source: _
     revision: 5f2cc44738ce47d410fe36a1f30670614b7bba3fb2701a47588c70c0117ca37b
@@ -27,12 +45,6 @@ tasks:
     requires: []
     files:
       _/dotnet/format.cs: afa96372cfefffe8c2ba829b0156f076159e80676ebc80caaefb963a61ab9500
-  _/dotnet/install:
-    source: _
-    revision: c43378d9ff7976b80e8561a8c438b434a7a6dcb96d59532d6cf6366330105105
-    requires: []
-    files:
-      _/dotnet/install.cs: 0279bebf58253c5dd950190e4c8415e917c81bc4f632201df13593715bb28330
   _/dotnet/pack:
     source: _
     revision: 80cd3f24e7a40e3a089d845f80eb24cf840b53b338019565d5fd13f3f9d58ac2

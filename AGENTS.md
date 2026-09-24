@@ -116,8 +116,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - Discovery accepts `.cs` targets and `.task` YAML groups; ordinary documents,
   `.yaml` files, and MSBuild `.targets` files are not tasks. The bootstrap copy hook lives
   in `.tasks/misc/bootstrap.targets`.
-- Author reusable task changes in `shared-tasks/`. Keep the format/install/pack
-  copies under `.tasks/_/dotnet/` and `.tasks/_/git/check.cs` identical to their canonical sources.
+- Author reusable task changes in `shared-tasks/`. Keep installed copies under
+  `.tasks/_/`, including `dotask-installer/`, identical to their canonical sources.
 - Recursive task paths define full names; shared copies include source/group/task.
   The official source is `_`, the default for omitted sources; only the task-root
   `_` directory is exempt from underscore-prefixed discovery exclusions.
@@ -134,9 +134,9 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   project/target help reads YAML and checks effective defaults.
 - CLI-only `--help`/`-h` skips project discovery and reads; target completion skips project configuration; management completion stays local.
 - Keep YAML declarative and keep services deferred.
-- Shared `dotnet/install` requires a project `create-installer` returning an
+- Shared `dotask-installer/install` requires a `create-installer` returning an
   `InstallerArtifact`, then launches it. It never falls back to copying files.
-  Dotask’s own standalone installer uses `InstallationDefinition` and preserves
+  Dotask’s standalone Rust installer uses YAML receipts and preserves
   existing ownership; publishing stays in `.tasks/create-installer.cs`. See `docs/INSTALLATION.md`.
   Preserve installation ownership, immutable builds, and activation recovery journals.
   Test with explicit temporary install/bin roots; do not modify the user's active install.
@@ -169,6 +169,9 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - The required gate also checks bundled shim hashes. Changes to `src/Dotask.Shim`
   require `./build.sh shim` with LLVM, review of both native delivery assets and
   hashes, and native Windows acceptance. Ordinary builds/installs use bundled assets.
+- The gate builds and tests `src/dotask-installer` with Rust 1.95+, rustfmt, and
+  clippy before .NET integration tests. `installer-engine` builds the host binary;
+  `installer-engine --verify` runs Rust checks. Keep Rust outputs external too.
 - Verify evaluated output paths after build-tooling changes.
 - Repository builds import the optional user-level MSBuild output policy.
 - Runtime target compilation is deliberately isolated from a consumer's build

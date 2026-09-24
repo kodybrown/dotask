@@ -2,6 +2,45 @@
   "version": 1,
   "tasks": [
     {
+      "id": "dotask-installer/create-installer",
+      "entryPoint": "dotask-installer/create-installer.cs",
+      "description": "Package an application payload and YAML with the standalone Rust installer.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotask-installer/create-installer.cs",
+          "sha256": "68faf24d3f86f67dec885aed2d5738d0bc17ad3b96b196a21a9a2e157209bd21"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotask-installer/install",
+      "entryPoint": "dotask-installer/install.cs",
+      "description": "Create and run the project's installer for this OS and architecture.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotask-installer/install.cs",
+          "sha256": "fbf34f42c6f61a81b17ae24300dbabb9291c4c5738069684456e7cadf46eb88e"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "dotask-installer/uninstall",
+      "entryPoint": "dotask-installer/uninstall.cs",
+      "description": "Run the retained installer to uninstall an application without rebuilding it.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotask-installer/uninstall.cs",
+          "sha256": "4474317cb4c183d37a8f5df0e49218b258b7301aedd76ce03bd95a5637574cc2"
+        }
+      ],
+      "requires": []
+    },
+    {
       "id": "dotnet/build",
       "entryPoint": "dotnet/build.cs",
       "description": "Restore packages and build the configured solution.",
@@ -51,19 +90,6 @@
         {
           "path": "dotnet/format.cs",
           "sha256": "afa96372cfefffe8c2ba829b0156f076159e80676ebc80caaefb963a61ab9500"
-        }
-      ],
-      "requires": []
-    },
-    {
-      "id": "dotnet/install",
-      "entryPoint": "dotnet/install.cs",
-      "description": "Create and run the project's installer for this OS and architecture.",
-      "runtime": "csharp",
-      "files": [
-        {
-          "path": "dotnet/install.cs",
-          "sha256": "d5814de76fe4e7f8997fd5ec4676103c6d3a3f12b8cb9e2940fe7ded1274bc82"
         }
       ],
       "requires": []

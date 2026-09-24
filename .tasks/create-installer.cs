@@ -4,7 +4,7 @@ using DoTask;
 
 /// <summary>Create dotask's standalone installer for the current OS and architecture without installing it.</summary>
 /// <option name="configuration" alias="c" choices="Debug,Release" default="Release">Build configuration.</option>
-/// <option name="self-contained" type="bool" default="true">Include the .NET runtime in the application and installer.</option>
+/// <option name="self-contained" type="bool" default="true">Include the .NET runtime in the application payload.</option>
 /// <requires tool="dotnet" />
 /// <requires setting="installer-output" />
 /// <example>dotask create-installer</example>
@@ -16,7 +16,8 @@ public static class Target
     if (string.IsNullOrWhiteSpace(project.Config.Get<string>("installer-output"))) {
       throw new TaskException("settings.installer-output must name a directory.");
     }
-    var outputDirectory = PhysicalDirectory(project.Config.GetPath("installer-output"));
+    var outputDirectory = project.Config.GetPath("installer-output");
+    await project.ExecTargetAsync("installer-engine");
     var system = project.OS switch {
       HostOS.Windows => "win",
       HostOS.Linux => RuntimeInformation.RuntimeIdentifier.StartsWith("linux-musl-", StringComparison.Ordinal) ? "linux-musl" : "linux",
@@ -36,39 +37,28 @@ public static class Target
       "-p:UseAppHost=true"
     ];
     var application = project.Path("src/Dotask.Cli/Dotask.Cli.csproj");
-    var installerProject = project.Path("src/Dotask.Installer/Dotask.Installer.csproj");
     var published = await Query(["publish", application, "--nologo", "--verbosity", "quiet", .. properties,
       "-getProperty:PublishDir,Version"]);
     var applicationDirectory = Path.GetFullPath(published["PublishDir"], Path.GetDirectoryName(application)!);
-    var installer = await Query(["publish", installerProject, "--nologo", "--verbosity", "quiet", .. properties,
-      "-getProperty:PublishDir,AssemblyName"]);
-    var installerDirectory = Path.GetFullPath(installer["PublishDir"], Path.GetDirectoryName(installerProject)!);
-    // A physical snapshot survives the next publish and can be distributed as a directory.
-    var package = Path.Combine(outputDirectory, system + "-" + architecture, Guid.NewGuid().ToString("N"));
-    foreach (var source in new[] { applicationDirectory, installerDirectory }) {
-      var relative = Path.GetRelativePath(PhysicalDirectory(source), package);
-      if (!Path.IsPathRooted(relative) && relative != ".." && !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)) {
-        throw new TaskException("settings.installer-output must place the final package outside the application and installer publish directories.");
-      }
+    var temporary = Directory.CreateTempSubdirectory("dotask-package-config-");
+    try {
+      var config = Path.Combine(temporary.FullName, "installer.yaml");
+      // JSON is a YAML subset. The Rust packager writes the final human-readable
+      // YAML, keeping this wrapper free of a second YAML serialization dependency.
+      await File.WriteAllTextAsync(config, JsonSerializer.Serialize(new {
+        schema = 1,
+        application = new { id = "dotask", name = "dotask", version = published["Version"], author = "Kody Brown", description = "Portable project tasks" },
+        platform = project.OS.ToString().ToLowerInvariant(),
+        architecture,
+        payload = applicationDirectory,
+        commands = new[] { new { name = "dotask", executable = project.IsWindows ? "dotask.exe" : "dotask" } }
+      }), project.CancellationToken);
+      var engine = project.IsWindows ? "C:/tmp/_dotnet/dotask-rust/release/dotask-installer.exe" : "/tmp/_dotnet/dotask-rust/release/dotask-installer";
+      var artifact = await project.CreateInstallerAsync("_/dotask-installer/create-installer", new { Config = config, Engine = engine, Output = outputDirectory });
+      await project.SetInstallerResultAsync(artifact);
+    } finally {
+      temporary.Delete(recursive: true);
     }
-    CopyTree(installerDirectory, package);
-    CopyTree(applicationDirectory, Path.Combine(package, "payload"));
-    var definition = new InstallationDefinition {
-      AppId = "dotask",
-      Version = published["Version"],
-      SourceDirectory = "payload",
-      Commands = [new InstalledCommand("dotask", project.IsWindows ? "dotask.exe" : "dotask")]
-    };
-    await File.WriteAllTextAsync(Path.Combine(package, "installer.json"), JsonSerializer.Serialize(definition), project.CancellationToken);
-    var executable = Path.Combine(package, project.IsWindows ? "dotask-installer.exe" : "dotask-installer");
-    await project.SetInstallerResultAsync(new InstallerArtifact {
-      FilePath = executable,
-      Kind = InstallerKind.Executable,
-      OS = project.OS,
-      Architecture = project.Architecture
-    });
-    Console.WriteLine($"Created installer: {executable}");
-    Console.WriteLine("Distribute the entire installer directory, including payload and runtime files.");
 
     async Task<Dictionary<string, string>> Query( string[] arguments )
     {
@@ -105,39 +95,4 @@ public static class Target
     }
   }
 
-  private static string PhysicalDirectory( string path )
-  {
-    var full = Path.GetFullPath(path);
-    var current = Path.GetPathRoot(full)!;
-    foreach (var part in full[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries)) {
-      current = Path.Combine(current, part);
-      var directory = new DirectoryInfo(current);
-      if (directory.LinkTarget is not null) {
-        current = directory.ResolveLinkTarget(true)?.FullName ?? throw new TaskException($"Broken directory link: {current}");
-      }
-      if (File.Exists(current)) {
-        throw new TaskException($"Expected an installer output directory: {current}");
-      }
-    }
-    return current;
-  }
-
-  private static void CopyTree( string source, string destination )
-  {
-    Directory.CreateDirectory(destination);
-    foreach (var entry in Directory.EnumerateFileSystemEntries(source)) {
-      if ((File.GetAttributes(entry) & FileAttributes.ReparsePoint) != 0) {
-        throw new TaskException($"Installer payload cannot contain links: {entry}");
-      }
-      var target = Path.Combine(destination, Path.GetFileName(entry));
-      if (Directory.Exists(entry)) {
-        CopyTree(entry, target);
-      } else {
-        File.Copy(entry, target);
-        if (!OperatingSystem.IsWindows()) {
-          File.SetUnixFileMode(target, File.GetUnixFileMode(entry));
-        }
-      }
-    }
-  }
 }

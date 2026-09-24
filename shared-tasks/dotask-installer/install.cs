@@ -2,9 +2,9 @@ using DoTask;
 
 /// <summary>Create and run the project's installer for this OS and architecture.</summary>
 /// <option name="installer-args" type="string">JSON array of installer argument tokens; replaces the installer's defaults.</option>
-/// <remarks>Requires the project's create-installer target. That target must build, not run, its installer and return it using SetInstallerResultAsync.</remarks>
+/// <remarks>Invokes create-installer through the project catalog. Custom creators must return one InstallerArtifact and must not install.</remarks>
 /// <example>dotask install</example>
-/// <example>dotask install --installer-args '["--scope","user"]'</example>
+/// <example>dotask install --installer-args '["--interactive"]'</example>
 public static class Target
 {
   public static async Task Main()

@@ -1,5 +1,40 @@
 # Verification
 
+## Standalone Rust installer (2026-09-24)
+
+On Windows x64, `build.cmd` passed 350 .NET Release tests and 16 Rust Release
+integration tests, Rust formatting/clippy, C# formatting, documentation, catalog,
+shim hashes, and Git whitespace checks. Rust 1.95.0 and .NET SDK 10.0.400 were used.
+Evaluated `BaseOutputPath`, `BaseIntermediateOutputPath`, and `PublishDir` remain
+under `C:\tmp\_dotnet`; Rust output uses `C:\tmp\_dotnet\dotask-rust`. Intentional
+input directory aliases are resolved, including this machine's `C:\tmp` junction.
+
+Rust tests cover installation/reuse, last-active retention, pruning (including a
+locked Windows executable and modified old build), settings preservation/removal,
+YAML input precedence, disallowed shortcuts, missing inputs, ZIP traversal,
+payload links, independent local/desktop shortcuts, immutable package snapshots,
+empty payload directories, explicit legacy import, and retained-engine uninstall.
+An additional case holds an unchanged stable shim open during update and verifies
+that activation changes only its sidecar. The gate also exposed lossy redirected
+CLI output on Windows; explicit UTF-8 output passed all 24 initialization tests.
+The .NET integration adds the new shared task group through task management,
+packages a real `OutputType=WinExe` application, installs and launches it through
+the local shim, verifies local/desktop shortcut creation, removes the original
+package, and uninstalls through the shared task and retained Rust executable.
+
+`build.cmd create-installer --self-contained=false` produced a complete dotask
+package. An isolated native install launched the installed `dotask --version`
+successfully, then the retained installer removed the owned installation.
+Windows self-uninstall moves its running executable to a printed temporary
+directory when necessary; that temporary binary can be removed after exit.
+No active dotask installation, PATH, shell profile, or PTS files were changed.
+
+Native Linux/macOS and Windows ARM64 acceptance remain pending. The CI matrix
+includes the new Rust gate but has not been run remotely by this task. Interactive
+prompts, real desktop launch/trust behavior, macOS Finder aliases, and PTS-specific
+acceptance also remain pending. Rust engine release distribution is not automated;
+consumers currently supply a host engine binary. No publishing or pushing occurred.
+
 ## Windows test portability (2026-09-24)
 
 All 348 Release tests pass on Windows with .NET SDK 10.0.400, including a new

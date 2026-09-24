@@ -9,6 +9,9 @@
 
 *          text=auto eol=lf
 
+# Dependency changes in the Rust binary's lockfile must remain reviewable.
+Cargo.lock text diff eol=lf
+
 # Force CRLF line-endings.
 *.[Bb][Aa][Tt] text eol=crlf
 *.[Cc][Mm][Dd] text eol=crlf
