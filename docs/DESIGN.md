@@ -178,6 +178,127 @@ atomic to observers. Old builds are retained. PATH editing, existing global-tool
 removal and command-directory relocation are not automatic. See
 [installation](INSTALLATION.md) for the public API and ownership contract.
 
+## Planned standalone installer
+
+This section records design decisions from the installer discussion, not
+implemented behavior. The current implementation remains described above and in
+[Application installers](INSTALLATION.md). The YAML schema, engine delivery, and
+migration details still require design and implementation.
+
+### Task and distribution boundaries
+
+- Group reusable C# tasks under `_/dotask-installer/*`, with canonical sources in
+  `shared-tasks/dotask-installer/`. Application build/publish steps remain
+  project-specific; packaging and installation must work with non-.NET payloads.
+  Migrate existing shared install tasks through dotask management commands,
+  avoiding competing short names. PTS acceptance must use that workflow.
+- Use a generic Rust installer, without an Inno Setup dependency or Windows
+  Installed Apps integration. Retain the existing bundled Windows command shims;
+  consumers do not rebuild them. The installer must support automated uninstall.
+- Distribute a platform/architecture-specific executable, same-basename YAML,
+  and a payload directory or ZIP. YAML carries application metadata, version,
+  inputs, defaults, and installation instructions. Resolve payload paths relative
+  to the YAML. No dotask or language toolchain is required on the destination.
+- `create-installer` builds a package and returns its artifact without installing;
+  `install` invokes the creator and runs the artifact. Preserve custom project
+  creators and the structured artifact contract.
+
+### Inputs and desktop integration
+
+Install and uninstall are unattended unless `--interactive` is specified. Missing
+required information, invalid values, or unresolved conflicts stop with an
+actionable error and nonzero exit status; redirected input never causes a prompt.
+Named typed inputs own prompts and choices. Value precedence is CLI overrides,
+explicit YAML values, environment-profile defaults, OS defaults, then common
+defaults. Interactive answers may replace defaults. Environment profiles include
+Linux desktop/distribution differences such as Omarchy.
+
+Shortcuts are available to console and GUI applications. YAML declares which
+options are allowed and their defaults; CLI overrides and interactive choices
+must respect those permissions. Support Windows Start menu and desktop shortcuts,
+Linux application/desktop entries where supported, and macOS desktop aliases.
+Terminal behavior, arguments, working directory, and icons need explicit metadata.
+Desktop integration must be tested with an actual GUI consumer, including WinExe.
+
+Uninstall preserves settings by default. `--leave-settings` and
+`--remove-settings` are mutually exclusive; removal is restricted to declared
+application-owned settings, never arbitrary documents or unrelated user data.
+An explicit unattended uninstall invocation does not require another confirmation
+flag. The installed engine and records must suffice without the original payload.
+
+### Installation layout and receipts
+
+Keep management files in a visible `installer/` directory beneath the application
+root. The proposed uniform payload layout is `app/<version>-<build-id>/`:
+
+```text
+pts/
+  installer/
+    installer.exe
+    installer.yaml
+    installation.yaml
+  app/
+    1.2.0-abc123/
+      installer.yaml
+      installation.yaml
+      <application files>
+    1.3.0-def456/
+      installer.yaml
+      installation.yaml
+      <application files>
+```
+
+The executable has no `.exe` suffix on Unix. The root management receipt is
+mutable installation state: identity, resolved locations, active and previously
+active builds, owned shortcuts/commands, and installed build inventory. Each
+build keeps an immutable receipt and a snapshot of its installer YAML. Uninstall
+uses the corresponding installed configuration together with actual ownership
+records, rather than recomputing locations from defaults or assuming the newest
+configuration describes all older builds. Reserved metadata names must not
+collide with payload files. Exact schemas and compatibility rules remain open.
+
+Always using version directories would replace the earlier fixed-location layout
+proposal. This remains a proposal: retaining multiple builds and an application's
+ability to run from a version-specific path are separate concerns. Directory
+layout alone cannot make incompatible application paths or data formats work.
+Keep application settings in their normal locations; do not redirect XDG/AppData
+settings through links into individual builds.
+
+Optional convenience launchers in the application root remain under discussion:
+for example `pts.lnk`, `pts.exe` plus `pts.shim`, or a Unix command symlink and
+desktop launcher/alias. The current proposal is independent local and external
+launchers targeting the active application build directly. External shortcuts
+would still be refreshed on installation, without chaining through local ones.
+Both sets require ownership tracking, collision checks, and uninstall handling.
+
+Encourage versioned installations. `--prune-old-versions`, a YAML default, or an
+interactive choice enables pruning after successful installation and activation.
+Keep the new active build and the last active build, not the next lower version
+number. An identical reinstall must not shift that history. Preserve modified or
+otherwise unsafe-to-remove builds and report them. Without pruning, retain older
+builds. Existing owned dotask installations require an explicit compatibility
+path; do not adopt directories managed by another installer automatically.
+
+### Rollback is deferred
+
+Do not implement `--rollback` or `--set-version` in the initial feature. Retaining
+a previous build does not promise that it can safely be reactivated. The reasons
+to defer are:
+
+- Newer applications may migrate settings, databases, or documents incompatibly;
+  changing executable paths does not undo those migrations.
+- Running applications keep using their current build; switching launchers does
+  not switch existing processes.
+- Builds can differ in entry points, commands, icons, and shortcut definitions.
+- Updating several launchers can be interrupted, leaving mixed activation state;
+  recovery and ownership checks require a separate design.
+- Retained builds can be missing or modified and must be validated before use.
+
+Users may invoke an older installer, but that is a new installation attempt, not
+a guaranteed data downgrade or automatic rollback. Automated failure recovery is
+also distinct from a user-requested version switch. Deferring these new engine
+features does not remove the current .NET engine's activation recovery behavior.
+
 ## Deferred
 
 Service management is deliberately deferred. There is no service provider,

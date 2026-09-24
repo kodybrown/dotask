@@ -18,6 +18,7 @@ run your first example. The preview is not yet published to a public package fee
 | Ask an AI assistant to create or maintain tasks       | [AI assistant guide and reusable instructions](AI-ASSISTANTS.md) |
 | Follow a runnable example with expected output        | [Basic example](../examples/basic/README.md)                     |
 | Understand implementation decisions                   | [Design and execution contracts](DESIGN.md)                      |
+| Review the proposed reusable Rust installer and rollback boundaries | [Planned standalone installer](DESIGN.md#planned-standalone-installer) |
 | Check tested hosts, shells, and remaining limitations | [Verification status](VERIFICATION.md)                           |
 | Develop dotask itself                                 | [Repository agent instructions](../AGENTS.md)                    |
 | Review approved completed changes                     | [Changelog](CHANGELOG.md)                                        |

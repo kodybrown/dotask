@@ -229,3 +229,16 @@ acceptance, installation, and publication.
   checks. All 13 installed official task copies match their canonical sources.
   Evaluated build paths remain under `C:\tmp\_dotnet`. Linux/macOS verification
   of this change remains pending; nothing was installed, published, or pushed.
+
+### 2026-09-24 Record standalone installer design decisions
+
+- Document the agreed Rust installer direction, reusable task boundary,
+  unattended inputs, YAML receipts, uninstall/settings behavior, shortcut
+  permissions, and previous-build retention policy. Distinguish layout and local
+  launcher proposals from settled decisions and from implemented behavior.
+- Record why version switching and rollback are deferred, including data
+  migrations, running processes, entry-point differences, interrupted activation,
+  and missing or modified builds. Link the design from the documentation index.
+- Verification: `build.cmd verify-docs`, `git diff --check`, and checks of the
+  changed documentation links/anchor passed. Documentation only; no runtime
+  behavior, personal notes, installation, or published artifacts changed.
