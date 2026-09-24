@@ -53,8 +53,8 @@ public sealed class BootstrapTests
         using var reader = new StreamReader(stream);
         Project.Write(file == "bootstrap.targets" ? ".tasks/misc/" + file : file, reader.ReadToEnd());
       }
-      // Isolate this synthetic SDK project from any ancestor's build policy.
-      Project.Write("Directory.Build.props", "<Project />");
+      // Preserve the user output policy while exercising a custom publish path.
+      Project.WriteBuildProperties();
       Project.Write("src/Dotask.Cli/Dotask.Cli.csproj", """
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
@@ -62,7 +62,7 @@ public sealed class BootstrapTests
             <OutputType>Exe</OutputType>
             <AssemblyName>dotask</AssemblyName>
             <ImplicitUsings>enable</ImplicitUsings>
-            <PublishDir>../../custom publish output/</PublishDir>
+            <PublishDir>$(FixtureOutputRoot)/custom publish output/</PublishDir>
           </PropertyGroup>
           <Import Project="../../.tasks/misc/bootstrap.targets" />
         </Project>

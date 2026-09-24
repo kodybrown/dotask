@@ -36,7 +36,7 @@ public sealed class InstallerWorkflowTests
   {
     using var project = new TestProject();
     CopyInstall(project);
-    project.Write("Directory.Build.props", "<Project />");
+    project.WriteBuildProperties();
     project.Write("installer/Probe.csproj", """
       <Project Sdk="Microsoft.NET.Sdk"><PropertyGroup>
         <OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework>
@@ -47,7 +47,7 @@ public sealed class InstallerWorkflowTests
       System.IO.File.WriteAllText("invocation.json", System.Text.Json.JsonSerializer.Serialize(args));
       return args.Length == 1 && args[0] == "fail" ? 23 : 0;
       """);
-    var output = Path.Combine(project.Root, "installer files 日本語");
+    var output = Path.Combine(project.OutputRoot, "installer files 日本語");
     var build = await ProcessRunner.RunAsync(new ProcessDefinition {
       Executable = "dotnet",
       Arguments = ["publish", Path.Combine(project.Root, "installer/Probe.csproj"), "-o", output],
@@ -56,11 +56,11 @@ public sealed class InstallerWorkflowTests
     Assert.Equal(0, build.ExitCode);
     project.Write(".dotasks.yaml", "version: 1\nsettings: { project: unused-gui.csproj }\n");
     project.Write("unused-gui.csproj", "<Project><PropertyGroup><OutputType>WinExe</OutputType></PropertyGroup></Project>");
-    project.Target("create-installer", """
+    project.Target("create-installer", $$"""
       var project = BuildContext.Current;
       File.AppendAllText(project.Path("builds"), "built\n");
       await project.SetInstallerResultAsync(new InstallerArtifact {
-        FilePath = "installer files 日本語/Probe.dll", Kind = InstallerKind.DotNetAssembly,
+        FilePath = {{JsonSerializer.Serialize(Path.Combine(output, "Probe.dll"))}}, Kind = InstallerKind.DotNetAssembly,
         OS = project.OS, Architecture = project.Architecture, DefaultArguments = ["default", "two words"]
       });
       """, async: true);

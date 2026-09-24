@@ -23,13 +23,13 @@ public sealed class VerboseTests
     var text = output.ToString();
     Assert.Contains("Targets:", text);
     Assert.Contains("Run things.", text);
-    Assert.EndsWith("See `dotask help <target>` for detailed information on each target.\n", text);
+    Assert.EndsWith("See `dotask help <target>` for detailed information on each target." + Environment.NewLine, text);
     Assert.Empty(error.ToString());
     foreach (var detail in new[] { "Project identity", "Project description", "Settings:", "Target options:" }) {
       Assert.Equal(command.Contains("--verbose"), text.Contains(detail));
     }
     if (!command.Contains("--verbose")) {
-      Assert.StartsWith("Targets:\n", text);
+      Assert.StartsWith("Targets:" + Environment.NewLine, text);
     }
   }
 

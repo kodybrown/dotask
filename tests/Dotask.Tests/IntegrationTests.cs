@@ -246,7 +246,8 @@ public sealed class IntegrationTests
   public async Task NativeProjectReferencesKeepTheirOwnBuildProperties()
   {
     using var project = new TestProject();
-    project.Write("shared/Directory.Build.props", "<Project><PropertyGroup><TargetFramework>net10.0</TargetFramework><DefineConstants>LIBRARY_FLAG</DefineConstants></PropertyGroup></Project>");
+    project.WriteBuildProperties("shared/Directory.Build.props",
+      "<TargetFramework>net10.0</TargetFramework><DefineConstants>LIBRARY_FLAG</DefineConstants>");
     project.Write("shared/Library.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />");
     project.Write("shared/Library.cs", """
       public static class Shared
@@ -263,6 +264,19 @@ public sealed class IntegrationTests
     var result = await project.RunAsync("reference");
     Assert.True(result.ExitCode == 0, result.StandardError);
     Assert.Contains("library-built", result.StandardOutput);
+  }
+
+  [Fact]
+  public async Task DirectCompilationAcceptsPortableSeparatorsAndRecordsOutput()
+  {
+    using var project = new TestProject();
+    var file = project.Target("nested/run", "Console.WriteLine(typeof(BuildContext).Name);");
+    // Keep this input unnormalized even though the fixture normally returns
+    // native paths: direct compiler callers can supply portable separators.
+    var target = MetadataReader.Read(file.Replace('\\', '/'));
+    var result = await new TargetCompiler().CompileAsync(target, CancellationToken.None);
+    Assert.True(result.Success, result.Diagnostics);
+    Assert.True(File.Exists(result.AssemblyPath));
   }
 
   [Fact]

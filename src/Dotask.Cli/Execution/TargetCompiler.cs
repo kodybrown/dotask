@@ -27,6 +27,9 @@ public sealed class TargetCompiler
   public async Task<CompilationResult> CompileAsync( TargetDefinition target, CancellationToken cancellationToken,
     string? snapshotDirectory = null )
   {
+    // MSBuild canonicalizes its project path. Match that spelling before using
+    // it to distinguish the task from referenced projects (notably on Windows).
+    target = target with { FilePath = Path.GetFullPath(target.FilePath) };
     var cache = Path.Combine(_cacheRoot, Hash(Path.GetFullPath(target.FilePath)));
     Directory.CreateDirectory(cache);
     await using var lease = await AcquireLockAsync(Path.Combine(cache, "build.lock"), cancellationToken);

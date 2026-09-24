@@ -10,7 +10,7 @@ public sealed class SharedDotNetTaskTests
     using var project = new TestProject();
     CopyShared(project, "dotnet/pack.cs", ".tasks");
     project.Write(".dotasks.yaml", "settings:\n  project: source library/Library.csproj\n");
-    project.Write("Directory.Build.props", "<Project />");
+    project.WriteBuildProperties();
     project.Write("source library/Library.csproj", """
       <Project Sdk="Microsoft.NET.Sdk">
         <PropertyGroup>
@@ -41,7 +41,7 @@ public sealed class SharedDotNetTaskTests
     const string tasks = "automation/tasks";
     CopyShared(project, "dotnet/format.cs", tasks);
     project.Write(".dotasks.yaml", "settings:\n  solution: Sample.slnx\n");
-    project.Write("Directory.Build.props", "<Project />");
+    project.WriteBuildProperties();
     project.Write(".editorconfig", """
       root = true
       [*.cs]

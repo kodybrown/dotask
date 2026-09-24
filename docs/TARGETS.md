@@ -155,6 +155,9 @@ self-describing tasks. Parameters come from `project.Parameters`; dotask does no
 forward its command-line arguments to `Main(string[] args)`.
 
 The library reference and a small startup helper are attached during compilation.
+Task source paths are normalized before matching the SDK project, including
+Windows paths supplied with forward slashes. Referenced projects retain their
+own build properties and targets.
 Use `using DoTask;` to import the library namespace. Existing target files using
 the earlier `using Dotask;` spelling must update that import. C# namespace names
 are case-sensitive. Rebuild dotask and reinstall any packaged preview when

@@ -197,3 +197,18 @@ acceptance, installation, and publication.
   rejection passed live Linux checks. MSBuild paths remain under `/tmp/_dotnet`;
   18 local documentation links/anchors passed. Native Windows/macOS acceptance
   remains pending. No application was installed or pushed.
+
+### 2026-09-24 Windows test and compiler path portability
+
+- Normalize compiler source paths before matching the SDK project so portable
+  Windows paths receive the library reference, startup helper, and output record.
+  Add a direct-compilation regression without normalizing its input in the test.
+- Normalize embedded test-resource names and fixture filesystem paths; respect
+  platform help-output newlines. Preserve user build-output policy in synthetic
+  projects and keep custom publish directories external. Handle read-only Git
+  fixture files during cleanup without following symbolic links.
+- Align C# formatter line endings with Git's LF checkout policy.
+- Verification: `build.cmd` passed all 348 Release tests, formatting, docs,
+  catalog, shim hashes, and whitespace checks on Windows; `build.cmd pack`
+  produced the local NuGet package. Evaluated build/intermediate/publish paths
+  remain under `C:\tmp\_dotnet`. Linux/macOS acceptance remains pending.

@@ -1,5 +1,20 @@
 # Verification
 
+## Windows test portability (2026-09-24)
+
+All 348 Release tests pass on Windows with .NET SDK 10.0.400, including a new
+direct-compilation regression for forward-slash source paths. Shared resource
+names, fixture paths, and help-output assertions are portable across OS path and
+newline conventions. Synthetic SDK projects import the optional user output
+policy; their custom publish destinations stay under the external artifact root.
+Git fixture cleanup handles read-only object files without following links.
+
+`build.cmd` passed the full gate: tests, formatting, docs, catalog, shim hashes,
+and whitespace checks. `build.cmd pack` produced the local CLI NuGet package. Evaluated repository
+`BaseOutputPath`, `BaseIntermediateOutputPath`, and `PublishDir` remain under
+`C:\tmp\_dotnet`. Linux/macOS verification of these changes remains pending.
+The active installation was not changed, and nothing was published or pushed.
+
 ## Configurable installer output (2026-09-21)
 
 `settings.installer-output` now controls the final complete installer directory,

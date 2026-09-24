@@ -32,9 +32,9 @@ public sealed class InstallationIntegrationTests
   {
     using var project = new TestProject();
     project.Write(".dotasks.yaml", "version: 1\nsettings:\n  project: 'source app/Probe.csproj'\n");
-    // Isolated fixture properties, outside the source checkout; intentionally
-    // use a nonstandard PublishDir to catch any bin/Release assumptions.
-    project.Write("Directory.Build.props", "<Project />");
+    // Preserve external outputs and use a nonstandard PublishDir to catch
+    // any bin/Release assumptions in installation.
+    project.WriteBuildProperties();
     project.Write("source app/Probe.csproj", """
       <Project Sdk="Microsoft.NET.Sdk">
         <PropertyGroup>
@@ -44,7 +44,7 @@ public sealed class InstallationIntegrationTests
           <Version>2.3.4</Version>
           <AssemblyName>installed-probe</AssemblyName>
           <ToolCommandName>probe</ToolCommandName>
-          <PublishDir>../custom published files/</PublishDir>
+          <PublishDir>$(FixtureOutputRoot)/custom published files/</PublishDir>
         </PropertyGroup>
         <ItemGroup><None Include="data.txt" CopyToPublishDirectory="Always" /></ItemGroup>
       </Project>
@@ -110,7 +110,7 @@ public sealed class InstallationIntegrationTests
       var installed = await UserInstaller.InstallAsync(new InstallationDefinition {
         AppId = "installed-probe",
         Version = "2.3.4",
-        SourceDirectory = Path.Combine(project.Root, "custom published files"),
+        SourceDirectory = Path.Combine(project.OutputRoot, "custom published files"),
         Commands = [new InstalledCommand("probe", OperatingSystem.IsWindows() ? "installed-probe.exe" : "installed-probe")],
         BinDirectory = bin,
         InstallRoot = root

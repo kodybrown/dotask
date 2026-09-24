@@ -16,7 +16,10 @@
                       LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../build.sh;../../build.cmd;../../.tasks/misc/bootstrap.targets"
                       LogicalName="Bootstrap/%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../../shared-tasks/**/*" LogicalName="Shared/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../shared-tasks/**/*">
+      <!-- Resource identifiers are portable names, not platform filesystem paths. -->
+      <LogicalName>$([System.String]::Copy('Shared/%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '/'))</LogicalName>
+    </EmbeddedResource>
     <ProjectReference Include="../../src/Dotask.Cli/Dotask.Cli.csproj" />
     <ProjectReference Include="../../src/Dotask.Installer/Dotask.Installer.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />

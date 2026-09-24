@@ -679,7 +679,7 @@ public sealed class SharedTaskTests
       JsonSerializer.SerializeToUtf8Bytes(new SharedCatalog(1, CatalogTasks.ToArray()), SharedTaskJson.Options));
     private static string WriteSource( string root, string id, string body, bool async, string metadata = "" )
     {
-      var path = Path.Combine(root, id + ".cs");
+      var path = Path.GetFullPath(Path.Combine(root, id + ".cs"));
       Directory.CreateDirectory(Path.GetDirectoryName(path)!);
       File.WriteAllText(path, $$"""
         using DoTask;

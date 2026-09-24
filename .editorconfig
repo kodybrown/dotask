@@ -213,7 +213,8 @@ trim_trailing_whitespace = true
 
 [*.cs]
 charset = utf-8
-#end_of_line = lf
+# Match Git's checkout policy so formatter results do not depend on the host OS.
+end_of_line = lf
 file_header_template = unset
 indent_size = 2
 indent_style = space
