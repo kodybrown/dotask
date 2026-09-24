@@ -253,20 +253,27 @@ acceptance, installation, and publication.
   independently targeted external launchers, and configurable desktop/Start menu
   shortcuts for console and GUI applications. Preserve settings by default and
   support explicit settings removal and previous-build-preserving pruning.
-- Add ownership/conflict protection, explicit legacy JSON import, activation
+- Add ownership/conflict protection, activation
   retry records, and uninstall progress. Keep rollback/version switching deferred.
 - Move shared installation into `_/dotask-installer/`, add generic packaging and
   uninstall tasks, migrate this checkout through task management, and delegate
-  dotask packaging to the Rust engine. Retain legacy .NET APIs and their tests.
+  dotask packaging to the Rust engine.
 - Include Rust tests/formatting/clippy in the required gate and CI, document the
-  schema and migration workflow, and preserve evaluated external MSBuild outputs.
+  YAML schema, and preserve evaluated external MSBuild outputs.
 - Emit redirected CLI output as UTF-8 after the full gate exposed lossy Windows
   code-page conversion of Unicode project names; the focused initialization suite
   verifies the correction.
-- Verification: `build.cmd` passed 350 .NET and 16 Rust Release tests plus all
+- Remove installer backward compatibility: no legacy JSON import, migration flag,
+  compatibility receipt fields, or .NET installation engine/API remain. Preserve
+  existing unrecognized directories and launchers, with a fresh-destination
+  diagnostic. Move native console/shim acceptance onto the Rust engine and test
+  that unsupported formats and migration flags cannot mutate an old installation.
+- Verification: `build.cmd` passed 306 .NET and 16 Rust Release tests plus all
   required checks. The shared-task integration installs, launches, and uninstalls
   a real WinExe fixture. A source-created dotask package passed isolated native
   Windows install/version/uninstall checks. Changed documentation links/anchors
   and `git diff --check` passed; evaluated .NET paths remain under `C:\tmp\_dotnet`.
+  After removing compatibility, a fresh `build.cmd create-installer` package
+  passed `--validate` and rejected the removed migration flag without installing.
   Native Linux/macOS, interactive desktop, and PTS acceptance remain pending.
   No active installation or PTS files changed; nothing was published or pushed.

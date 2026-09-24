@@ -24,7 +24,6 @@
       <LogicalName>$([System.String]::Copy('InstalledShared/%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '/'))</LogicalName>
     </EmbeddedResource>
     <ProjectReference Include="../../src/Dotask.Cli/Dotask.Cli.csproj" />
-    <ProjectReference Include="../../src/Dotask.Installer/Dotask.Installer.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />

@@ -317,53 +317,28 @@ fn modified_older_build_is_retained_by_pruning() {
 }
 
 #[test]
-fn legacy_import_requires_explicit_consent_and_preserves_identity() {
-    use base64::Engine;
-    use sha2::{Digest, Sha256};
+fn previous_formats_and_migration_flags_are_rejected_without_mutation() {
     let f = Fixture::new();
     fs::create_dir(&f.root).unwrap();
     fs::create_dir(&f.bin).unwrap();
-    let fingerprint = "a".repeat(64);
-    let build = format!("0.9.0-{}", &fingerprint[..16]);
-    let directory = f.root.join(&build);
-    fs::create_dir(&directory).unwrap();
-    let exe = if cfg!(windows) { "probe.exe" } else { "probe" };
-    fs::copy(f.payload.join(exe), directory.join(exe)).unwrap();
-    let hash = format!(
-        "{:x}",
-        Sha256::digest(fs::read(directory.join(exe)).unwrap())
-    );
-    let mut mode = 0;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        mode = fs::metadata(directory.join(exe))
-            .unwrap()
-            .permissions()
-            .mode()
-            & 0o777;
-    }
-    #[cfg(windows)]
-    {
-        let _ = &mut mode;
-    }
-    fs::write(directory.join(".dotask-build.json"),serde_json::to_vec(&json!({"AppId":"probe","Version":"0.9.0","Fingerprint":fingerprint,"Files":[{"Path":exe,"Hash":hash,"Mode":mode}]})).unwrap()).unwrap();
-    let launcher = f.bin.join(exe);
-    fs::write(&launcher, "legacy launcher").unwrap();
-    let commands = json!({exe:{"Kind":"file","Value":base64::prelude::BASE64_STANDARD.encode(b"legacy launcher")}});
-    fs::write(f.root.join(".dotask-install.json"),serde_json::to_vec(&json!({"Schema":1,"AppId":"probe","BinDirectory":f.bin,"ActiveDirectory":directory,"Commands":commands})).unwrap()).unwrap();
-    assert!(!f.run(&[]).status.success());
-    assert!(!f.root.join("app").exists());
-    f.good(&["--migrate-legacy"]);
-    assert_eq!(f.receipt()["previous"], build);
-    assert!(directory.exists());
+    let receipt = f.root.join(".dotask-install.json");
+    let old = r#"{"Schema":1,"AppId":"probe","ActiveDirectory":"old-build"}"#;
+    fs::write(&receipt, old).unwrap();
+    let launcher = f
+        .bin
+        .join(if cfg!(windows) { "probe.exe" } else { "probe" });
+    fs::write(&launcher, "previous launcher").unwrap();
+    let result = f.run(&[]);
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("Choose a fresh install-dir"));
+    let result = f.run(&["--migrate-legacy"]);
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("Unknown argument"));
     let result = f.uninstall(&[]);
-    assert!(
-        result.status.success(),
-        "{}",
-        String::from_utf8_lossy(&result.stderr)
-    );
-    assert!(!f.root.exists());
+    assert!(!result.status.success());
+    assert_eq!(fs::read_to_string(&receipt).unwrap(), old);
+    assert_eq!(fs::read_to_string(&launcher).unwrap(), "previous launcher");
+    assert_eq!(fs::read_dir(&f.root).unwrap().count(), 1);
 }
 
 #[test]

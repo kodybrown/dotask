@@ -153,29 +153,15 @@ installer UI/elevation requirements, shortcuts, and application lifecycle.
 
 Dotask's creator publishes its application and packages the Rust engine, YAML,
 and payload using the shared creator. It respects evaluated output paths and
-copies the package beneath `settings.installer-output`. Explicit legacy import
-preserves ownership of older dotask-managed installations. The following
-paragraphs describe the retained legacy .NET installation API.
+copies the package beneath `settings.installer-output`. Only the current YAML
+format is supported: no legacy engine, compatibility API, or import path is kept.
+Existing unrecognized directories and unowned launchers remain conflicts.
 
-`UserInstaller` copies verified snapshots to immutable version/fingerprint
-directories, records ownership, and activates commands under per-root/bin locks.
-Lock files use exclusive delete-on-close handles, so normal completion and error
-unwinding remove them without a separate close-then-delete race.
-Unix commands are symlinks. Windows commands use an embedded native launcher plus
-a UTF-8 `.shim` sidecar. Launcher source and x64/ARM64 delivery assets live in
+Unix commands are symlinks. Windows commands use the bundled native launcher plus
+a UTF-8 `.shim` sidecar. Source and x64/ARM64 delivery assets remain in
 `src/Dotask.Shim`; ordinary installs do not compile or download launchers.
-The launcher only starts the named executable and preserves process behavior.
-
-Command activation uses a durable rollback journal; unexpected edits prevent
-automatic recovery. Missing owned launchers are recreated on reinstall; the
-journal records their physical absence while retaining the original ownership
-receipt, so interrupted repairs can roll back safely. Creation refuses to
-overwrite a command that appears after the missing-state check. Modified owned
-commands and occupied unowned destinations remain conflicts.
-Multiple command updates are recoverable but not jointly
-atomic to observers. Old builds are retained. PATH editing, existing global-tool
-removal and command-directory relocation are not automatic. See
-[installation](INSTALLATION.md) for the public API and ownership contract.
+The launcher preserves process arguments, standard streams, and exit behavior.
+See [installation](INSTALLATION.md) for the ownership and activation contract.
 
 ## Standalone installer design
 
@@ -253,7 +239,7 @@ build keeps an immutable receipt and a snapshot of its installer YAML. Uninstall
 uses the corresponding installed configuration together with actual ownership
 records, rather than recomputing locations from defaults or assuming the newest
 configuration describes all older builds. Reserved metadata names must not
-collide with payload files. Schema 1 and legacy import are in the public reference.
+collide with payload files. The current YAML schema is defined in the public reference.
 
 Always using version directories replaces the earlier fixed-location layout
 proposal. Retaining multiple builds and an application's
@@ -274,8 +260,8 @@ interactive choice enables pruning after successful installation and activation.
 Keep the new active build and the last active build, not the next lower version
 number. An identical reinstall must not shift that history. Preserve modified or
 otherwise unsafe-to-remove builds and report them. Without pruning, retain older
-builds. Existing owned dotask installations require an explicit compatibility
-path; do not adopt directories managed by another installer automatically.
+builds. Installations from previous formats are unsupported; do not import them
+or adopt their directories and launchers.
 
 ### Rollback is deferred
 

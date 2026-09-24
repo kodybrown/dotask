@@ -433,7 +433,6 @@ Use `var project = BuildContext.Current; var config = project.Config;` in `Main`
 | `CreateInstallerAsync(target, parameters, cancellationToken)` | Build and read the project's installer result; see [installer contract](INSTALLATION.md#installer-library-contract) |
 | `SetInstallerResultAsync(artifact, cancellationToken)` | Return one installer artifact to the calling task |
 | `RunInstallerAsync(artifact, arguments, cancellationToken)` | Validate and run the installer, using defaults unless arguments are supplied |
-| `InstallAsync(definition, cancellationToken)` | Install published files for the current user; see [installation definitions and results](INSTALLATION.md#low-level-installation-engine) |
 | `Path(...)`                                             | Resolve explicit portable path components against the root                              |
 | `DirSeparator`, `InvalidFileChars`, `InvalidDirChars`   | Host path facts; directory-name characters, not complete path validation                |
 

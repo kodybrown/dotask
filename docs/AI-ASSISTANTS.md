@@ -151,14 +151,13 @@ for custom orchestration; do not scrape stdout or guess artifact paths.
 An exact project `install` can delegate to `_/dotask-installer/install` explicitly.
 
 Dotask's standalone Rust installer uses YAML receipts and the `installer/` plus
-`app/<build>/` layout. Existing JSON-owned installations require explicit
-`--migrate-legacy`. Its creator copies packages beneath the project-relative
+`app/<build>/` layout. Older formats are unsupported; use fresh destinations or
+manually remove the old installation first. Its creator copies packages beneath the project-relative
 or absolute `settings.installer-output` directory (`artifacts/installers` here),
 without redirecting MSBuild outputs. Use the bootstrap launcher when upgrading an older CLI/library,
 and pass explicit temporary absolute install/bin paths via `--installer-args`
 for tests. Never remove ownership/recovery records or overwrite an unrelated
-launcher to bypass conflicts. `UserInstaller` / `InstallationDefinition` remain
-low-level APIs for installer authors, not a fallback for missing creator tasks.
+launcher to bypass conflicts.
 
 | Need                       | Use / behavior                                                                                                                       |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |

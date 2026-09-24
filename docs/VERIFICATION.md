@@ -2,7 +2,7 @@
 
 ## Standalone Rust installer (2026-09-24)
 
-On Windows x64, `build.cmd` passed 350 .NET Release tests and 16 Rust Release
+On Windows x64, `build.cmd` passed 306 .NET Release tests and 16 Rust Release
 integration tests, Rust formatting/clippy, C# formatting, documentation, catalog,
 shim hashes, and Git whitespace checks. Rust 1.95.0 and .NET SDK 10.0.400 were used.
 Evaluated `BaseOutputPath`, `BaseIntermediateOutputPath`, and `PublishDir` remain
@@ -13,7 +13,8 @@ Rust tests cover installation/reuse, last-active retention, pruning (including a
 locked Windows executable and modified old build), settings preservation/removal,
 YAML input precedence, disallowed shortcuts, missing inputs, ZIP traversal,
 payload links, independent local/desktop shortcuts, immutable package snapshots,
-empty payload directories, explicit legacy import, and retained-engine uninstall.
+empty payload directories, rejection of older installation formats and migration
+flags without mutating existing files, and retained-engine uninstall.
 An additional case holds an unchanged stable shim open during update and verifies
 that activation changes only its sidecar. The gate also exposed lossy redirected
 CLI output on Windows; explicit UTF-8 output passed all 24 initialization tests.
@@ -21,6 +22,13 @@ The .NET integration adds the new shared task group through task management,
 packages a real `OutputType=WinExe` application, installs and launches it through
 the local shim, verifies local/desktop shortcut creation, removes the original
 package, and uninstalls through the shared task and retained Rust executable.
+The console acceptance test also uses Rust and retains argument, standard-stream,
+exit-code, update/reuse, and native Windows Ctrl+C checks. The previous .NET
+installer, installation API, and their implementation-specific tests were removed;
+only the current YAML installer format is supported.
+After removing compatibility, `build.cmd create-installer` produced a fresh
+package; its `--validate` succeeded and `--migrate-legacy` was rejected before
+installation. The user's existing installation was not changed.
 
 `build.cmd create-installer --self-contained=false` produced a complete dotask
 package. An isolated native install launched the installed `dotask --version`

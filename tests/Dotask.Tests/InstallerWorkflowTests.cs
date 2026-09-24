@@ -146,62 +146,6 @@ public sealed class InstallerWorkflowTests
     Assert.Equal("literal $(no shell) 日本語", File.ReadAllText(Path.Combine(project.Root, "result")));
   }
 
-  [Fact]
-  public async Task StandaloneDotaskInstallerUpdatesLegacyOwnedInstallationAndReusesBuild()
-  {
-    using var project = new TestProject();
-    var executable = OperatingSystem.IsWindows() ? "dotask.exe" : "dotask";
-    var source = project.Write("payload/" + executable, "original build");
-    if (!OperatingSystem.IsWindows()) {
-      File.SetUnixFileMode(source, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-    }
-
-    var definition = new InstallationDefinition {
-      AppId = "dotask",
-      Version = "0.1.0",
-      SourceDirectory = Path.GetDirectoryName(source)!,
-      Commands = [new InstalledCommand("dotask", executable)],
-      InstallRoot = Path.Combine(project.Root, "apps"),
-      BinDirectory = Path.Combine(project.Root, "bin")
-    };
-    var legacy = await UserInstaller.InstallAsync(definition);
-    var package = Path.Combine(project.Root, "installer package 日本語");
-    Directory.CreateDirectory(package);
-    foreach (var name in new[] { "dotask-installer.dll", "dotask-installer.deps.json", "dotask-installer.runtimeconfig.json", "Dotask.Library.dll" }) {
-      File.Copy(Path.Combine(AppContext.BaseDirectory, name), Path.Combine(package, name));
-    }
-    var payload = project.Write("installer package 日本語/payload/" + executable, "new build");
-    if (!OperatingSystem.IsWindows()) {
-      File.SetUnixFileMode(payload, File.GetUnixFileMode(source));
-    }
-
-    project.Write("installer package 日本語/installer.json", JsonSerializer.Serialize(definition with {
-      SourceDirectory = "payload",
-      InstallRoot = null,
-      BinDirectory = null
-    }));
-    async Task<ProcessResult> Run( params string[] args ) => await ProcessRunner.RunAsync(new ProcessDefinition {
-      Executable = "dotnet",
-      Arguments = [Path.Combine(package, "dotask-installer.dll"), .. args],
-      WorkingDirectory = project.Root,
-      CaptureOutput = true,
-      ThrowOnError = false
-    }, CancellationToken.None);
-    string[] options = ["--install-root", definition.InstallRoot, "--bin-dir", definition.BinDirectory];
-    var result = await Run(options);
-    Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
-    Assert.Contains("Installed dotask", result.StandardOutput);
-    Assert.Equal("original build", File.ReadAllText(Path.Combine(legacy.InstallDirectory, executable)));
-    Assert.Equal(2, Directory.GetDirectories(Path.Combine(definition.InstallRoot, "dotask")).Length);
-    result = await Run(options);
-    Assert.True(result.ExitCode == 0, result.StandardError);
-    Assert.Contains("Activated existing", result.StandardOutput);
-    Assert.Equal(2, Directory.GetDirectories(Path.Combine(definition.InstallRoot, "dotask")).Length);
-    result = await Run("--unknown");
-    Assert.Equal(1, result.ExitCode);
-    Assert.Contains("Usage:", result.StandardError);
-  }
-
   private static void CopyInstall( TestProject project )
   {
     using var stream = typeof(InstallerWorkflowTests).Assembly.GetManifestResourceStream("Shared/dotask-installer/install.cs")!;

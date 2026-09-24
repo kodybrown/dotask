@@ -17,7 +17,7 @@ public sealed class InstallationIntegrationTests
       Assert.Equal(entry.Value, Convert.ToHexStringLower(SHA256.HashData(source)));
     }
     foreach (var (architecture, machine) in new[] { ("x64", Machine.Amd64), ("arm64", Machine.Arm64) }) {
-      using var binary = typeof(BuildContext).Assembly.GetManifestResourceStream($"DoTask.Shim.win-{architecture}.exe")!;
+      using var binary = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream($"Shim/assets/win-{architecture}.exe")!;
       Assert.Equal(hashes[$"assets/win-{architecture}.exe"], Convert.ToHexStringLower(SHA256.HashData(binary)));
       binary.Position = 0;
       using var pe = new PEReader(binary);
@@ -107,19 +107,27 @@ public sealed class InstallationIntegrationTests
         return publish with { StandardError = publish.StandardOutput + publish.StandardError };
       }
 
-      var installed = await UserInstaller.InstallAsync(new InstallationDefinition {
-        AppId = "installed-probe",
-        Version = "2.3.4",
-        SourceDirectory = Path.Combine(project.OutputRoot, "custom published files"),
-        Commands = [new InstalledCommand("probe", OperatingSystem.IsWindows() ? "installed-probe.exe" : "installed-probe")],
-        BinDirectory = bin,
-        InstallRoot = root
-      });
-      return new ProcessResult(0, installed.Reused ? "Activated existing" : "Installed", "");
+      // Exercise the supported engine while retaining native shim argument,
+      // standard-stream, exit-code and Ctrl+C coverage across build updates.
+      var config = project.Write("installer.yaml", JsonSerializer.Serialize(new {
+        schema = 1,
+        application = new { id = "installed-probe", name = "Probe", version = "2.3.4" },
+        platform = project.Context().OS.ToString().ToLowerInvariant(),
+        architecture = project.Context().Architecture.ToString().ToLowerInvariant(),
+        payload = Path.Combine(project.OutputRoot, "custom published files"),
+        commands = new[] { new { name = "probe", executable = OperatingSystem.IsWindows() ? "installed-probe.exe" : "installed-probe" } }
+      }));
+      var engine = OperatingSystem.IsWindows() ? "C:/tmp/_dotnet/dotask-rust/release/dotask-installer.exe" : "/tmp/_dotnet/dotask-rust/release/dotask-installer";
+      return await ProcessRunner.RunAsync(new ProcessDefinition {
+        Executable = engine,
+        Arguments = ["--config", config, "--install-dir", Path.Combine(root, "installed-probe"), "--bin-dir", bin],
+        CaptureOutput = true,
+        ThrowOnError = false
+      }, CancellationToken.None);
     }
     var result = await Install();
     Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
-    var app = Path.Combine(root, "installed-probe");
+    var app = Path.Combine(root, "installed-probe", "app");
     var first = Assert.Single(Directory.GetDirectories(app));
     Assert.StartsWith("2.3.4-", Path.GetFileName(first));
     var command = Path.Combine(bin, OperatingSystem.IsWindows() ? "probe.exe" : "probe");
@@ -132,13 +140,16 @@ public sealed class InstallationIntegrationTests
       Assert.Equal("inherit me", output.RootElement.GetProperty("Environment").GetString());
       Assert.Equal("stdin text", output.RootElement.GetProperty("Input").GetString());
       // macOS may resolve /var to /private/var in the process working directory.
-      Assert.Equal(InstallationFiles.PhysicalDirectory(project.Root),
-        InstallationFiles.PhysicalDirectory(output.RootElement.GetProperty("Cwd").GetString()!));
+      // Compare filesystem identity through a marker because parent directories
+      // can be aliases (including macOS /var and Windows temporary junctions).
+      var marker = Guid.NewGuid().ToString("N");
+      project.Write("cwd-marker", marker);
+      Assert.Equal(marker, File.ReadAllText(Path.Combine(output.RootElement.GetProperty("Cwd").GetString()!, "cwd-marker")));
       Assert.Equal("first build", output.RootElement.GetProperty("Data").GetString());
     }
     result = await Install();
     Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
-    Assert.Contains("Activated existing", result.StandardOutput);
+    Assert.Contains("Installed", result.StandardOutput);
     Assert.Single(Directory.GetDirectories(app));
     project.Write("source app/data.txt", "second build");
     result = await Install();

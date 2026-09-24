@@ -12,7 +12,6 @@ use std::{
 
 #[derive(Default, Debug)]
 pub struct Options {
-    pub migrate_legacy: bool,
     pub package: bool,
     pub output: Option<PathBuf>,
     pub uninstall: bool,
@@ -31,7 +30,6 @@ impl Options {
         let mut args = args.into_iter();
         while let Some(arg) = args.next() {
             match arg.as_str() {
-                "--migrate-legacy" => result.migrate_legacy = true,
                 "package" => result.package = true,
                 "--output" => {
                     result.output =

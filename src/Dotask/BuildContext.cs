@@ -45,17 +45,6 @@ public sealed class BuildContext
 
   public string Path( params string[] parts ) => PortablePath.Resolve(RootDirectory, parts);
 
-  /// <summary>Install published files for the current user; relative input directories start at the project root.</summary>
-  public async Task<InstallationResult> InstallAsync( InstallationDefinition definition, CancellationToken cancellationToken = default )
-  {
-    using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
-    return await UserInstaller.InstallAsync(definition with {
-      SourceDirectory = Path(definition.SourceDirectory),
-      BinDirectory = definition.BinDirectory is null ? null : Path(definition.BinDirectory),
-      InstallRoot = definition.InstallRoot is null ? null : Path(definition.InstallRoot)
-    }, linked.Token);
-  }
-
   /// <summary>Build a fresh installer using the project's target and read its invocation-scoped result.</summary>
   public async Task<InstallerArtifact> CreateInstallerAsync( string target = "create-installer", object? parameters = null,
     CancellationToken cancellationToken = default )

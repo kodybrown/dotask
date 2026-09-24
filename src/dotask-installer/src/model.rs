@@ -128,6 +128,4 @@ pub struct Receipt {
     pub config_hash: String,
     #[serde(default)]
     pub uninstalling: bool,
-    #[serde(default)]
-    pub legacy_files: Vec<OwnedFile>,
 }

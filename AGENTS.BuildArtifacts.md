@@ -9,7 +9,7 @@
 - Repository-level `Directory.Build.props` files must import the user-level
   props before defining other settings and must not redirect output into source.
 - Build launchers must use the evaluated MSBuild `PublishDir`. Application
-  installation uses the `dotnet/install` task and DoTask installation library;
+  installation uses the `dotask-installer/install` task and Rust installer;
   follow `docs/INSTALLATION.md` for versioned locations and command activation.
 - Bootstrap runners are temporary physical copies of the publish output, outside
   the checkout. Do not redirect the repository's build outputs to stage a runner.

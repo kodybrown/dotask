@@ -102,7 +102,7 @@ Then run `dotask --version` (expected: `dotask 0.1.0`).
 The installation is independent of this source checkout. To check which command
 your shell resolves, use `command -v dotask` on Bash/Zsh or `Get-Command dotask -All`
 on PowerShell. An existing global tool or `dt` shortcut is not changed. See
-[installation and migration](docs/INSTALLATION.md) for directories, overrides,
+[installation](docs/INSTALLATION.md) for directories, overrides,
 safe updates, and moving from the earlier NuGet global-tool installation.
 
 ### Try the installed command

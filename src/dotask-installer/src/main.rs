@@ -2,7 +2,6 @@ mod config;
 mod engine;
 mod files;
 mod launchers;
-mod legacy;
 mod model;
 
 use anyhow::{Context, Result, ensure};
@@ -17,7 +16,7 @@ fn run() -> Result<()> {
     let options = config::Options::parse(std::env::args().skip(1))?;
     if options.help {
         println!(
-            "dotask-installer [install|uninstall] [--config FILE] [--interactive]\n  --install-dir ABSOLUTE_PATH   Installation root\n  --bin-dir ABSOLUTE_PATH       Command directory\n  --set NAME=VALUE              Override a YAML input\n  --profile NAME               Select environment defaults\n  --prune-old-versions          Keep new and previously active builds\n  --desktop-shortcuts --start-menu-shortcuts --local-shortcuts\n  --leave-settings | --remove-settings  Uninstall settings policy\n  --validate                   Validate package without installing\n  --migrate-legacy             Import recognized .NET-owned installations\n  package --config FILE --output NEW_DIRECTORY\nUnattended by default. Rollback and version switching are not supported."
+            "dotask-installer [install|uninstall] [--config FILE] [--interactive]\n  --install-dir ABSOLUTE_PATH   Installation root\n  --bin-dir ABSOLUTE_PATH       Command directory\n  --set NAME=VALUE              Override a YAML input\n  --profile NAME               Select environment defaults\n  --prune-old-versions          Keep new and previously active builds\n  --desktop-shortcuts --start-menu-shortcuts --local-shortcuts\n  --leave-settings | --remove-settings  Uninstall settings policy\n  --validate                   Validate package without installing\n  package --config FILE --output NEW_DIRECTORY\nUnattended by default. Rollback and version switching are not supported."
         );
         return Ok(());
     }

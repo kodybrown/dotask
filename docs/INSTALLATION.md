@@ -5,7 +5,7 @@ The shared tasks live under `_/dotask-installer/`; their C# implementation does 
 restrict application payloads to .NET. Application builds remain project-specific.
 Custom `create-installer` targets and other installer technologies remain supported.
 
-## Shared tasks and migration
+## Shared tasks
 
 Use the tool to install the new group and remove the old tracked task:
 
@@ -246,11 +246,12 @@ with the same package and locations. Unknown modifications still fail. Uninstall
 records progress for retry after partial removal. This is not user-requested
 rollback, nor a guarantee that arbitrary failures restore the previous state.
 
-To migrate a recognized older `.dotask-install.json` installation, retain its
-original root/bin locations and explicitly pass `--migrate-legacy`. The engine
-verifies legacy command ownership and build inventories, imports build snapshots,
-and tracks original owned files for uninstall. Unrelated installers are never
-adopted. Legacy pending activation must first be recovered by the old installer.
+Only the current YAML installation format is supported. There is no import,
+migration, or backward compatibility with older installation formats. A directory
+without a valid YAML receipt is never adopted, even if it contains dotask files.
+Use a fresh installation root and unused command destinations, or manually remove
+the previous installation and its launchers before using those locations again.
+The new installer does not uninstall installations created by the previous engine.
 There is no Windows Installed Apps registration or Inno Setup dependency.
 
 ## Build and install dotask itself
@@ -314,44 +315,3 @@ installer’s responsibility.
 The shared task reports the observed exit code, not independently verified
 installation success. An installer that detaches must supply a wrapper which
 waits for completion if that guarantee is needed.
-
-## Low-level installation engine
-
-This API remains available for installer authors and compatibility. The shared
-install task never calls it as a fallback. The retained .NET compatibility installer uses
-it, retaining the same ownership and recovery format as older dotask installations.
-The application files must already be published:
-
-```csharp
-var project = BuildContext.Current;
-var result = await project.InstallAsync(new InstallationDefinition
-{
-    AppId = "example",
-    Version = "1.2.3",
-    SourceDirectory = publishDirectory,
-    Commands = [new InstalledCommand("example", project.IsWindows ? "example.exe" : "example")],
-    BinDirectory = project.Parameters.Contains("bin-dir") ? project.Parameters.GetPath("bin-dir") : null
-});
-```
-
-`InstallationDefinition` also has optional `InstallRoot`. Paths in `InstalledCommand`
-are portable relative paths inside `SourceDirectory`; command names omit `.exe`.
-Multiple commands can point at the same executable. `AppId`, version and command
-names are validated as portable path components. Windows entry points must be
-`.exe` files; Unix entry points must have executable permissions. The generic
-installer does not certify arbitrary binaries' OS/ABI compatibility.
-
-`InstallationResult` returns `InstallDirectory`, `BinDirectory`, the full
-`Fingerprint`, `Reused`, and `Warnings` about command lookup. It does not print by
-itself. The task decides how to present the result.
-
-`BuildContext.InstallAsync(definition, cancellationToken)` roots explicit relative
-directories at the project root and links cancellation to the task lifetime.
-`UserInstaller.InstallAsync(definition, cancellationToken)` is also available
-without an ambient context; relative paths then use the process working directory.
-
-Other applications migrating from the old shared task must explicitly choose how
-their installer handles existing `.dotask-install.json` ownership. An MSI or other
-installer does not automatically understand those records. Do not overwrite or
-adopt such installations merely because the destination matches. There is no
-automatic cross-installer migration or removal in the shared task.

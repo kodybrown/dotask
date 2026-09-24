@@ -323,14 +323,9 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
     let _root_lock = lock(&root)?;
     let _bin_lock = lock(&bin)?;
     let management = root.join("installer");
-    let mut old = if options.migrate_legacy
-        && root.join(".dotask-install.json").exists()
-        && !management.join("installation.yaml").exists()
-    {
-        Some(crate::legacy::import(&root, &package, &values)?)
-    } else if root.exists() {
+    let mut old = if root.exists() {
         Some(load_receipt(&root).context(
-            "Existing directory is not a recognized installation; migration must be explicit",
+            "Existing directory has no valid installation.yaml receipt. Choose a fresh install-dir and an unused command location (bin-dir), or remove the previous installation yourself. Existing installations cannot be imported",
         )?)
     } else {
         None
@@ -469,10 +464,6 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
         engine_hash: files::file_hash(&engine)?,
         config_hash,
         uninstalling: false,
-        legacy_files: old
-            .as_ref()
-            .map(|r| r.legacy_files.clone())
-            .unwrap_or_default(),
     };
     for item in &prepared {
         let mut record = launchers::record(&item.source)?;
@@ -573,9 +564,6 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
         #[cfg(not(windows))]
         let _ = record;
     }
-    for file in &receipt.legacy_files {
-        launchers::verify(file)?;
-    }
     let mut remove_settings = options.remove_settings;
     if options.interactive {
         use std::io::Write;
@@ -618,13 +606,6 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
         receipt.builds.remove(&build);
         files::write_yaml(&management.join("installation.yaml"), &receipt)?;
     }
-    for file in &receipt.legacy_files {
-        if fs::symlink_metadata(&file.path).is_ok() {
-            fs::remove_file(&file.path)?;
-        }
-    }
-    receipt.legacy_files.clear();
-    files::write_yaml(&management.join("installation.yaml"), &receipt)?;
     if remove_settings {
         for setting in &receipt.settings {
             let path = Path::new(setting);
