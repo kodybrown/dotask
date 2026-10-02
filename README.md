@@ -49,10 +49,12 @@ From the repository checkout, bootstrap and verify the project:
 .\build.cmd
 ```
 
-Only the .NET SDK and Git are required; dotask does not need to be installed.
+The .NET SDK, Git, and Rust 1.95+ with rustfmt, clippy, and the host linker are
+required; dotask does not need to be installed.
 The launchers compile this checkout, stage a temporary runner, and use it to run
 the repository's `verify` task in Release. That task checks prerequisites, builds
-and tests the solution, and checks formatting, documentation, and the shared catalog.
+and tests both Rust packages and the .NET solution, and checks formatting,
+documentation, and the shared catalog.
 The temporary runner is removed when the launcher finishes normally or reports a failure.
 
 **After a successful build, install dotask using the next section.** Building
@@ -171,8 +173,9 @@ Here, `check` requires Git and the configured solution's SDK/tools. Run `test` f
 tests or `format --verify` to check solution whitespace. The project-specific
 `verify` requires every check, including docs and catalog validation; failures
 stop the sequence. It also requires Rust 1.95+, rustfmt, and clippy to build/test
-the standalone installer before the .NET integration suite. Destination machines
-do not need Rust. See [installer tasks and schema](docs/INSTALLATION.md).
+the standalone installer and Rust CLI preview before the .NET integration suite.
+Destination machines do not need Rust for the current C# CLI or standalone
+installer. See [installer tasks and schema](docs/INSTALLATION.md).
 The reusable `dotnet/verify` target still offers optional
 checks for consuming projects. Use the launchers for work on dotask itself so
 rebuilds run from a separate executable snapshot.
@@ -372,6 +375,8 @@ Tab: it should offer `Debug` and `Release`. See [completion details](docs/USAGE.
 ./build.sh catalog --verify        # Check shared source hashes/metadata
 ./build.sh catalog                 # Regenerate the shared catalog
 ./build.sh shim --verify           # Verify bundled shim source/binary hashes
+./build.sh rust-cli                # Build the native Rust CLI preview
+./build.sh rust-cli --verify       # Rust CLI tests, rustfmt, and clippy
 ./build.sh pack                    # dotnet/pack: build local CLI NuGet packages
 ./build.sh install                 # Install the current source for this user
 ./build.sh help                    # Project task help
@@ -423,6 +428,44 @@ macOS verification is configured in [.github/workflows/verify.yml](.github/workf
 Local results are documented in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 The [documentation index](docs/README.md) links to all guides and design contracts.
+
+## Rust CLI development preview
+
+The root Cargo workspace contains `src/dotask-cli` and `src/dotask-installer`,
+with a single root `Cargo.lock` and release profile. The new CLI builds a native
+`dotask` executable alongside the existing installer. The C# CLI remains the
+working task runner and the application built by the bootstrap and installer.
+The C# task authoring library and shared tasks remain maintained components.
+See the [transition design](docs/DESIGN.md#rust-cli-transition) for the agreed
+replacement stages and future task-language selection.
+
+Build and try the Rust CLI on Windows:
+
+```powershell
+.\build.cmd rust-cli
+& 'C:\tmp\_dotnet\dotask-rust\release\dotask.exe' --help
+& 'C:\tmp\_dotnet\dotask-rust\release\dotask.exe' --version
+```
+
+On Linux/macOS:
+
+```sh
+./build.sh rust-cli
+/tmp/_dotnet/dotask-rust/release/dotask --help
+/tmp/_dotnet/dotask-rust/release/dotask --version
+```
+
+The preview supports no arguments, `help`, `--help`/`-h`, and `--version`.
+Help and version exit 0; other requests exit 1 with a diagnostic and perform no
+task execution or project management. Version output identifies the Rust
+development preview. These commands do not install it or replace an active CLI.
+
+Use `rust-cli --verify` through the launcher for its tests, rustfmt, and clippy.
+The complete repository gate requires those checks too. Build tasks set
+`CARGO_TARGET_DIR` to `C:\tmp\_dotnet\dotask-rust` on Windows or
+`/tmp/_dotnet/dotask-rust` on Unix. When invoking Cargo directly, set that variable
+explicitly to keep artifacts outside the checkout; on Windows also set
+`RUSTFLAGS=-C target-feature=+crt-static` to match the task's static CRT build.
 
 ## License
 

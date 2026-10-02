@@ -277,3 +277,24 @@ acceptance, installation, and publication.
   passed `--validate` and rejected the removed migration flag without installing.
   Native Linux/macOS, interactive desktop, and PTS acceptance remain pending.
   No active installation or PTS files changed; nothing was published or pushed.
+
+### 2026-10-02 Scaffold the Rust CLI in a shared Cargo workspace
+
+- Add `src/dotask-cli`, producing a native `dotask` development preview with
+  help/version output and explicit failure for unsupported task/management
+  requests. Preserve the working C# CLI, C# authoring library, shared tasks,
+  bootstrap, and installation entry points.
+- Add the root Cargo workspace, move the installer's lockfile and release
+  profile to the root, and preserve all pinned installer dependencies. Add the
+  `rust-cli` build/check task with external output and require its tests,
+  formatting, and clippy checks in repository verification and CI.
+- Record the agreed CLI transition and task-language design separately from
+  available commands. Document preview build/run commands and correct the
+  repository's Rust toolchain prerequisites.
+- Verification: `build.cmd` passed 306 .NET Release tests, 16 Rust installer
+  tests, 3 Rust CLI tests, and all formatting/docs/catalog/shim/whitespace gates
+  on Windows x64. `build.cmd rust-cli --verify`, the focused repository gate
+  regression, native preview help/version, 84 documentation links/anchors, and
+  `git diff --check` passed. Evaluated .NET and Cargo outputs remain external.
+  Native Linux/macOS acceptance remains pending. No active installation changed;
+  nothing was published or pushed.

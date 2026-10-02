@@ -18,6 +18,7 @@ run your first example. The preview is not yet published to a public package fee
 | Ask an AI assistant to create or maintain tasks       | [AI assistant guide and reusable instructions](AI-ASSISTANTS.md) |
 | Follow a runnable example with expected output        | [Basic example](../examples/basic/README.md)                     |
 | Understand implementation decisions                   | [Design and execution contracts](DESIGN.md)                      |
+| Develop the Rust CLI alongside the C# runner | [Preview commands](../README.md#rust-cli-development-preview) and [transition design](DESIGN.md#rust-cli-transition) |
 | Review reusable Rust installer design and rollback boundaries | [Standalone installer design](DESIGN.md#standalone-installer-design) |
 | Check tested hosts, shells, and remaining limitations | [Verification status](VERIFICATION.md)                           |
 | Develop dotask itself                                 | [Repository agent instructions](../AGENTS.md)                    |

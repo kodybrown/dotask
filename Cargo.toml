@@ -1,0 +1,10 @@
+[workspace]
+members = ["src/dotask-cli", "src/dotask-installer"]
+resolver = "3"
+
+# Cargo reads profiles from the workspace root. Preserve the installer's
+# delivery settings when building either native executable.
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1

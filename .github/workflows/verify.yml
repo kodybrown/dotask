@@ -42,7 +42,7 @@ jobs:
       - name: Prepare Rust toolchain
         run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
       - name: Bootstrap and verify
-        # The Rust engine and native integration tests are part of the same gate.
+        # Both Rust workspace members and native integration tests use this gate.
         shell: ${{ matrix.shell }}
         run: ${{ matrix.launcher }}
       - name: Package

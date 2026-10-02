@@ -5,6 +5,11 @@ Use this guide when creating, editing, explaining, or running dotask tasks in a
 [AGENTS.md](../AGENTS.md). This guide describes implemented preview behavior;
 services and the other [deferred features](DESIGN.md#deferred) are not APIs.
 
+The [Rust CLI preview](../README.md#rust-cli-development-preview) is a separate
+development scaffold. Continue using the C# CLI for consumer tasks; `.rs` task
+execution, `--lang`, group-only `--add`, and extension-qualified calls are
+[agreed future behavior](DESIGN.md#rust-cli-transition), not implemented commands.
+
 In the dotask source checkout, use `./build.sh` (Windows: `.\build.cmd`) to
 bootstrap and run the required repository verification. These launchers accept
 dotask arguments and need no installed dotask; `./build.sh help` lists tasks.

@@ -1,5 +1,32 @@
 # Verification
 
+## Rust CLI scaffold and Cargo workspace (2026-10-02)
+
+On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, `build.cmd` passed
+306 .NET Release tests, 16 Rust installer tests, and 3 Rust CLI tests, plus Rust
+formatting/clippy, C# formatting, documentation, shared catalog freshness,
+bundled shim hashes, and Git whitespace checks. The complete gate ran outside
+the agent sandbox after restricted runs denied cache and named-pipe access.
+
+`build.cmd rust-cli --verify` passed independently. The focused
+`RepositoryVerifyRequiresEveryStageForwardsOptionsAndStopsOnFailure` test also
+passed, including the new stage's option forwarding, failure propagation, and
+missing-task rejection. Rust CLI smoke tests launch with an empty `PATH` and
+cover help, version identification, and nonzero rejection of task/management
+requests. Native `dotask.exe --help` and `--version` succeeded.
+
+The workspace lock preserves every installer dependency and adds only the CLI
+package. Evaluated `BaseOutputPath`, `BaseIntermediateOutputPath`, and
+`PublishDir` for all three .NET projects remain under `C:\tmp\_dotnet`; Cargo
+metadata confirms `C:\tmp\_dotnet\dotask-rust` when using the build task's
+environment. No source-local build directories were generated. All 84 relative
+links/anchors in the changed reference documents resolved.
+
+The C# CLI remains the bootstrap and packaged application. The Rust executable
+is a help/version scaffold; C# execution through it, Rust task authoring, and
+native Linux/macOS acceptance remain pending. No active installation was changed,
+and nothing was published or pushed.
+
 ## Standalone Rust installer (2026-09-24)
 
 On Windows x64, `build.cmd` passed 306 .NET Release tests and 16 Rust Release

@@ -1,0 +1,12 @@
+[package]
+name = "dotask-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+description = "Native dotask CLI under development alongside the C# task runner."
+publish = false
+
+[[bin]]
+name = "dotask"
+path = "src/main.rs"

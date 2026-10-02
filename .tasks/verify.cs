@@ -13,6 +13,7 @@ public static class Target
     await project.ExecTargetAsync("check");
     // The .NET suite exercises shared tasks against the built Rust executable.
     await project.ExecTargetAsync("installer-engine", new { Verify = true });
+    await project.ExecTargetAsync("rust-cli", new { Verify = true });
     // dotnet test builds the solution before running its tests.
     await project.ExecTargetAsync("_/dotnet/test", new { Configuration = project.Parameters.Get<string>("configuration") });
     await project.ExecTargetAsync("_/dotnet/format", new { Verify = true });

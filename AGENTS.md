@@ -6,7 +6,7 @@ These instructions apply to every task in this repository.
 
 - Product and command: `dotask`
 - C# namespace: `DoTask` (including `DoTask.Cli` and `DoTask.Runtime`)
-- Project type: .NET 10 CLI and target-authoring library
+- Project type: Rust CLI scaffold, .NET 10 CLI and target-authoring library, and Rust installer
 - Integration checkout: the primary checkout on `develop`, located with `git worktree list --porcelain`
 - Integration branch: `develop`
 - Task worktree root: `../worktrees/ai` relative to the integration checkout
@@ -170,8 +170,15 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   require `./build.sh shim` with LLVM, review of both native delivery assets and
   hashes, and native Windows acceptance. Ordinary builds/installs use bundled assets.
 - The gate builds and tests `src/dotask-installer` with Rust 1.95+, rustfmt, and
-  clippy before .NET integration tests. `installer-engine` builds the host binary;
-  `installer-engine --verify` runs Rust checks. Keep Rust outputs external too.
+  clippy before .NET integration tests. It also requires the `src/dotask-cli`
+  scaffold's Rust checks. Both packages belong to the root Cargo workspace and
+  share its `Cargo.lock` and release profile. `installer-engine` builds the host
+  installer; `rust-cli` builds the native CLI preview. Each accepts `--verify`
+  for tests, formatting, and clippy. Keep Rust outputs external too.
+- The Rust CLI currently supports only help/version, not task execution or
+  management. Keep the C# CLI as the bootstrap, packaging, and installation entry
+  point until the Rust replacement is verified. Preserve `src/Dotask` as the
+  maintained C# task library. See `docs/DESIGN.md` for the agreed transition.
 - Verify evaluated output paths after build-tooling changes.
 - Repository builds import the optional user-level MSBuild output policy.
 - Runtime target compilation is deliberately isolated from a consumer's build

@@ -4,6 +4,10 @@ dotask runs project-defined C# tasks. A **target** is one task file: `.tasks/bui
 becomes `dotask build`. A **parameter** is a declared command-line option for that
 target. **Settings** are shared values from `.dotasks.yaml`.
 
+This reference describes the working C# CLI. The separately built
+[Rust CLI preview](../README.md#rust-cli-development-preview) currently supports
+only help/version and does not yet implement the task commands below.
+
 After building the source, follow [Install dotask](../README.md#install-dotask)
 to put the command on PATH for use in other projects. Building alone does not
 install or update the command. The commands here assume that installation.

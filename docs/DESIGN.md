@@ -12,6 +12,55 @@ binding, help, completion, SDK compilation, and execution are separate component
 Roslyn reads actual C# documentation trivia, and YamlDotNet parses configuration.
 `Program.cs` only wires cancellation and invokes the application.
 
+## Rust CLI transition
+
+Keep one repository with the new Rust CLI at `src/dotask-cli`, the existing Rust
+installer at `src/dotask-installer`, and the maintained C# authoring library at
+`src/Dotask`. The Rust packages share a root Cargo workspace, lockfile, and
+release profile. Preserve the installer's pinned dependencies and external
+output directory when adding workspace members.
+
+The implemented Rust CLI is currently a help/version scaffold. It rejects other
+requests with a failure exit code, without delegating to the C# CLI. The C# CLI
+at `src/Dotask.Cli` remains the bootstrap runner and packaged application. See
+the [preview commands](../README.md#rust-cli-development-preview).
+
+The following decisions describe the next implementation stages, not available
+consumer APIs:
+
+1. Replace the CLI with Rust while preserving existing C# task authoring,
+   metadata, compilation, nested calls, and observable CLI behavior. Keep the
+   C# CLI operational as a reference until replacement verification succeeds;
+   retain the C# library and C# tasks afterward.
+2. Add Rust task execution and a bundled Rust helper crate at `src/dotask-sdk`.
+   Each task has one `.rs` entry file. Generate Cargo build manifests in an
+   external cache and reference the bundled helper crate's source. Use the
+   developer's Rust toolchain; neither source-local build output nor nightly
+   single-file scripting is required. C# and Rust tasks call each other through
+   dotask's common invocation protocol, with explicit context, parameters,
+   cancellation, failures, and supported structured results.
+3. Keep task groups about functionality: `_/dotnet/build.cs` builds .NET
+   projects, `_/rust/build.rs` builds Rust projects, and utilities such as
+   `_/git/check.cs` and `_/git/check.rs` offer equivalent implementations.
+   Canonical sources remain in `shared-tasks/<group>/`; installed copies remain
+   in `.tasks/<source>/<group>/`. The extension identifies the implementation.
+4. Generate catalog variants from the actual source files and record exact
+   installed variants and original hashes in the lockfile. Allow `--add git` as
+   shorthand for `--add _/git/*`, installing all available implementations;
+   `--lang csharp` or `--lang rust` filters implementations without changing the
+   task group. Explicit selection such as `--add git/check.rs` chooses one.
+   `--sync` updates tracked variants; adding the group again can add newly
+   available variants. Preserve local-edit and ownership protections.
+5. Use installed files for execution with no project-wide language setting.
+   Allow extension-qualified calls such as `git/check.cs` and `git/check.rs`.
+   Extensionless calls require an unambiguous target. Apply the same rules to
+   nested calls, and identify implementations distinctly for cycle detection.
+   Mixed-language projects need only the toolchains required by executed tasks.
+
+The C# metadata parser currently uses Roslyn. Its replacement or retention as
+a focused helper is still an implementation decision; the scaffold does not
+change that boundary or promise a completed C# execution port.
+
 ## Discovery and metadata
 
 `--init` operates directly on the invocation directory before normal discovery.
