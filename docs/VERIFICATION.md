@@ -22,6 +22,19 @@ metadata confirms `C:\tmp\_dotnet\dotask-rust` when using the build task's
 environment. No source-local build directories were generated. All 84 relative
 links/anchors in the changed reference documents resolved.
 
+A follow-up user run exposed an installer workflow test that overrode the
+online source but inherited the shared-task cache. An older catalog containing
+`dotnet/install` instead of `dotask-installer/*` reproduced the exact failure,
+both in isolation and through `build.cmd` (305 passed, 1 failed). The test now
+overrides `DOTASK_CACHE_HOME` and `DOTASK_PRIVATE_TASKS` for its child process
+and verifies that its own cached catalog matches the supplied source.
+`dotnet test dotask.slnx -c Release --no-restore --filter FullyQualifiedName~RustInstallerWorkflowTests --nologo`
+and the complete `build.cmd` gate passed afterward with `DOTASK_CACHE_HOME`
+still pointing at the temporary stale catalog in the parent environment.
+All 306 .NET and 19 Rust tests passed; the user's real catalog and the stale
+reproduction copy kept their original SHA-256 hashes. No cache refresh or
+production task-management behavior change was needed.
+
 The C# CLI remains the bootstrap and packaged application. The Rust executable
 is a help/version scaffold; C# execution through it, Rust task authoring, and
 native Linux/macOS acceptance remain pending. No active installation was changed,

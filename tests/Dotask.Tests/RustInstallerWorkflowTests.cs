@@ -38,6 +38,7 @@ public sealed class RustInstallerWorkflowTests
     // Exercise the supported tool-managed consumer workflow, not hand-copied tasks.
     var assembly = typeof(RustInstallerWorkflowTests).Assembly;
     var catalog = Path.Combine(project.Root, "shared");
+    var cache = Path.Combine(project.Root, "cache");
     foreach (var resource in assembly.GetManifestResourceNames().Where(n => n.StartsWith("Shared/", StringComparison.Ordinal))) {
       using var stream = assembly.GetManifestResourceStream(resource)!;
       var path = Path.Combine(catalog, resource["Shared/".Length..]);
@@ -48,12 +49,22 @@ public sealed class RustInstallerWorkflowTests
     var added = await ProcessRunner.RunAsync(new ProcessDefinition {
       Executable = "dotnet",
       Arguments = [typeof(CliApplication).Assembly.Location, "--add", "_/dotask-installer/*"],
-      Environment = new Dictionary<string, string?> { ["DOTASK_ONLINE_TASKS"] = catalog },
+      // --add prefers a cached catalog even when the online source is overridden.
+      // Keep all shared-task locations fixture-owned so an older user catalog
+      // cannot hide the installer tasks or receive test downloads and locks.
+      Environment = new Dictionary<string, string?> {
+        ["DOTASK_ONLINE_TASKS"] = catalog,
+        ["DOTASK_CACHE_HOME"] = cache,
+        ["DOTASK_PRIVATE_TASKS"] = Path.Combine(project.Root, "private")
+      },
       WorkingDirectory = project.Root,
       CaptureOutput = true,
       ThrowOnError = false
     }, CancellationToken.None);
     Assert.True(added.ExitCode == 0, added.StandardOutput + added.StandardError);
+    var cachedCatalog = Path.Combine(cache, "_", "catalog.json");
+    Assert.True(File.Exists(cachedCatalog), "Shared-task installation must populate the fixture-owned cache.");
+    Assert.Equal(File.ReadAllBytes(Path.Combine(catalog, "catalog.json")), File.ReadAllBytes(cachedCatalog));
     var installed = Path.Combine(project.Root, "installed app");
     var bin = Path.Combine(project.Root, "commands");
     var desktop = Path.Combine(project.Root, "desktop");

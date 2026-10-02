@@ -291,10 +291,17 @@ acceptance, installation, and publication.
 - Record the agreed CLI transition and task-language design separately from
   available commands. Document preview build/run commands and correct the
   repository's Rust toolchain prerequisites.
+- Isolate the installer workflow test's shared-task cache and private-task
+  directory. Assert that installation populates its fixture-owned catalog so
+  an older user catalog cannot hide the installer tasks or receive test data.
 - Verification: `build.cmd` passed 306 .NET Release tests, 16 Rust installer
   tests, 3 Rust CLI tests, and all formatting/docs/catalog/shim/whitespace gates
   on Windows x64. `build.cmd rust-cli --verify`, the focused repository gate
   regression, native preview help/version, 84 documentation links/anchors, and
   `git diff --check` passed. Evaluated .NET and Cargo outputs remain external.
+  Reproduced the reported installer test failure with a temporary copy of an
+  older catalog; the focused `RustInstallerWorkflowTests` and complete
+  `build.cmd` then passed with that stale parent cache after the isolation fix.
+  The real user catalog and stale reproduction catalog remained byte-identical.
   Native Linux/macOS acceptance remains pending. No active installation changed;
   nothing was published or pushed.
