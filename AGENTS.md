@@ -177,10 +177,15 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   for tests, formatting, and clippy. Keep Rust outputs external too.
 - The Rust CLI runs existing C# tasks and YAML groups using the separately staged
   `Dotask.CSharpHost`, with Rust-owned discovery, selection, execution, and nested
-  calls. Management, completion, full help parity, and Rust task execution remain
+  calls, YAML configuration/groups, binding, requirements, help, initialization,
+  shared-task management, completion, and the task-group wizard. The support
+  host only reads C# metadata and compiles C# tasks. Rust task execution remains
   pending. Keep the C# CLI as the bootstrap, packaging, and installation entry
   point until the Rust replacement is verified. Preserve `src/Dotask` as the
   maintained C# task library. See `docs/DESIGN.md` for the agreed transition.
+- Cargo output is configured in `.cargo/config.toml`; build tasks, staging,
+  packaging, and native tests query `cargo metadata` for its evaluated target
+  directory. Preserve the user's Cargo and rustfmt settings.
 - Verify evaluated output paths after build-tooling changes.
 - Repository builds import the optional user-level MSBuild output policy.
 - Runtime target compilation is deliberately isolated from a consumer's build

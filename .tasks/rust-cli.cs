@@ -1,3 +1,4 @@
+#:include _support/RustBuild.cs
 using DoTask;
 
 /// <summary>Build the Rust CLI preview, or run its tests and formatting checks.</summary>
@@ -10,11 +11,11 @@ public static class Target
   public static async Task Main()
   {
     var project = BuildContext.Current;
-    var output = project.IsWindows ? "C:/tmp/_dotnet/dotask-rust" : "/tmp/_dotnet/dotask-rust";
+    var output = await RustBuild.TargetDirectory(project);
     var manifest = project.Path("Cargo.toml");
-    // Match the installer build so both workspace members share external
-    // artifacts and Windows delivery does not require VC runtime DLLs.
-    Dictionary<string, string?> environment = new() { ["CARGO_TARGET_DIR"] = output };
+    // Both workspace members honor Cargo's configured external target directory.
+    // Static CRT keeps Windows delivery independent of VC runtime DLLs.
+    Dictionary<string, string?> environment = new();
     if (project.IsWindows)
       environment["RUSTFLAGS"] = "-C target-feature=+crt-static";
     var hostProject = project.Path("src/Dotask.CSharpHost/Dotask.CSharpHost.csproj");

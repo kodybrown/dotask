@@ -5,6 +5,7 @@
     <RootNamespace>DoTask.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <AssemblyMetadata Include="RepositoryRoot" Value="$(MSBuildProjectDirectory)/../.." />
     <EmbeddedResource Include="../../.tasks/shim.cs" LogicalName="Shim/build-task.cs" />
     <EmbeddedResource Include="../../src/Dotask.Shim/shim.c;../../src/Dotask.Shim/kernel32.def;../../src/Dotask.Shim/assets/hashes.json"
                       LogicalName="Shim/%(Filename)%(Extension)" />

@@ -9,7 +9,7 @@ public sealed class RustInstallerWorkflowTests
   public async Task SharedTasksPackageInstallLaunchAndUninstallGuiPayloadWithoutOriginalPackage()
   {
     using var project = new TestProject();
-    var engine = OperatingSystem.IsWindows() ? "C:/tmp/_dotnet/dotask-rust/release/dotask-installer.exe" : "/tmp/_dotnet/dotask-rust/release/dotask-installer";
+    var engine = RustArtifacts.Binary("dotask-installer");
     Assert.True(File.Exists(engine), "Build the Rust engine first: build.cmd installer-engine (Unix: ./build.sh installer-engine).");
     project.WriteBuildProperties();
     var source = project.Write("GuiProbe/GuiProbe.csproj", """

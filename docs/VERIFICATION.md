@@ -1,5 +1,44 @@
 # Verification
 
+## Native CLI command parity and Cargo output policy (2026-10-02)
+
+On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, `build.cmd` passed all
+407 .NET Release tests, 16 Rust installer tests, 7 native CLI integration tests,
+and 2 Rust wizard tests. Rust formatting/clippy, C# formatting, required docs,
+shared catalog freshness, bundled shim hashes, and whitespace checks passed.
+The final gate includes the Unicode choice/default comparison added after the
+first complete run (406 .NET tests). All builds used normal external caches.
+
+The .NET suite now reuses initialization and shared-task scenarios against the
+native executable, and compares native help, completion, YAML scalar/alias
+semantics, and defaults with the maintained C# reference. It checks C#-written
+revision hashes (including Unicode and escaped descriptions), byte-preserving
+no-op sync, and recovery of C# transaction journals without overwriting later
+edits. Existing native execution, nested calls, standard streams, installer
+results, and direct/nested Ctrl+C tests continue to pass. Rust integration tests
+launch without a .NET host for initialization, YAML-only groups, help, scripts,
+and completion. Wizard tests cover save, step-back, decline, cancellation, and EOF.
+
+A real Windows terminal created a temporary YAML group through `--create-task`,
+then the native CLI ran that saved group. A second wizard invocation cancelled
+with Ctrl+C without creating another file. The temporary fixture was removed.
+The README's native greeting printed `Hello from dotask, Rust!`. All 65 relative
+links/anchors in the changed reference documents resolved.
+
+Cargo metadata evaluates the unchanged `.cargo/config.toml` to
+`C:/tmp/_rust/dotask/target`. Build tasks, C# support staging, installer packaging,
+and native test artifact lookup now query that evaluated directory rather than
+overriding it. All four .NET projects' evaluated `BaseOutputPath`,
+`BaseIntermediateOutputPath`, and `PublishDir` remain under `C:\tmp\_dotnet`.
+The unchanged `rustfmt.toml` formatted both workspace members; stable rustfmt
+reports warnings for its nightly-only options and applies its supported options.
+
+Native Linux/macOS acceptance, live remote shared-catalog download acceptance,
+and packaging cutover remain pending. Shared-management automated tests use
+isolated local catalog/private-source fixtures. The C# CLI remains the bootstrap
+and packaged application. No active installation changed; nothing was published
+or pushed.
+
 ## Rust CLI C# execution slice (2026-10-02)
 
 On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, `build.cmd` passed all

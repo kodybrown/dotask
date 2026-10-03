@@ -1,0 +1,36 @@
+dotask - portable C# tasks (Rust CLI development preview)
+Usage: dotask [--use-dir PATH] [TARGET [OPTIONS]]
+       dotask help [TARGET]
+       dotask completion <bash|zsh|fish|powershell>
+       dotask --init [--use-dir PATH]
+       dotask --create-task [--use-dir PATH]
+       dotask --list [SELECTION...] | --save SELECTION... | --add SELECTION...
+       dotask --sync [SELECTION...] | --remove SELECTION...
+
+Commands:
+  dotask, dotask help   Show project targets; --verbose adds identity, settings, and options.
+  dotask TARGET        Run a target with its declared options.
+  dotask help TARGET   Show one target's details (also: dotask TARGET --help).
+  dotask completion    Print a completion script for the specified shell.
+  dotask --init        Create project configuration and a task directory here; preserve existing files.
+  --create-task        Interactively create a YAML task group; preview before saving.
+
+Global options:
+  --use-dir PATH  Use this task directory (relative to the invocation directory).
+  --help, -h      Show CLI help, or target help when a target is given.
+  --verbose       Show full project summaries and execution diagnostics.
+  --version       Show version.
+
+Shared tasks:
+  --list          List the online cache, or private-tasks/* for private tasks.
+  --save          Download selected shared tasks into the local cache.
+  --add           Copy shared tasks into the project; never overwrite existing tasks.
+  --sync          Update installed shared tasks while protecting local edits.
+  --remove        Remove only tracked shared tasks that match their installed originals.
+  --dry-run       Preview --add, --sync, or --remove without changing project files.
+  --accept-merge  With --sync and explicit task names, record an already reviewed manual merge; keep project file contents.
+Selections: dotnet/build, "dotnet/{build,run,format}", "dotnet/*", private-tasks/my-group/my-task.
+Official tasks (_) are the default when the source is omitted. Commit .dotasks.yaml, .dotasks-lock.yaml, and .tasks/.
+
+Runs installed C# tasks and YAML task groups using .NET 10.
+Rust task execution and language variants are not yet available.

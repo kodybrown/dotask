@@ -1,10 +1,7 @@
 using System.Text.Json;
 using DoTask;
-using DoTask.Cli.Configuration;
-using DoTask.Cli.Discovery;
 using DoTask.Cli.Execution;
 using DoTask.Cli.Metadata;
-using DoTask.Cli.Parsing;
 using DoTask.Runtime;
 
 // Private file protocol: stdout/stderr remain available for tool diagnostics.
@@ -20,28 +17,13 @@ try {
   }
   var request = JsonSerializer.Deserialize<HostRequest>(await File.ReadAllTextAsync(args[0], cancellation.Token))
     ?? throw new TaskException("Invalid C# support request.");
-  if (request.Version != 1) {
+  if (request.Version != 2) {
     throw new TaskException("Unsupported C# support protocol version.");
   }
   object result;
   switch (request.Operation) {
-    case "catalog":
-      result = new {
-        Configuration = request.Configuration ?? ProjectConfiguration.Load(request.TaskDirectory, request.RootDirectory),
-        Targets = new TargetCatalog(request.TaskDirectory).Targets
-      };
-      break;
-    case "bind":
-      var target = request.Target ?? throw new TaskException("A target is required.");
-      if (target.Error is not null) {
-        throw new TaskException(target.Error);
-      }
-      var config = request.Configuration ?? throw new TaskException("Configuration is required.");
-      var parameters = OptionBinder.Bind(target, config, request.Arguments, request.RootDirectory, !request.Help);
-      if (!request.Help) {
-        Requirements.Validate(target, config, request.RootDirectory);
-      }
-      result = parameters;
+    case "metadata":
+      result = request.Files.Select(file => MetadataReader.Read(file, request.TaskDirectory)).ToArray();
       break;
     case "compile":
       var compilation = await new TargetCompiler().CompileAsync(
@@ -55,7 +37,7 @@ try {
     default:
       throw new TaskException("Unknown C# support operation.");
   }
-  await ContextFile.WriteToAsync(args[1], new { Version = 1, Result = result }, cancellation.Token);
+  await ContextFile.WriteToAsync(args[1], new { Version = 2, Result = result }, cancellation.Token);
   return 0;
 } catch (OperationCanceledException) {
   return 130;
@@ -64,9 +46,8 @@ try {
   return 1;
 }
 
-internal sealed record HostRequest( int Version, string Operation, string TaskDirectory, string RootDirectory,
-  TargetDefinition? Target = null, ProjectConfiguration? Configuration = null, string? SnapshotDirectory = null,
-  bool Help = false )
+internal sealed record HostRequest( int Version, string Operation, string TaskDirectory,
+  TargetDefinition? Target = null, string? SnapshotDirectory = null )
 {
-  public string[] Arguments { get; init; } = [];
+  public string[] Files { get; init; } = [];
 }

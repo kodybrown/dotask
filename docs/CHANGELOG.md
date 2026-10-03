@@ -328,3 +328,26 @@ acceptance, installation, and publication.
   cleanup. Evaluated .NET and Cargo outputs remain external. Native Linux/macOS
   acceptance remains pending; no active installation changed and nothing was
   published or pushed.
+
+### 2026-10-02 Implement native CLI management, configuration, help, and completion
+
+- Implement project initialization, shared-task list/save/add/sync/remove,
+  completion for all four shells, detailed help and verbose summaries, and the
+  interactive YAML group wizard in Rust. Move configuration/group parsing,
+  option binding, and requirement validation into the native CLI; keep the
+  .NET support host limited to Roslyn metadata and isolated C# compilation.
+- Preserve shared-task dependency handling, hashes, lockfiles, ownership,
+  local-edit protection, reviewed merges, and recovery journals. Verify
+  interoperability with the C# reference and preserve lockfile bytes on no-op
+  sync. Keep help/completion metadata-only and initialization SDK-free.
+- Honor Cargo's evaluated target directory in build tasks, support staging,
+  installer packaging, and native tests. Preserve `.cargo/config.toml` and
+  `rustfmt.toml`; format both Rust workspace members with the supported settings.
+- Verification: `build.cmd` passed 407 .NET Release tests and 25 Rust tests on
+  Windows x64, plus formatting/clippy/docs/catalog/shim/whitespace checks.
+  Differential help/completion/YAML checks, reference revision/journal
+  interoperability, a real terminal wizard save/cancel check, the native greeting,
+  65 documentation links/anchors, and evaluated external output paths passed.
+  Stable rustfmt warns about nightly-only options. Native Linux/macOS and remote
+  catalog acceptance remain pending; the C# CLI remains the packaged application.
+  No active installation changed, and nothing was published or pushed.

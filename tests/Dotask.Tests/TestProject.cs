@@ -8,6 +8,7 @@ namespace DoTask.Tests;
 
 public sealed class TestProject : IDisposable
 {
+  public bool NativeRunner { get; init; }
   public string Root { get; } = Path.Combine(Path.GetTempPath(), "dotask-tests", "project with spaces " + Guid.NewGuid().ToString("N"));
   public string Tasks => Path.Combine(Root, ".tasks");
   public string OutputRoot => Path.Combine(OperatingSystem.IsWindows() ? @"C:\tmp\_dotnet" : "/tmp/_dotnet",
@@ -74,6 +75,9 @@ public sealed class TestProject : IDisposable
 
   public async Task<ProcessResult> RunFromAsync( string directory, params string[] arguments )
   {
+    if (NativeRunner) {
+      return await RustArtifacts.Run(directory, arguments);
+    }
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
     return await ProcessRunner.RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),

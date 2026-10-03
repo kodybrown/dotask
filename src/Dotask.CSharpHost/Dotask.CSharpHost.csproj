@@ -8,14 +8,10 @@
   <ItemGroup>
     <ProjectReference Include="../Dotask/Dotask.csproj" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" />
     <!-- Share the reference implementation while porting. This host has no CLI
          dispatcher, task executor, management commands, or dependency on dotask.dll. -->
-    <Compile Include="../Dotask.Cli/Metadata/*.cs" Link="Metadata/%(Filename)%(Extension)" />
-    <Compile Include="../Dotask.Cli/Configuration/ProjectConfiguration.cs" Link="Configuration/ProjectConfiguration.cs" />
-    <Compile Include="../Dotask.Cli/Discovery/TargetCatalog.cs" Link="Discovery/TargetCatalog.cs" />
-    <Compile Include="../Dotask.Cli/Parsing/OptionBinder.cs" Link="Parsing/OptionBinder.cs" />
-    <Compile Include="../Dotask.Cli/Execution/TargetCompiler.cs;../Dotask.Cli/Execution/DotnetHost.cs;../Dotask.Cli/Execution/Requirements.cs"
+    <Compile Include="../Dotask.Cli/Metadata/MetadataReader.cs;../Dotask.Cli/Metadata/TargetDefinition.cs" Link="Metadata/%(Filename)%(Extension)" />
+    <Compile Include="../Dotask.Cli/Execution/TargetCompiler.cs;../Dotask.Cli/Execution/DotnetHost.cs"
              Link="Execution/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

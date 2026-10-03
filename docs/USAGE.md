@@ -4,18 +4,20 @@ dotask runs project-defined C# tasks. A **target** is one task file: `.tasks/bui
 becomes `dotask build`. A **parameter** is a declared command-line option for that
 target. **Settings** are shared values from `.dotasks.yaml`.
 
-This reference describes the working C# CLI. The separately built
-[Rust CLI preview](../README.md#rust-cli-development-preview) now runs existing
-C# tasks and YAML groups. It supports upward discovery, `--use-dir`, exact names
-and unique shortcuts, parameters/defaults, nested calls, task failures, Ctrl+C,
-and basic metadata-only project/target help. CLI-only help/version needs no
-language host; project help uses the bundled .NET support host without invoking
-the SDK. Task execution needs the .NET 10 SDK.
+The separately built [Rust CLI preview](../README.md#rust-cli-development-preview)
+implements the commands below, including initialization, shared-task management,
+shell completion, help, the task-group wizard, C# task execution, and nested calls.
+Rust owns YAML configuration, groups, option binding, and requirement checks.
+CLI-only help/version, initialization, online shared-task management, and projects
+containing only YAML groups need no language host. Reading C# task metadata uses
+the staged .NET 10 support host without invoking the SDK; executing C# tasks
+requires the .NET 10 SDK. Private C# catalog management also reads C# metadata.
 
-The Rust preview still rejects management and completion commands. Its help
-layout and verbose project summaries have not reached full parity. Rust tasks,
-`--lang`, and extension-qualified task calls remain future work. The remaining
-reference describes the C# CLI unless explicitly stated otherwise.
+The C# CLI remains the bootstrap and packaged application while native platform
+acceptance is completed; see [verification](VERIFICATION.md). Rust tasks,
+`--lang`, and extension-qualified task calls remain future work. Both CLIs use
+the same shared-task catalog, hashes, lockfiles, and recovery journals. A native
+no-op sync preserves the existing lockfile's bytes and comments.
 
 After building the source, follow [Install dotask](../README.md#install-dotask)
 to put the command on PATH for use in other projects. Building alone does not

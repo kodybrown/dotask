@@ -1,3 +1,4 @@
+#:include _support/RustBuild.cs
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using DoTask;
@@ -53,7 +54,7 @@ public static class Target
         payload = applicationDirectory,
         commands = new[] { new { name = "dotask", executable = project.IsWindows ? "dotask.exe" : "dotask" } }
       }), project.CancellationToken);
-      var engine = project.IsWindows ? "C:/tmp/_dotnet/dotask-rust/release/dotask-installer.exe" : "/tmp/_dotnet/dotask-rust/release/dotask-installer";
+      var engine = Path.Combine(await RustBuild.TargetDirectory(project), "release", project.IsWindows ? "dotask-installer.exe" : "dotask-installer");
       var artifact = await project.CreateInstallerAsync("_/dotask-installer/create-installer", new { Config = config, Engine = engine, Output = outputDirectory });
       await project.SetInstallerResultAsync(artifact);
     } finally {

@@ -22,14 +22,17 @@ output directory when adding workspace members.
 
 The Rust CLI now runs existing C# tasks and YAML groups. It owns command parsing,
 root discovery, exact/shortcut selection, sessions, group sequencing, process
-execution, nested-call dispatch, and exit/cancellation handling. The C# CLI at
+execution, nested-call dispatch, and exit/cancellation handling. It also owns
+YAML configuration/groups, binding, requirement validation, initialization, shared
+management, help, shell completion, and the interactive group wizard. The C# CLI at
 `src/Dotask.Cli` remains the bootstrap runner and packaged application. See the
 [preview commands](../README.md#rust-cli-development-preview).
 
 `src/Dotask.CSharpHost` is a separate .NET support executable with a private,
-versioned JSON file protocol for catalog metadata, binding/requirements, and
-SDK compilation. During the transition it links the corresponding C# source
-files, keeping Roslyn, YAML semantics, and compiler isolation consistent. It has
+versioned JSON file protocol for batches of C# source metadata and SDK compilation.
+It links the corresponding maintained C# source files, keeping Roslyn metadata
+and compiler isolation consistent. Protocol version 2 removes catalog discovery,
+configuration, and binding from the support host. It has
 no reference to the managed CLI executable, command dispatcher, or task executor.
 The native runner resolves catalog entries itself and directly launches compiled
 tasks. The support host is staged from evaluated `PublishDir` into `release/csharp`
@@ -78,11 +81,16 @@ that are not yet available consumer APIs:
    nested calls, and identify implementations distinctly for cycle detection.
    Mixed-language projects need only the toolchains required by executed tasks.
 
-Roslyn metadata parsing is retained in the support host for this execution slice.
-Porting the remaining language-neutral metadata/configuration/binding work, full
-help presentation, management, and shell completion remains necessary before the
-Rust CLI replaces the packaged C# CLI. Rust task execution and catalog duplication
-follow that replacement.
+Roslyn metadata parsing remains in the support host. Native shared management
+preserves the existing SHA-256 revision serialization, lock schema, transaction
+ownership marker, and recovery journal. It never adopts untracked files or
+overwrites local changes. Completion remains local and skips project configuration;
+the wizard writes only after an explicit save and supports discarding an unfinished
+step with `:back`. Native configuration preserves quoted scalars, rejects duplicate
+keys regardless of case, and bounds nesting and alias expansion.
+
+Platform acceptance and packaging cutover remain before the Rust CLI replaces the
+packaged C# CLI. Rust task execution and catalog duplication follow that replacement.
 
 ## Discovery and metadata
 

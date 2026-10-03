@@ -5,8 +5,9 @@ using DoTask.Cli.Execution;
 
 namespace DoTask.Tests;
 
-public sealed class InitializationTests
+public class InitializationTests
 {
+  protected virtual bool NativeRunner => false;
   [Theory]
   [InlineData("MyProject")]
   [InlineData("true")]
@@ -14,7 +15,7 @@ public sealed class InitializationTests
   [InlineData("O'Brien 日本語")]
   public async Task InitCreatesUsableLocalProjectWithQuotedDirectoryNameAndSafeReruns( string name )
   {
-    using var parent = new TestProject();
+    using var parent = new TestProject { NativeRunner = NativeRunner };
     // Initialization must not discover or load this parent project.
     var parentConfig = parent.Write(".dotasks.yaml", "invalid: [\n");
     var root = Path.Combine(parent.Root, name);
@@ -34,7 +35,7 @@ public sealed class InitializationTests
     Assert.Empty(config.TargetDefaults.EnumerateObject());
     var summary = await parent.RunFromAsync(root, "--verbose");
     Assert.Equal(0, summary.ExitCode);
-    Assert.StartsWith(name + Environment.NewLine, summary.StandardOutput);
+    Assert.StartsWith(name + "\n", summary.StandardOutput.ReplaceLineEndings("\n"));
     Assert.Contains("(no targets)", summary.StandardOutput);
     var original = File.ReadAllBytes(configPath);
     File.SetLastWriteTimeUtc(configPath, new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc));
@@ -51,7 +52,7 @@ public sealed class InitializationTests
   [Fact]
   public async Task InitPreservesExistingTasksConfigurationCommentsAndLockFile()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
     var task = project.Target("init", "DoesNotCompile();", "/// <summary>A handwritten task.</summary>");
     var source = File.ReadAllBytes(task);
     var first = await project.RunAsync("--init");
@@ -72,7 +73,7 @@ public sealed class InitializationTests
   [Fact]
   public async Task InitNeedsNoSdkOrSharedTaskSourcesAndDoesNotExecuteTasks()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
     var task = project.Target("init", "File.WriteAllText(\"executed\", \"bad\");");
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
     var result = await ProcessRunner.RunAsync(new ProcessDefinition {
@@ -105,7 +106,7 @@ public sealed class InitializationTests
   [InlineData("tasks-file")]
   public async Task ConflictsFailBeforeCreatingFiles( string conflict )
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
     Directory.Delete(project.Tasks);
     var config = Path.Combine(project.Root, ".dotasks.yaml");
     var content = "invalid: [\n";
@@ -151,7 +152,7 @@ public sealed class InitializationTests
   [InlineData("another-project")]
   public async Task UnexpectedArgumentsFailWithoutInitializing( string argument )
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
     Directory.Delete(project.Tasks);
     var result = await project.RunAsync("--init", argument);
     Assert.Equal(1, result.ExitCode);
@@ -162,7 +163,7 @@ public sealed class InitializationTests
   [Fact]
   public async Task ExplicitTaskDirectoryStaysWithinCurrentRootAndWorksInProjectHelp()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
     Directory.Delete(project.Tasks);
     var result = await project.RunAsync("--init", "--use-dir", "build support/tasks");
     Assert.Equal(0, result.ExitCode);
@@ -184,7 +185,7 @@ public sealed class InitializationTests
   [InlineData(".dotasks-lock.yaml")]
   public async Task InvalidTaskLocationsFailWithoutWriting( string directory )
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
     Directory.Delete(project.Tasks);
     var result = await project.RunAsync("--init", "--use-dir", directory);
     Assert.Equal(1, result.ExitCode);
@@ -198,8 +199,8 @@ public sealed class InitializationTests
       return; // Creating links may require privileges on Windows.
     }
 
-    using var project = new TestProject();
-    using var outside = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var outside = new TestProject { NativeRunner = NativeRunner };
     Directory.Delete(project.Tasks);
     Directory.CreateSymbolicLink(project.Tasks, outside.Root);
     Assert.Equal(1, (await project.RunAsync("--init")).ExitCode);
@@ -222,7 +223,7 @@ public sealed class InitializationTests
   [Fact]
   public async Task HelpCompletionAndCancellationDoNotInitializeOrReadConfiguration()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
     Directory.Delete(project.Tasks);
     var missing = Path.Combine(project.Root, "does-not-exist");
     var output = new StringWriter();
@@ -247,7 +248,7 @@ public sealed class InitializationTests
   [Fact]
   public async Task ConcurrentInitializersNeverOverwriteOrLeaveTemporaryFiles()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = NativeRunner };
     Directory.Delete(project.Tasks);
     var codes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(async () =>
       await CliApplication.RunAsync(["--init"], project.Root, new StringWriter(), new StringWriter()))));

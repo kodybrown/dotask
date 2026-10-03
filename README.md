@@ -443,38 +443,41 @@ Build and try the Rust CLI on Windows:
 
 ```powershell
 .\build.cmd rust-cli
-& 'C:\tmp\_dotnet\dotask-rust\release\dotask.exe' --help
-& 'C:\tmp\_dotnet\dotask-rust\release\dotask.exe' --version
-& 'C:\tmp\_dotnet\dotask-rust\release\dotask.exe' --use-dir .\examples\basic\.tasks hello --name Rust
+& 'C:\tmp\_rust\dotask\target\release\dotask.exe' --help
+& 'C:\tmp\_rust\dotask\target\release\dotask.exe' --version
+& 'C:\tmp\_rust\dotask\target\release\dotask.exe' --use-dir .\examples\basic\.tasks hello --name Rust
 ```
 
 On Linux/macOS:
 
 ```sh
 ./build.sh rust-cli
-/tmp/_dotnet/dotask-rust/release/dotask --help
-/tmp/_dotnet/dotask-rust/release/dotask --version
-/tmp/_dotnet/dotask-rust/release/dotask --use-dir ./examples/basic/.tasks hello --name Rust
+/tmp/_rust/dotask/target/release/dotask --help
+/tmp/_rust/dotask/target/release/dotask --version
+/tmp/_rust/dotask/target/release/dotask --use-dir ./examples/basic/.tasks hello --name Rust
 ```
 
 The preview runs existing `.cs` tasks and `.task` groups, including parameters,
 YAML defaults, nested calls, structured installer results, exit codes, and Ctrl+C.
 Bare invocation and `help` list project tasks; `help TARGET` and `TARGET --help`
 read metadata without compilation. CLI-only `--help`/`-h` and `--version` need
-no language host. Project operations use the staged .NET 10 support host under
-`release/csharp/`; keep that directory beside the executable.
+no language host. C# metadata and compilation use the staged .NET 10 support host
+under `release/csharp/`; keep that directory beside the executable.
 
-Management, completion, full help presentation parity, `.rs` execution, and
-language selection remain pending. Use the C# CLI for those existing management
-commands. These preview commands do not install it or replace an active CLI.
-The C# support host shares metadata, YAML, binding, and compilation code; Rust
-owns discovery, selection, process execution, group sequencing, and nested calls.
+The native CLI also implements `--init`, shared-task listing/save/add/sync/remove,
+shell completion, full project/target help, and `--create-task`. Configuration,
+binding, requirements, and YAML groups run in Rust. Initialization and YAML-only
+projects need no .NET host. Existing shared-task ownership, local-edit protection,
+and recovery journals are preserved. `.rs` execution and language selection remain
+pending. These preview commands do not install it or replace an active CLI.
 
 Use `rust-cli --verify` through the launcher for its tests, rustfmt, and clippy.
-The complete repository gate requires those checks too. Build tasks set
-`CARGO_TARGET_DIR` to `C:\tmp\_dotnet\dotask-rust` on Windows or
-`/tmp/_dotnet/dotask-rust` on Unix. When invoking Cargo directly, set that variable
-explicitly to keep artifacts outside the checkout; on Windows also set
+The complete repository gate requires those checks too. `.cargo/config.toml`
+sets the target directory to `/tmp/_rust/dotask/target` (on Windows, under the
+current drive's `tmp` directory). Build tasks, support staging, packaging, and
+native tests query `cargo metadata` for the evaluated directory and honor an
+explicit `CARGO_TARGET_DIR` override. The commands above use the checked-in
+default. Direct Cargo invocations use the same configuration; on Windows set
 `RUSTFLAGS=-C target-feature=+crt-static` to match the task's static CRT build.
 
 ## License

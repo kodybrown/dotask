@@ -1,3 +1,4 @@
+#:include _support/RustBuild.cs
 using DoTask;
 
 /// <summary>Build the host Rust installer, or run its tests and formatting checks.</summary>
@@ -8,11 +9,11 @@ public static class Target
   public static async Task Main()
   {
     var project = BuildContext.Current;
-    var output = project.IsWindows ? "C:/tmp/_dotnet/dotask-rust" : "/tmp/_dotnet/dotask-rust";
+    var output = await RustBuild.TargetDirectory(project);
     var manifest = project.Path("src/dotask-installer/Cargo.toml");
-    // Keep Rust output external too. Static CRT removes the VC runtime DLL
+    // Honor Cargo's external output policy. Static CRT removes the VC runtime DLL
     // dependency from the standalone Windows delivery executable.
-    Dictionary<string, string?> environment = new() { ["CARGO_TARGET_DIR"] = output };
+    Dictionary<string, string?> environment = new();
     if (project.IsWindows)
       environment["RUSTFLAGS"] = "-C target-feature=+crt-static";
     async Task Run( params string[] arguments ) => await project.RunAsync(new ProcessDefinition {
