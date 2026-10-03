@@ -3,7 +3,8 @@ using DoTask;
 /// <summary>Build the Rust CLI preview, or run its tests and formatting checks.</summary>
 /// <option name="verify" type="bool" default="false">Run Rust tests, formatting, and clippy.</option>
 /// <requires tool="cargo" />
-/// <remarks>The preview does not execute tasks. The C# CLI remains the repository runner.</remarks>
+/// <requires tool="dotnet" />
+/// <remarks>Stage the C# support host beside the preview. The C# CLI remains the repository runner.</remarks>
 public static class Target
 {
   public static async Task Main()
@@ -16,6 +17,22 @@ public static class Target
     Dictionary<string, string?> environment = new() { ["CARGO_TARGET_DIR"] = output };
     if (project.IsWindows)
       environment["RUSTFLAGS"] = "-C target-feature=+crt-static";
+    var hostProject = project.Path("src/Dotask.CSharpHost/Dotask.CSharpHost.csproj");
+    await project.RunAsync("dotnet", ["publish", hostProject, "-c", "Release", "--self-contained=false"]);
+    var properties = await project.RunAsync(new ProcessDefinition {
+      Executable = "dotnet",
+      Arguments = ["msbuild", hostProject, "-p:Configuration=Release", "-getProperty:PublishDir"],
+      CaptureOutput = true
+    });
+    var published = Path.GetFullPath(properties.StandardOutput.Trim(), Path.GetDirectoryName(hostProject)!);
+    var support = Path.Combine(output, "release", "csharp");
+    // Stage physical copies from the evaluated output policy, never run from
+    // live .NET build output and never depend on the installed C# CLI.
+    foreach (var source in Directory.EnumerateFiles(published, "*", SearchOption.AllDirectories)) {
+      var destination = Path.Combine(support, Path.GetRelativePath(published, source));
+      Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+      File.Copy(source, destination, overwrite: true);
+    }
     async Task Run( params string[] arguments ) => await project.RunAsync(new ProcessDefinition {
       Executable = "cargo",
       Arguments = arguments,

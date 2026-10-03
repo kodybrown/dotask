@@ -120,8 +120,8 @@ public sealed class BuildContext
       var file = await ContextFile.WriteAsync(callDirectory, call, linked.Token);
       var replyFile = file + ".result";
       await ProcessRunner.RunAsync(new ProcessDefinition {
-        Executable = _data.DotnetExecutable,
-        Arguments = [_data.CliAssembly, "__exec", file],
+        Executable = _data.CliExecutable,
+        Arguments = [.. _data.CliArguments, "__exec", file],
         WorkingDirectory = RootDirectory
       }, linked.Token);
       if (operation == TargetCallOperation.CreateInstaller) {

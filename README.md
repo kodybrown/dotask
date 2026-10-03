@@ -434,7 +434,7 @@ The [documentation index](docs/README.md) links to all guides and design contrac
 The root Cargo workspace contains `src/dotask-cli` and `src/dotask-installer`,
 with a single root `Cargo.lock` and release profile. The new CLI builds a native
 `dotask` executable alongside the existing installer. The C# CLI remains the
-working task runner and the application built by the bootstrap and installer.
+bootstrap runner and the application packaged by the installer.
 The C# task authoring library and shared tasks remain maintained components.
 See the [transition design](docs/DESIGN.md#rust-cli-transition) for the agreed
 replacement stages and future task-language selection.
@@ -445,6 +445,7 @@ Build and try the Rust CLI on Windows:
 .\build.cmd rust-cli
 & 'C:\tmp\_dotnet\dotask-rust\release\dotask.exe' --help
 & 'C:\tmp\_dotnet\dotask-rust\release\dotask.exe' --version
+& 'C:\tmp\_dotnet\dotask-rust\release\dotask.exe' --use-dir .\examples\basic\.tasks hello --name Rust
 ```
 
 On Linux/macOS:
@@ -453,12 +454,21 @@ On Linux/macOS:
 ./build.sh rust-cli
 /tmp/_dotnet/dotask-rust/release/dotask --help
 /tmp/_dotnet/dotask-rust/release/dotask --version
+/tmp/_dotnet/dotask-rust/release/dotask --use-dir ./examples/basic/.tasks hello --name Rust
 ```
 
-The preview supports no arguments, `help`, `--help`/`-h`, and `--version`.
-Help and version exit 0; other requests exit 1 with a diagnostic and perform no
-task execution or project management. Version output identifies the Rust
-development preview. These commands do not install it or replace an active CLI.
+The preview runs existing `.cs` tasks and `.task` groups, including parameters,
+YAML defaults, nested calls, structured installer results, exit codes, and Ctrl+C.
+Bare invocation and `help` list project tasks; `help TARGET` and `TARGET --help`
+read metadata without compilation. CLI-only `--help`/`-h` and `--version` need
+no language host. Project operations use the staged .NET 10 support host under
+`release/csharp/`; keep that directory beside the executable.
+
+Management, completion, full help presentation parity, `.rs` execution, and
+language selection remain pending. Use the C# CLI for those existing management
+commands. These preview commands do not install it or replace an active CLI.
+The C# support host shares metadata, YAML, binding, and compilation code; Rust
+owns discovery, selection, process execution, group sequencing, and nested calls.
 
 Use `rust-cli --verify` through the launcher for its tests, rustfmt, and clippy.
 The complete repository gate requires those checks too. Build tasks set

@@ -13,6 +13,11 @@ public static class TargetRuntime
     if (Interlocked.Exchange(ref _initialized, 1) != 0) {
       return;
     }
+    // A native caller does not set .NET's console encoding. Keep redirected
+    // task output lossless regardless of the Windows console's legacy page.
+    if (Console.IsOutputRedirected || Console.IsErrorRedirected) {
+      Console.OutputEncoding = new System.Text.UTF8Encoding(false);
+    }
     AppDomain.CurrentDomain.UnhandledException += ( _, args ) =>
     {
       var exception = args.ExceptionObject as Exception;

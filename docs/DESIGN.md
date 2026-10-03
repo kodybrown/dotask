@@ -20,13 +20,34 @@ installer at `src/dotask-installer`, and the maintained C# authoring library at
 release profile. Preserve the installer's pinned dependencies and external
 output directory when adding workspace members.
 
-The implemented Rust CLI is currently a help/version scaffold. It rejects other
-requests with a failure exit code, without delegating to the C# CLI. The C# CLI
-at `src/Dotask.Cli` remains the bootstrap runner and packaged application. See
-the [preview commands](../README.md#rust-cli-development-preview).
+The Rust CLI now runs existing C# tasks and YAML groups. It owns command parsing,
+root discovery, exact/shortcut selection, sessions, group sequencing, process
+execution, nested-call dispatch, and exit/cancellation handling. The C# CLI at
+`src/Dotask.Cli` remains the bootstrap runner and packaged application. See the
+[preview commands](../README.md#rust-cli-development-preview).
 
-The following decisions describe the next implementation stages, not available
-consumer APIs:
+`src/Dotask.CSharpHost` is a separate .NET support executable with a private,
+versioned JSON file protocol for catalog metadata, binding/requirements, and
+SDK compilation. During the transition it links the corresponding C# source
+files, keeping Roslyn, YAML semantics, and compiler isolation consistent. It has
+no reference to the managed CLI executable, command dispatcher, or task executor.
+The native runner resolves catalog entries itself and directly launches compiled
+tasks. The support host is staged from evaluated `PublishDir` into `release/csharp`
+by `rust-cli`; metadata-only requests never compile or run a target.
+
+Nested context carries a CLI executable and argument prefix: native dotask with
+an empty prefix, or the .NET host with the C# CLI assembly. Both use the same
+`__exec` file transport and immutable configuration snapshot. The public C# task
+API and invocation-local installer results are unchanged. Context files are
+private and execution snapshots are cleaned up after completion/cancellation.
+
+On Windows the native runner assigns suspended children to job objects before
+resuming them. On Unix it creates process groups and forwards Ctrl+C. After a
+short cooperative cancellation interval, it terminates its child group and
+returns 130. Native platform acceptance is recorded in [verification](VERIFICATION.md).
+
+The following decisions describe the overall transition, including later stages
+that are not yet available consumer APIs:
 
 1. Replace the CLI with Rust while preserving existing C# task authoring,
    metadata, compilation, nested calls, and observable CLI behavior. Keep the
@@ -57,9 +78,11 @@ consumer APIs:
    nested calls, and identify implementations distinctly for cycle detection.
    Mixed-language projects need only the toolchains required by executed tasks.
 
-The C# metadata parser currently uses Roslyn. Its replacement or retention as
-a focused helper is still an implementation decision; the scaffold does not
-change that boundary or promise a completed C# execution port.
+Roslyn metadata parsing is retained in the support host for this execution slice.
+Porting the remaining language-neutral metadata/configuration/binding work, full
+help presentation, management, and shell completion remains necessary before the
+Rust CLI replaces the packaged C# CLI. Rust task execution and catalog duplication
+follow that replacement.
 
 ## Discovery and metadata
 

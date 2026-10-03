@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Dotask/Dotask.csproj" />
     <Project Path="src/Dotask.Cli/Dotask.Cli.csproj" />
+    <Project Path="src/Dotask.CSharpHost/Dotask.CSharpHost.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Dotask.Tests/Dotask.Tests.csproj" />

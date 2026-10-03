@@ -72,8 +72,8 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
         TaskDirectory = directory.DirectoryPath,
         TargetFile = target.FilePath,
         TargetName = target.Name,
-        DotnetExecutable = DotnetHost.Find(),
-        CliAssembly = typeof(TargetExecutor).Assembly.Location,
+        CliExecutable = DotnetHost.Find(),
+        CliArguments = [typeof(TargetExecutor).Assembly.Location],
         SessionDirectory = sessionDirectory,
         Settings = config.Settings,
         Parameters = parameters,
@@ -84,7 +84,7 @@ internal sealed class TargetExecutor( TaskDirectory directory, ProjectConfigurat
       contextPath = await ContextFile.WriteAsync(sessionDirectory, data, cancellationToken);
       trace?.WriteLine($"[dotask] Executing: {target.Name}");
       var result = await ProcessRunner.RunAsync(new ProcessDefinition {
-        Executable = data.DotnetExecutable,
+        Executable = DotnetHost.Find(),
         Arguments = [compilation.AssemblyPath!],
         WorkingDirectory = directory.RootDirectory,
         ThrowOnError = false,

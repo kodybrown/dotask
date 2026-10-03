@@ -6,7 +6,9 @@ Use this guide when creating, editing, explaining, or running dotask tasks in a
 services and the other [deferred features](DESIGN.md#deferred) are not APIs.
 
 The [Rust CLI preview](../README.md#rust-cli-development-preview) is a separate
-development scaffold. Continue using the C# CLI for consumer tasks; `.rs` task
+development runner for existing C# tasks and YAML groups, including nested calls.
+Use its staged `csharp/` support directory and the .NET SDK for execution.
+Continue using the C# CLI for project management and shell completion; `.rs` task
 execution, `--lang`, group-only `--add`, and extension-qualified calls are
 [agreed future behavior](DESIGN.md#rust-cli-transition), not implemented commands.
 

@@ -305,3 +305,26 @@ acceptance, installation, and publication.
   The real user catalog and stale reproduction catalog remained byte-identical.
   Native Linux/macOS acceptance remains pending. No active installation changed;
   nothing was published or pushed.
+
+### 2026-10-02 Execute existing C# tasks from the Rust CLI
+
+- Add native project discovery, task selection, execution sessions, YAML group
+  sequencing, and nested-call dispatch. Preserve C# task source and APIs, settings
+  snapshots, parameter binding, structured installer results, process arguments,
+  standard streams, and task exit codes. Add basic metadata-only project/target
+  help and explicit rejection of unsupported management/completion commands.
+- Add the separate `Dotask.CSharpHost` with a versioned file protocol, sharing
+  Roslyn metadata, YAML, option/requirement validation, and isolated SDK compilation
+  code. Stage it from evaluated `PublishDir` beside the native preview without
+  packaging or invoking the managed CLI dispatcher.
+- Generalize internal nested-call context to a CLI executable and argument prefix.
+  Add process-group/job cancellation and preserve full Windows exit codes.
+  Emit redirected C# task output as UTF-8 for lossless native pipelines.
+- Verification: `build.cmd` passed 316 .NET Release tests (including 10 native
+  execution cases), 16 Rust installer tests, 3 Rust CLI smoke tests, and all
+  formatting/clippy/docs/catalog/shim/whitespace checks on Windows x64. The focused
+  `RustCliTests` suite and documented native greeting command also passed. Native
+  Ctrl+C tests cover direct/nested tasks, uncooperative descendants, and context
+  cleanup. Evaluated .NET and Cargo outputs remain external. Native Linux/macOS
+  acceptance remains pending; no active installation changed and nothing was
+  published or pushed.

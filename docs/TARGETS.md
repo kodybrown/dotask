@@ -4,6 +4,10 @@ This is the authoring contract for the current preview. See [usage](USAGE.md) fo
 CLI behavior and [AI assistant guidance](AI-ASSISTANTS.md) for a task-writing
 workflow. A target is either a C# file-based application compiled with the helper
 library attached, or a declarative YAML `.task` group that calls existing targets.
+The [Rust CLI preview](../README.md#rust-cli-development-preview) can execute the
+same C# source and nested-call APIs. Its bundled support host attaches the same
+library; task source does not reference or depend on the CLI's implementation
+language. `.rs` authoring and cross-language execution are still future work.
 
 Jump to [a complete target](#a-complete-target), [reuse](#reuse-a-target),
 [options](#option-metadata), [YAML](#yaml-configuration),

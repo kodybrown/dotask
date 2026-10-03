@@ -7,6 +7,19 @@ license = "MIT"
 description = "Native dotask CLI under development alongside the C# task runner."
 publish = false
 
+[dependencies]
+anyhow = "1"
+ctrlc = "3.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_System_Diagnostics_ToolHelp"] }
+
 [[bin]]
 name = "dotask"
 path = "src/main.rs"

@@ -5,8 +5,17 @@ becomes `dotask build`. A **parameter** is a declared command-line option for th
 target. **Settings** are shared values from `.dotasks.yaml`.
 
 This reference describes the working C# CLI. The separately built
-[Rust CLI preview](../README.md#rust-cli-development-preview) currently supports
-only help/version and does not yet implement the task commands below.
+[Rust CLI preview](../README.md#rust-cli-development-preview) now runs existing
+C# tasks and YAML groups. It supports upward discovery, `--use-dir`, exact names
+and unique shortcuts, parameters/defaults, nested calls, task failures, Ctrl+C,
+and basic metadata-only project/target help. CLI-only help/version needs no
+language host; project help uses the bundled .NET support host without invoking
+the SDK. Task execution needs the .NET 10 SDK.
+
+The Rust preview still rejects management and completion commands. Its help
+layout and verbose project summaries have not reached full parity. Rust tasks,
+`--lang`, and extension-qualified task calls remain future work. The remaining
+reference describes the C# CLI unless explicitly stated otherwise.
 
 After building the source, follow [Install dotask](../README.md#install-dotask)
 to put the command on PATH for use in other projects. Building alone does not

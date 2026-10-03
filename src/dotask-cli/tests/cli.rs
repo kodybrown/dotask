@@ -11,12 +11,16 @@ fn run(arguments: &[&str]) -> Output {
 
 #[test]
 fn help_runs_without_an_external_language_host() {
-    for arguments in [&[][..], &["--help"], &["-h"], &["help"]] {
+    for arguments in [
+        &["--help"][..],
+        &["-h"],
+        &["--use-dir", "missing", "--help"],
+    ] {
         let output = run(arguments);
         assert!(output.status.success(), "{output:?}");
         let stdout = String::from_utf8(output.stdout).unwrap();
         assert!(stdout.contains("Usage: dotask"));
-        assert!(stdout.contains("Task execution is not implemented"));
+        assert!(stdout.contains("Runs installed C# tasks"));
         assert!(output.stderr.is_empty());
     }
 }
@@ -38,11 +42,10 @@ fn version_identifies_the_development_preview() {
 #[test]
 fn unimplemented_requests_fail_instead_of_reporting_success() {
     for arguments in [
-        &["build"][..],
-        &["--init"],
+        &["--init"][..],
         &["--add", "git", "--lang", "rust"],
-        &["--version", "build"],
-        &["--help", "build"],
+        &["completion", "powershell"],
+        &["__complete"],
     ] {
         let output = run(arguments);
         assert_eq!(output.status.code(), Some(1), "{output:?}");

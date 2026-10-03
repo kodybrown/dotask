@@ -1,5 +1,36 @@
 # Verification
 
+## Rust CLI C# execution slice (2026-10-02)
+
+On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, `build.cmd` passed all
+316 .NET Release tests, 16 Rust installer tests, 3 Rust CLI smoke tests, Rust
+formatting/clippy, C# formatting, documentation, shared catalog freshness,
+bundled shim hashes, and whitespace checks. Verification ran outside the agent
+sandbox to allow the normal external caches and MSBuild named pipes.
+
+`dotnet test dotask.slnx -c Release --filter FullyQualifiedName~RustCliTests --nologo`
+passed all 10 native execution cases. They cover original C# source, upward and
+explicit-directory discovery, exact names/ambiguous aliases, YAML settings and
+defaults, Unicode/empty/quoted arguments, standard streams, metadata-only help,
+validation/compilation/task failures, full Windows exit codes, YAML groups,
+strict/optional/existence nested calls, immutable configuration snapshots,
+cycle detection, and the structured installer-result protocol. The native
+support directory contains no managed CLI assembly.
+
+The two Ctrl+C cases own a hidden console so signals cannot reach the user's
+terminal. Both direct and nested execution returned 130, stopped deliberately
+uncooperative task descendants, and removed the context files. The new task
+runtime UTF-8 handling and explicit native-output decoding in the test harness
+were required to preserve Unicode through captured Windows output.
+
+`build.cmd rust-cli --verify` passed, and the README's native greeting command
+printed `Hello from dotask, Rust!`. The C# support host's evaluated
+`BaseOutputPath`, `BaseIntermediateOutputPath`, and `PublishDir` remain under
+`C:\tmp\_dotnet`; Rust artifacts remain under `C:\tmp\_dotnet\dotask-rust`.
+The C# CLI remains the bootstrap and packaged application. Management/completion,
+full help presentation parity, Rust task authoring, and native Linux/macOS
+acceptance remain pending. Nothing was installed, published, or pushed.
+
 ## Rust CLI scaffold and Cargo workspace (2026-10-02)
 
 On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, `build.cmd` passed
@@ -35,10 +66,10 @@ All 306 .NET and 19 Rust tests passed; the user's real catalog and the stale
 reproduction copy kept their original SHA-256 hashes. No cache refresh or
 production task-management behavior change was needed.
 
-The C# CLI remains the bootstrap and packaged application. The Rust executable
-is a help/version scaffold; C# execution through it, Rust task authoring, and
-native Linux/macOS acceptance remain pending. No active installation was changed,
-and nothing was published or pushed.
+At this earlier scaffold checkpoint the Rust executable only supported
+help/version; the execution slice above records the subsequent implementation.
+The C# CLI remained the bootstrap and packaged application. No active
+installation was changed, and nothing was published or pushed.
 
 ## Standalone Rust installer (2026-09-24)
 

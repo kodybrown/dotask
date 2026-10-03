@@ -10,8 +10,10 @@ internal sealed record ExecutionContextData
   public required string TaskDirectory { get; init; }
   public required string TargetFile { get; init; }
   public required string TargetName { get; init; }
-  public required string DotnetExecutable { get; init; }
-  public required string CliAssembly { get; init; }
+  // A native CLI has no argument prefix; the managed CLI uses dotnet + its DLL.
+  // Keep the transport independent of the language implementing the caller.
+  public required string CliExecutable { get; init; }
+  public required string[] CliArguments { get; init; }
   public required string SessionDirectory { get; init; }
   public required JsonElement Settings { get; init; }
   public required JsonElement Parameters { get; init; }

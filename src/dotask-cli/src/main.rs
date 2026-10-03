@@ -1,5 +1,10 @@
 mod cli;
+mod execution;
+mod host;
+mod process;
+mod project;
 
-fn main() -> std::process::ExitCode {
-    cli::run(std::env::args_os().skip(1).collect())
+fn main() {
+    // Preserve the full Windows exit code; ExitCode::from(u8) would truncate it.
+    std::process::exit(cli::run(std::env::args_os().skip(1).collect()));
 }
