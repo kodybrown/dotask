@@ -1,0 +1,247 @@
+
+# https://rust-lang.github.io/rustfmt/?version=v1.8.0&search=
+
+# Use the crate's edition for formatting/parsing rules.
+edition = "2024"
+style_edition = "2015"
+
+# Maximum width of an array literal before vertical formatting
+array_width = 60
+
+# Maximum width for function-like attributes before vertical
+attr_fn_like_width = 90
+
+# Place binary operators at start of next line ("Front") or end of previous ("Back")
+binop_separator = "Front"
+
+# Minimum blank lines between items
+blank_lines_lower_bound = 0
+
+# Maximum blank lines between items
+blank_lines_upper_bound = 1
+
+# Brace style for blocks (functions, impls, etc.)
+# - AlwaysNextLine →  opening brace always on next line
+# - PreferSameLine →  same line if possible
+# - SameLineWhere →  same line except next line if where-clause (default)
+brace_style = "AlwaysNextLine"
+
+# Maximum width for chained expressions before vertical
+chain_width = 80
+
+# When to use colored output
+color = "Auto"
+
+# Combine control expressions (if/let) into single line when possible
+combine_control_expr = true
+
+# Maximum comment width
+comment_width = 120
+
+# Condense _ suffixes in enum variants
+condense_wildcard_suffixes = false
+
+# Brace style for control expressions (if, else, match, etc.)
+# - AlwaysSameLine →  opening brace on same line (K&R style, default)
+# - ClosingNextLine →  opening brace on next line after condition, closing on its own line (Stroustrup style)
+# - AlwaysNextLine →  opening brace always on next line (Allman style)
+control_brace_style = "AlwaysSameLine"
+
+# Disable all formatting
+disable_all_formatting = false
+
+# Maximum width for code blocks in doc comments
+doc_comment_code_block_width = 120
+
+# Output mode (Files, Stdout, etc.)
+emit_mode = "Files"
+
+# Put empty items on single line
+empty_item_single_line = true
+
+# Align enum discriminants if exceeding threshold
+enum_discrim_align_threshold = 0
+
+# Error if line exceeds max_width
+error_on_line_overflow = false
+
+# Error if code is unformatted
+error_on_unformatted = false
+
+# Maximum width for function calls before vertical
+fn_call_width = 80
+
+# Layout for function parameters (Tall, Compressed, etc.)
+fn_params_layout = "Tall"
+
+# Allow single-line functions
+fn_single_line = false
+
+# Force explicit ABI in extern declarations
+force_explicit_abi = true
+
+# Force multiline for blocks
+force_multiline_blocks = false
+
+# Format code in doc comments
+format_code_in_doc_comments = false
+
+# Format generated files
+format_generated_files = true
+
+# Format macro bodies
+format_macro_bodies = true
+
+# Format macro match arms
+format_macro_matchers = false
+
+# Format string literals
+format_strings = false
+
+# Lines to search for generated marker
+generated_marker_line_search_limit = 5
+
+# How to group imports (Preserve, StdExternalCrate, etc.)
+# - "Preserve" (default), "StdExternalCrate", "One" — groups std, external crates, and others.
+group_imports = "Preserve"
+
+# Use tabs instead of spaces
+hard_tabs = false
+
+# Case for hex literals (Upper, Lower, Preserve)
+hex_literal_case = "Preserve"
+
+# Files/directories to ignore
+ignore = []
+
+# Granularity for merging imports (Preserve, Crate, etc.)
+# - "Preserve" (default), "Crate", "Module", "Item", "One" — merge/split imports level.
+imports_granularity = "Crate"
+
+# Indent style for imports
+# - "Block" (default), "Visual" — indent style for nested imports.
+imports_indent = "Block"
+
+# Layout for imports (Mixed, HorizontalVertical, etc.)
+# - "Mixed" (default), "Horizontal", "HorizontalVertical", "Vertical" — layout inside braced imports.
+imports_layout = "HorizontalVertical"
+
+# Indent style (Block or Visual)
+indent_style = "Block"
+
+# Width for inline attributes
+inline_attribute_width = 0
+
+# Make backups before overwriting
+make_backup = false
+
+# Treat match arms as blocks
+match_arm_blocks = true
+
+# When to use leading pipes in match arms
+match_arm_leading_pipes = "Never"
+
+# Trailing comma in match blocks
+match_block_trailing_comma = false
+
+# Maximum line width
+max_width = 120
+
+# Merge multiple derive attributes
+merge_derives = true
+
+# Newline style (Windows, Unix, Auto)
+newline_style = "Auto"
+
+# Normalize comments
+normalize_comments = false
+
+# Normalize doc attributes
+normalize_doc_attributes = false
+
+# Overflow handling for delimited expressions
+overflow_delimited_expr = false
+
+# Remove unnecessary nested parentheses
+remove_nested_parens = true
+
+# Reorder items in impl blocks
+reorder_impl_items = false
+
+# Reorder imports
+reorder_imports = true
+
+# Reorder modules
+reorder_modules = true
+
+# Required rustfmt version
+required_version = "1.8.0"
+
+# Threshold for short array elements
+short_array_element_width_threshold = 10
+
+# Show parse errors
+show_parse_errors = true
+
+# Max width for single-line if-else
+single_line_if_else_max_width = 50
+
+# Max width for single-line let-else
+single_line_let_else_max_width = 50
+
+# Skip formatting children
+skip_children = false
+
+# Macros to skip
+skip_macro_invocations = []
+
+# Space after colon
+space_after_colon = true
+
+# Space before colon
+space_before_colon = false
+
+# Spaces around ranges (..)
+spaces_around_ranges = false
+
+# Align struct fields if exceeding threshold
+struct_field_align_threshold = 0
+
+# Single-line struct literals when possible
+struct_lit_single_line = true
+
+# Width for struct literals
+struct_lit_width = 18
+
+# Width for struct variants
+struct_variant_width = 35
+
+# Spaces per tab
+tab_spaces = 2
+
+# When to add trailing commas
+trailing_comma = "Vertical"
+
+# Add trailing semicolons
+trailing_semicolon = true
+
+# Density for type punctuation
+type_punctuation_density = "Wide"
+
+# Enable unstable features (nightly only)
+unstable_features = false
+
+# Use field init shorthand
+use_field_init_shorthand = false
+
+# Heuristics set (Default, Max, Off)
+use_small_heuristics = "Default"
+
+# Use try shorthand
+use_try_shorthand = false
+
+# Single-line where clauses when possible
+where_single_line = false
+
+# Wrap comments
+wrap_comments = false

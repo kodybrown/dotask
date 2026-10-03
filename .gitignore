@@ -1,14 +1,13 @@
 DoTask Notes.mdx
 
+**/.vs/
+**/artifacts/
 **/bin/
 **/obj/
+**/target/
 **/TestResults/
 **/*.user
 **/*.suo
-.vs/
-.idea/
-**/artifacts/
-**/target/
 *.nupkg
 *.snupkg
 
