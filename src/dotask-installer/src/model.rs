@@ -128,6 +128,8 @@ pub struct Receipt {
   pub previous: Option<String>,
   pub builds: BTreeMap<String, String>,
   pub launchers: Vec<OwnedFile>,
+  #[serde(default)]
+  pub shortcut_directories: Vec<String>,
   pub settings: Vec<String>,
   pub values: BTreeMap<String, serde_json::Value>,
   pub engine_hash: String,

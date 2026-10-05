@@ -72,7 +72,7 @@ commands:
   - name: example
     executable: example.exe
 shortcuts:
-  - name: Example App
+  - name: '${shortcut-name}'
     executable: example.exe
     arguments: []
     terminal: false
@@ -95,6 +95,8 @@ defaults:
   windows:
     add-to-path: true
     start-menu-shortcuts: true
+    start-menu-nested: false
+    shortcut-name: Example App
 profiles:
   omarchy:
     values:
@@ -163,7 +165,7 @@ creates no installation. Interrupted activation retains its recovery journal.
 Built-in inputs are `install-dir`, `bin-dir`, `desktop-dir`, `start-menu-dir`,
 `desktop-shortcuts`, `start-menu-shortcuts`, `local-shortcuts`, and
 `prune-old-versions`, plus `additional-command`, `add-to-path`, and
-`confirm-install`. These defaults and their prompt labels can be overridden using
+`confirm-install`, `shortcut-name`, and `start-menu-nested`. These defaults and their prompt labels can be overridden using
 `defaults`, `values`, and `inputs` in installer YAML. `confirm-install` controls
 the final confirmation's default, not unattended execution. Boolean flags enable
 the corresponding option; use
@@ -190,8 +192,13 @@ additional command is optional (`additional-command: false` by default); its
 suggested directory is the application root's parent. `BIN` is not consulted.
 `--bin-dir` enables the additional command unless `--set additional-command=false`
 explicitly disables it. Its location must be outside the application root;
-an ancestor such as `%LOCALAPPDATA%/Programs` is permitted. Updates must retain
-the recorded additional-command choice and its directory.
+an ancestor such as `%LOCALAPPDATA%/Programs` is permitted. Updates may enable,
+disable, or move the additional command. The receipt's launcher inventory owns
+the previous files independently of saved preference values. The installer locks
+the previous and requested directories, verifies existing owned files, creates
+the selected launchers, and removes only obsolete owned launchers. An unowned new
+destination or modified old launcher stops the update before activation. A pending
+activation must be retried with the same package and launcher destinations.
 
 On Windows, `add-to-path` defaults to true and applies to the additional command
 directory when enabled, or the application directory otherwise. The installer
@@ -243,6 +250,31 @@ Console and GUI applications can both declare shortcuts. Each shortcut's
 `desktop`, `start-menu`, and `local` booleans permit those locations; corresponding
 input values select whether to create them. Requesting a location with no allowed
 shortcut fails. Optional `icon` and `working-directory` are payload-relative.
+
+Declare `name: '${shortcut-name}'` to offer a configurable shortcut name, which
+defaults to `application.name`. Static names remain fixed; a package may declare
+multiple distinct shortcuts. `--shortcut-name NAME` or `--set shortcut-name=NAME`
+overrides the named input. Names omit the extension and may contain spaces or
+Unicode. Empty/oversized names, control characters, path separators, invalid
+Windows characters, reserved device names, and trailing dots/spaces are rejected.
+An invalid interactive name reports the error and asks again. Template-expanded
+names are validated before a shortcut is staged or installed.
+
+On Windows, enabling a Start Menu shortcut prompts for its configurable name and
+whether to nest it in a folder of the same name (default No). Set
+`start-menu-nested: true` in Windows defaults, use `--start-menu-nested`, or pass
+`--set start-menu-nested=true` to select `name/name.lnk`; otherwise the location
+is `name.lnk`. The base defaults to the current user's Start Menu Programs folder.
+Desktop/local shortcuts remain flat. Updates may rename shortcuts or change
+their nesting; obsolete owned links are removed. Receipts record menu folders
+created by the installer, which are removed only when empty. Preexisting folders
+and folders containing unrelated files are preserved.
+
+Linux application-menu `.desktop` entries remain flat. Windows nesting is rejected
+on other platforms, since a desktop-file subdirectory does not itself define a
+visible Linux submenu. Linux/macOS acceptance remains deferred. Dotask's own
+console package declares no shortcuts, so it offers no Start Menu question or
+entry; the shortcut options are for applications packaged by this engine.
 
 Windows uses native `.lnk` files and application entry points determine console
 behavior. Linux uses `.desktop` files with `Terminal` metadata; desktop visibility

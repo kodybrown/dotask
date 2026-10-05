@@ -6,6 +6,7 @@ use crate::{
 };
 use anyhow::{ensure, Context, Result};
 use std::{
+  collections::{BTreeMap, BTreeSet},
   fs,
   path::{Path, PathBuf},
 };
@@ -312,7 +313,6 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
     console::confirm(&input, config::enabled(&values, "confirm-install"))?;
   }
   let _root_lock = lock(&root)?;
-  let _bin_lock = if additional { Some(lock(&bin)?) } else { None };
   let management = root.join("installer");
   let mut old = if root.exists() {
     Some(load_receipt(&root).context(
@@ -327,21 +327,36 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
       receipt.app_id == package.application.id,
       "Application identity does not match existing installation"
     );
-    ensure!(
-      config::enabled(&receipt.values, "additional-command") == additional
-        && (!additional || config::command_directory(&receipt.values)? == bin),
-      "Retain the original additional-command and bin-dir choices when updating"
-    );
     if !management.join("pending.yaml").exists() {
       files::verify_file(&management.join(engine_name()), &receipt.engine_hash)?;
       files::verify_file(&management.join("installer.yaml"), &receipt.config_hash)?;
     }
   }
   let pending_path = management.join("pending.yaml");
-  if pending_path.exists() {
-    let pending: Receipt = files::read_yaml(&pending_path)?;
+  let pending: Option<Receipt> = if pending_path.exists() {
+    Some(files::read_yaml(&pending_path)?)
+  } else {
+    None
+  };
+  // Lock both the previous and requested external launcher directories. Receipt
+  // paths are the ownership authority even when an earlier install had no
+  // additional-command input; changing preferences does not adopt any files.
+  let _launcher_locks = lock_launcher_directories(
+    &root,
+    prepared
+      .iter()
+      .map(|p| p.destination.clone())
+      .chain(old.iter().flat_map(|r| r.launchers.iter().map(|l| PathBuf::from(&l.path))))
+      .chain(pending.iter().flat_map(|r| r.launchers.iter().map(|l| PathBuf::from(&l.path)))),
+  )?;
+  if let Some(pending) = pending {
+    let requested: BTreeSet<_> = prepared.iter().map(|p| as_string(&p.destination)).collect();
+    let recorded: BTreeSet<_> = pending.launchers.iter().map(|l| l.path.clone()).collect();
     ensure!(
-      pending.app_id == package.application.id && pending.root == as_string(&root) && pending.active == id,
+      pending.app_id == package.application.id
+        && pending.root == as_string(&root)
+        && pending.active == id
+        && requested == recorded,
       "An interrupted installation must be retried with its original package and locations"
     );
     let previous = old.as_ref().map(|r| r.launchers.clone()).unwrap_or_default();
@@ -355,6 +370,11 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
     let receipt = old.get_or_insert_with(|| pending.clone());
     receipt.launchers = owned;
     receipt.builds.extend(pending.builds);
+    for directory in pending.shortcut_directories {
+      if !receipt.shortcut_directories.contains(&directory) {
+        receipt.shortcut_directories.push(directory);
+      }
+    }
     for (name, expected) in [
       (engine_name(), &pending.engine_hash),
       ("installer.yaml", &pending.config_hash),
@@ -389,6 +409,9 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
   if let Some(receipt) = &old {
     for launcher in &receipt.launchers {
       launchers::verify(launcher)?;
+    }
+    for directory in &receipt.shortcut_directories {
+      files::safe_path(Path::new(directory))?;
     }
   }
   fs::create_dir_all(&management)?;
@@ -435,12 +458,21 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
     previous,
     builds,
     launchers: vec![],
+    shortcut_directories: old.as_ref().map(|r| r.shortcut_directories.clone()).unwrap_or_default(),
     settings,
     values,
     engine_hash: files::file_hash(&engine)?,
     config_hash,
     uninstalling: false,
   };
+  for directory in prepared.iter().filter_map(|p| p.shortcut_directory.as_ref()) {
+    let name = as_string(directory);
+    // Existing menu folders belong to the user. Record only folders this
+    // installation creates, so cleanup can remove only its empty folders.
+    if !directory.exists() && !receipt.shortcut_directories.contains(&name) {
+      receipt.shortcut_directories.push(name);
+    }
+  }
   for item in &prepared {
     let mut record = launchers::record(&item.source)?;
     record.path = as_string(&item.destination);
@@ -457,6 +489,18 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
   files::write_atomic(&management.join("installer.yaml"), yaml.as_bytes())?;
   receipt.launchers = launchers::apply(&prepared, &old.map(|r| r.launchers).unwrap_or_default())
     .context("Activate command launchers and shortcuts")?;
+  receipt.shortcut_directories.retain(|name| {
+    prepared
+      .iter()
+      .any(|p| p.shortcut_directory.as_ref().is_some_and(|d| as_string(d) == *name))
+      || match files::safe_path(Path::new(name)).and_then(|()| files::remove_empty(Path::new(name))) {
+        Ok(()) => Path::new(name).exists(),
+        Err(error) => {
+          eprintln!("Retained shortcut directory {name}: {error:#}");
+          true
+        }
+      }
+  });
   if config::enabled(&receipt.values, "add-to-path") {
     let _path_lock = lock(&std::env::temp_dir().join("dotask-user-path"))?;
     if user_path::add(&bin)? {
@@ -504,16 +548,14 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
     "Installation is incomplete; retry its original installer before uninstalling"
   );
   let mut receipt = load_receipt(root)?;
-  let bin = config::command_directory(&receipt.values)?;
-  let _bin_lock = if config::enabled(&receipt.values, "additional-command") {
-    Some(lock(&bin)?)
-  } else {
-    None
-  };
+  let _launcher_locks = lock_launcher_directories(root, receipt.launchers.iter().map(|l| PathBuf::from(&l.path)))?;
   files::verify_file(&management.join(engine_name()), &receipt.engine_hash)?;
   files::verify_file(&management.join("installer.yaml"), &receipt.config_hash)?;
   for launcher in &receipt.launchers {
     launchers::verify(launcher)?;
+  }
+  for directory in &receipt.shortcut_directories {
+    files::safe_path(Path::new(directory))?;
   }
   // Preflight every build before deleting any files. Configuration snapshots are
   // checked along with inventories; the latest YAML is not an uninstall recipe.
@@ -569,6 +611,11 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
     }
   }
   receipt.launchers.clear();
+  for directory in &receipt.shortcut_directories {
+    files::safe_path(Path::new(directory))?;
+    files::remove_empty(Path::new(directory))?;
+  }
+  receipt.shortcut_directories.clear();
   files::write_yaml(&management.join("installation.yaml"), &receipt)?;
   for (build, expected) in receipt.builds.clone() {
     remove_build(root, &build, &expected, true)?;
@@ -619,6 +666,18 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
     println!("Uninstalled {}", receipt.app_id);
   }
   Ok(())
+}
+fn lock_launcher_directories(root: &Path, destinations: impl IntoIterator<Item = PathBuf>) -> Result<Vec<fs::File>> {
+  let mut directories = BTreeMap::new();
+  for destination in destinations {
+    let parent = destination.parent().context("Launcher needs a parent directory")?;
+    files::safe_path(parent)?;
+    let parent = files::absolute(parent, root)?;
+    if !files::contains(root, &parent) {
+      directories.insert(as_string(&parent).to_lowercase(), parent);
+    }
+  }
+  directories.values().map(|directory| lock(directory)).collect()
 }
 fn reject_links_tree(path: &Path) -> Result<()> {
   files::safe_path(path)?;

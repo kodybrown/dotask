@@ -59,6 +59,11 @@ impl Fixture {
     config["application"]["version"] = version.into();
     fs::write(&self.config, serde_saphyr::to_string(&config).unwrap()).unwrap();
   }
+  fn configure(&self, change: impl FnOnce(&mut Value)) {
+    let mut config: Value = serde_saphyr::from_str(&fs::read_to_string(&self.config).unwrap()).unwrap();
+    change(&mut config);
+    fs::write(&self.config, serde_saphyr::to_string(&config).unwrap()).unwrap();
+  }
   fn uninstall(&self, args: &[&str]) -> Output {
     let mut all = vec!["uninstall", "--install-dir", self.root.to_str().unwrap()];
     all.extend(args);
@@ -427,4 +432,124 @@ fn default_interaction_requires_terminal_and_yaml_can_select_unattended() {
   assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
   assert!(f.root.exists());
   assert!(f.uninstall(&[]).status.success());
+}
+
+#[test]
+fn updating_can_move_disable_and_enable_an_owned_additional_command() {
+  let f = Fixture::new();
+  f.good(&[]);
+  let first = f.receipt()["active"].clone();
+  let receipt_path = f.root.join("installer/installation.yaml");
+  let mut receipt = f.receipt();
+  // Reproduce a current-schema receipt from before the optional command input.
+  // Ownership comes from launcher inventory, not that preference's presence.
+  receipt["values"].as_object_mut().unwrap().remove("additional-command");
+  fs::write(&receipt_path, serde_saphyr::to_string(&receipt).unwrap()).unwrap();
+  let name = if cfg!(windows) { "probe.exe" } else { "probe" };
+  let parent = f._temp.path();
+  fs::write(f.bin.join("user-owned.txt"), "keep").unwrap();
+  f.good(&["--bin-dir", parent.to_str().unwrap()]);
+  assert!(!f.bin.join(name).exists());
+  assert!(parent.join(name).exists());
+  assert_eq!(fs::read_to_string(f.bin.join("user-owned.txt")).unwrap(), "keep");
+  assert_eq!(f.receipt()["active"], first);
+  f.good(&["--set", "additional-command=false"]);
+  assert!(!parent.join(name).exists());
+  assert!(f.root.join(name).exists());
+  f.good(&[]);
+  assert!(f.bin.join(name).exists());
+  assert!(f.uninstall(&[]).status.success());
+}
+
+#[test]
+fn moving_additional_command_refuses_unowned_or_modified_launchers_before_mutation() {
+  let f = Fixture::new();
+  f.good(&[]);
+  let before = fs::read(f.root.join("installer/installation.yaml")).unwrap();
+  let name = if cfg!(windows) { "probe.exe" } else { "probe" };
+  let destination = f._temp.path().join(name);
+  fs::write(&destination, "unowned").unwrap();
+  assert!(!f.run(&["--bin-dir", f._temp.path().to_str().unwrap()]).status.success());
+  assert_eq!(fs::read(f.root.join("installer/installation.yaml")).unwrap(), before);
+  assert_eq!(fs::read_to_string(&destination).unwrap(), "unowned");
+  assert!(f.bin.join(name).exists());
+  fs::remove_file(&destination).unwrap();
+  fs::write(f.bin.join(name), "modified").unwrap();
+  assert!(!f.run(&["--bin-dir", f._temp.path().to_str().unwrap()]).status.success());
+  assert!(!destination.exists());
+  assert_eq!(fs::read(f.root.join("installer/installation.yaml")).unwrap(), before);
+}
+
+#[cfg(windows)]
+#[test]
+fn interrupted_command_move_requires_same_destinations_and_recovers() {
+  use std::os::windows::fs::OpenOptionsExt;
+  let f = Fixture::new();
+  f.good(&[]);
+  let held = fs::OpenOptions::new()
+    .read(true)
+    .share_mode(1)
+    .open(f.bin.join("probe.exe"))
+    .unwrap();
+  let parent = f._temp.path().to_str().unwrap();
+  assert!(!f.run(&["--bin-dir", parent]).status.success());
+  assert!(f.root.join("installer/pending.yaml").exists());
+  let changed = f.run(&["--set", "additional-command=false"]);
+  assert!(!changed.status.success());
+  assert!(String::from_utf8_lossy(&changed.stderr).contains("original package and locations"));
+  drop(held);
+  f.good(&["--bin-dir", parent]);
+  assert!(!f.root.join("installer/pending.yaml").exists());
+  assert!(!f.bin.join("probe.exe").exists());
+  assert!(f._temp.path().join("probe.exe").exists());
+  assert!(f.uninstall(&[]).status.success());
+}
+
+#[cfg(windows)]
+#[test]
+fn named_start_menu_shortcuts_can_move_between_flat_and_owned_nested_folders() {
+  let f = Fixture::new();
+  let menu = f._temp.path().join("Start Menu 日本語");
+  f.configure(|p| {
+    p["shortcuts"] = json!([{"name":"${shortcut-name}","executable":"probe.exe","start-menu":true}]);
+    p["values"]["start-menu-dir"] = menu.to_string_lossy().into_owned().into();
+    p["values"]["start-menu-shortcuts"] = true.into();
+  });
+  let custom = "Build Tools 日本語";
+  f.good(&["--shortcut-name", custom]);
+  assert!(menu.join(format!("{custom}.lnk")).exists());
+  f.good(&["--shortcut-name", custom, "--start-menu-nested"]);
+  assert!(!menu.join(format!("{custom}.lnk")).exists());
+  assert!(menu.join(custom).join(format!("{custom}.lnk")).exists());
+  f.good(&["--shortcut-name", "Renamed", "--start-menu-nested"]);
+  assert!(!menu.join(custom).exists());
+  assert!(menu.join("Renamed/Renamed.lnk").exists());
+  fs::write(menu.join("Renamed/user-owned.txt"), "keep").unwrap();
+  assert!(f.uninstall(&[]).status.success());
+  assert!(!menu.join("Renamed/Renamed.lnk").exists());
+  assert!(menu.join("Renamed/user-owned.txt").exists());
+}
+
+#[cfg(windows)]
+#[test]
+fn uninstall_removes_only_installer_created_empty_shortcut_folders() {
+  for existing in [false, true] {
+    let f = Fixture::new();
+    let menu = f._temp.path().join("menu");
+    let directory = menu.join("Probe");
+    if existing {
+      fs::create_dir_all(&directory).unwrap();
+    }
+    f.configure(|p| {
+      p["shortcuts"] = json!([{"name":"${shortcut-name}","executable":"probe.exe","start-menu":true}]);
+      p["values"]["start-menu-dir"] = menu.to_string_lossy().into_owned().into();
+      p["values"]["start-menu-shortcuts"] = true.into();
+      p["values"]["start-menu-nested"] = true.into();
+    });
+    f.good(&[]);
+    assert!(directory.join("Probe.lnk").exists());
+    assert!(f.uninstall(&[]).status.success());
+    assert_eq!(directory.exists(), existing);
+    assert!(menu.exists());
+  }
 }

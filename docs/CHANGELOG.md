@@ -476,3 +476,22 @@ acceptance, installation, and publication.
   mixed-language tasks, Unicode, and unowned-file preservation. Evaluated output
   paths remain external. No active installation or user PATH changed; nothing
   was published or pushed.
+
+### 2026-10-05 Allow launcher location updates and configurable menu shortcuts
+
+- Allow updates to move, enable, or disable an additional command. Use actual
+  receipt-owned launcher paths, lock old and requested directories, refuse
+  unowned destinations/modified files, and remove only obsolete owned launchers.
+  Preserve activation recovery and require identical destinations on retry.
+- Add safe configurable shortcut names through YAML input templates and
+  `--shortcut-name`, including interactive validation/retry. Windows Start Menu
+  links optionally nest as `name/name.lnk`, default No; retain flat desktop/local
+  and Linux menu entries. Track only installer-created menu folders and remove
+  them only when empty. Dotask itself declares no menu shortcut.
+- Verification: `build.cmd` passed 419 .NET and 46 Rust tests and every required
+  formatting/clippy/docs/catalog/shim/whitespace gate. Real console naming/nesting,
+  native Shell target inspection/execution, and owned-folder cleanup passed.
+  `build.cmd pack`, a temporary upgrade from the earlier pre-prompt package,
+  command relocation/disable, and relocated mixed-language package acceptance
+  passed. No active installation or user PATH changed; nothing was published or
+  pushed. Linux/macOS acceptance remains deferred.

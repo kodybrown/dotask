@@ -165,6 +165,12 @@ The console installer prompts by default. For unattended execution, pass
 uninstall. Installer YAML owns defaults, prompt mode, and labels; Windows PATH
 changes are configurable with `add-to-path`. Verification must use temporary
 install/command roots and `--set add-to-path=false` to preserve the user's PATH.
+Updates may change the additional command's location or disable it; actual
+receipt-owned launcher paths remain protected. For application-menu shortcuts,
+use `name: '${shortcut-name}'` in installer YAML to enable a safe custom name;
+`start-menu-nested` selects Windows `name/name.lnk` placement. Dotask's own
+package declares no menu shortcut. Use temporary Start Menu/desktop roots when
+testing shortcut creation, updates, and ownership-safe cleanup.
 
 Dotask's standalone Rust installer uses YAML receipts and the `installer/` plus
 `app/<build>/` layout. Older formats are unsupported; use fresh destinations or

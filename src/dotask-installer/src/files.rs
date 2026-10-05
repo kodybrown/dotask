@@ -84,6 +84,34 @@ pub fn relative(value: &str) -> Result<PathBuf> {
   }
   Ok(PathBuf::from(value))
 }
+pub fn shortcut_name(value: &str) -> Result<()> {
+  ensure!(
+    !value.is_empty()
+      && value.len() <= 120
+      && value.trim() == value
+      && !value.ends_with('.')
+      && !value.chars().any(|c| c.is_control() || "/\\:\"*?<>|".contains(c)),
+    "Invalid shortcut name: use a file name without path separators, invalid characters, or trailing dots/spaces"
+  );
+  let lower = value.to_lowercase();
+  ensure!(
+    ![".lnk", ".desktop", ".command", ".alias"]
+      .iter()
+      .any(|extension| lower.ends_with(extension)),
+    "Shortcut name must omit the file extension"
+  );
+  let stem = value.split('.').next().unwrap().trim_end().to_uppercase();
+  ensure!(
+    ![
+      "CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8",
+      "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "COM¹", "COM²", "COM³", "LPT¹",
+      "LPT²", "LPT³"
+    ]
+    .contains(&stem.as_str()),
+    "Reserved shortcut name: {value}"
+  );
+  Ok(())
+}
 // Check every ancestor, not just the leaf: a directory junction could otherwise
 // redirect an owned file operation into an unrelated installation.
 pub fn safe_path(path: &Path) -> Result<()> {

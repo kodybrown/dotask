@@ -305,12 +305,25 @@ Confirmation follows a location summary. Ctrl+C prints `Canceled` and exits 130;
 activation journals preserve the existing recovery contract. YAML owns prompt
 labels and defaults, while CLI values override individual questions.
 
+Launcher preferences may change during an update. Ownership comes from the
+receipt's actual launcher inventory, not a required match against old preference
+values. Lock previous and desired locations, verify owned files, refuse unowned
+destinations, and remove only obsolete owned launchers. Pending activation retries
+require the same package and requested destinations.
+
 Shortcuts are available to console and GUI applications. YAML declares which
 options are allowed and their defaults; CLI overrides and interactive choices
 must respect those permissions. Support Windows Start menu and desktop shortcuts,
 Linux application/desktop entries where supported, and macOS desktop aliases.
 Terminal behavior, arguments, working directory, and icons need explicit metadata.
 Desktop integration must be tested with an actual GUI consumer, including WinExe.
+
+Shortcut names can reference the typed `shortcut-name` input, defaulting to the
+application name, and must remain safe filesystem names after expansion. Windows
+Start Menu links optionally use `name/name.lnk`, defaulting to flat placement;
+desktop/local and Linux menu entries stay flat. Record only installer-created
+menu folders and remove them only when empty. Dotask itself declares no Start
+Menu link: a bare task-runner launch is not a useful application entry point.
 
 Uninstall preserves settings by default. `--leave-settings` and
 `--remove-settings` are mutually exclusive; removal is restricted to declared

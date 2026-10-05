@@ -56,8 +56,8 @@ impl Options {
             "Duplicate input: {name}"
           );
         }
-        "--install-dir" | "--bin-dir" => {
-          let value = args.next().with_context(|| format!("{arg} requires a path"))?;
+        "--install-dir" | "--bin-dir" | "--shortcut-name" => {
+          let value = args.next().with_context(|| format!("{arg} requires a value"))?;
           ensure!(
             result.values.insert(arg[2..].into(), value.into()).is_none(),
             "Duplicate input: {arg}"
@@ -68,6 +68,7 @@ impl Options {
         | "--start-menu-shortcuts"
         | "--local-shortcuts"
         | "--additional-command"
+        | "--start-menu-nested"
         | "--add-to-path" => {
           result.values.insert(arg[2..].into(), true.into());
         }
@@ -170,13 +171,8 @@ pub fn validate(package: &Package) -> Result<()> {
       "Shortcut arguments cannot contain NUL"
     );
     files::relative(&shortcut.executable)?;
-    ensure!(
-      !shortcut.name.is_empty()
-        && !shortcut
-          .name
-          .contains(['/', '\\', '\n', '\r', '\0', ':', '"', '*', '?', '<', '>', '|']),
-      "Invalid shortcut name"
-    );
+    // Validate the template's shape now and its expanded name before staging.
+    files::shortcut_name(&shortcut.name)?;
     if let Some(icon) = &shortcut.icon {
       files::relative(icon)?;
     }
@@ -192,6 +188,7 @@ pub fn standard_inputs() -> BTreeMap<String, Input> {
     "prune-old-versions",
     "desktop-shortcuts",
     "start-menu-shortcuts",
+    "start-menu-nested",
     "local-shortcuts",
     "additional-command",
     "add-to-path",
@@ -208,6 +205,16 @@ pub fn standard_inputs() -> BTreeMap<String, Input> {
       },
     );
   }
+  result.insert(
+    "shortcut-name".into(),
+    Input {
+      kind: "string".into(),
+      required: true,
+      prompt: Some("Shortcut name (without extension)".into()),
+      default: None,
+      choices: vec![],
+    },
+  );
   for name in ["install-dir", "bin-dir", "desktop-dir", "start-menu-dir"] {
     result.insert(
       name.into(),
@@ -226,6 +233,8 @@ pub fn standard_inputs() -> BTreeMap<String, Input> {
     ("bin-dir", "Additional command directory"),
     ("add-to-path", "Add this directory to your user PATH?"),
     ("confirm-install", "Install with these settings?"),
+    ("start-menu-shortcuts", "Create a Start Menu shortcut?"),
+    ("start-menu-nested", "Place it inside a folder with the same name?"),
   ] {
     result.get_mut(name).unwrap().prompt = Some(prompt.into());
   }
@@ -265,12 +274,17 @@ fn resolve_with_io(
   let home_path = &home["home"];
   let local = &home["local-app-data"];
   let root = if cfg!(windows) {
-    format!("{local}/Programs/{}", package.application.id)
+    Path::new(local)
+      .join("Programs")
+      .join(&package.application.id)
+      .to_string_lossy()
+      .into_owned()
   } else {
     format!("{home_path}/.local/lib/{}", package.application.id)
   };
   let mut values = BTreeMap::from([
     ("install-dir".into(), root.into()),
+    ("shortcut-name".into(), package.application.name.clone().into()),
     ("desktop-dir".into(), format!("{home_path}/Desktop").into()),
   ]);
   if cfg!(windows) {
@@ -327,6 +341,8 @@ fn resolve_with_io(
     "desktop-shortcuts",
     "start-menu-shortcuts",
     "local-shortcuts",
+    "shortcut-name",
+    "start-menu-nested",
   ];
   let mut order = leading.to_vec();
   order.extend(inputs.keys().map(String::as_str).filter(|key| !leading.contains(key)));
@@ -342,6 +358,15 @@ fn resolve_with_io(
       "local-shortcuts" => package.shortcuts.iter().any(|s| s.local),
       "desktop-dir" => enabled(&values, "desktop-shortcuts"),
       "start-menu-dir" => enabled(&values, "start-menu-shortcuts"),
+      "start-menu-nested" => {
+        cfg!(windows) && enabled(&values, "start-menu-shortcuts") && package.shortcuts.iter().any(|s| s.start_menu)
+      }
+      "shortcut-name" => {
+        (enabled(&values, "start-menu-shortcuts")
+          || enabled(&values, "desktop-shortcuts")
+          || enabled(&values, "local-shortcuts"))
+          && package.shortcuts.iter().any(|s| s.name.contains("${shortcut-name}"))
+      }
       "bin-dir" => enabled(&values, "additional-command"),
       "add-to-path" => cfg!(windows),
       "confirm-install" => false,
@@ -382,10 +407,23 @@ fn resolve_with_io(
         .map(|v| expand(&v, &values))
         .transpose()?
         .unwrap_or_default();
-      values.insert(key.into(), console::ask(input, &default, reader, writer)?.into());
+      let answer = loop {
+        let answer = console::ask(input, &default, reader, writer)?;
+        if key == "shortcut-name"
+          && let Err(error) = files::shortcut_name(&expand(&answer, &values)?)
+        {
+          writeln!(writer, "{error}")?;
+          continue;
+        }
+        break answer;
+      };
+      values.insert(key.into(), answer.into());
     }
     if let Some(value) = values.get(key) {
       let raw = expand(&text(value)?, &values)?;
+      if key == "shortcut-name" && allowed {
+        files::shortcut_name(&raw)?;
+      }
       ensure!(!input.required || !raw.trim().is_empty(), "Required input is empty: {key}");
       let converted = if input.kind == "boolean" {
         match raw.as_str() {
@@ -404,6 +442,7 @@ fn resolve_with_io(
         ![
           "desktop-shortcuts",
           "start-menu-shortcuts",
+          "start-menu-nested",
           "local-shortcuts",
           "add-to-path"
         ]
@@ -513,5 +552,69 @@ mod tests {
     let output = String::from_utf8(output).unwrap();
     assert!(output.contains("is already on PATH"));
     assert!(!output.contains("Add this directory"));
+  }
+  #[test]
+  fn shortcut_names_reject_reserved_names_traversal_extensions_and_unsafe_characters() {
+    for name in [
+      "",
+      ".",
+      "..",
+      "CON",
+      "con.txt",
+      "COM¹",
+      "NUL",
+      "a/b",
+      "a\\b",
+      "a:b",
+      "name.",
+      "name ",
+      "a\tname",
+      "Probe.lnk",
+      "x.desktop",
+    ] {
+      assert!(files::shortcut_name(name).is_err(), "Accepted {name:?}");
+    }
+    for name in ["Build Tools", "日本語 café", "Build.v2", "dotask"] {
+      files::shortcut_name(name).unwrap();
+    }
+  }
+  #[cfg(windows)]
+  #[test]
+  fn start_menu_questions_retry_invalid_names_and_allow_nesting() {
+    let temp = tempfile::tempdir().unwrap();
+    let mut package = package();
+    package.shortcuts =
+      serde_json::from_value(json!([{"name":"${shortcut-name}","executable":"test.exe","start-menu":true}])).unwrap();
+    let options = Options {
+      values: BTreeMap::from([
+        (
+          "install-dir".into(),
+          temp.path().join("app").to_string_lossy().into_owned().into(),
+        ),
+        ("additional-command".into(), false.into()),
+        ("add-to-path".into(), false.into()),
+        (
+          "start-menu-dir".into(),
+          temp.path().join("menu").to_string_lossy().into_owned().into(),
+        ),
+      ]),
+      ..Options::default()
+    };
+    let mut output = Vec::new();
+    let values = resolve_with_io(
+      &package,
+      &options,
+      true,
+      &mut "y\nCON\n../escape\nBuild Tools 日本語\ny\n".as_bytes(),
+      &mut output,
+      |_| Ok(false),
+    )
+    .unwrap();
+    assert_eq!(values["shortcut-name"], "Build Tools 日本語");
+    assert!(enabled(&values, "start-menu-nested"));
+    let output = String::from_utf8(output).unwrap();
+    assert!(output.contains("Reserved shortcut name"));
+    assert!(output.contains("Invalid shortcut name"));
+    assert!(output.contains("[y/N]"));
   }
 }

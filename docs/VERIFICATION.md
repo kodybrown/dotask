@@ -1,5 +1,45 @@
 # Verification
 
+## Owned launcher updates and configurable Start Menu shortcuts (2026-10-05)
+
+`build.cmd` passed 419 .NET Release tests and 46 Rust tests on Windows x64:
+8 installer unit cases, 24 installer workflow cases, and 14 CLI cases. All
+formatting/clippy/docs/catalog/shim/whitespace checks passed. New regressions
+exercise changing a recorded command directory, disabling/re-enabling it,
+current-schema receipts without the newer optional-command preference, refusal
+of unowned destinations/modified launchers, and recovery after a locked old shim
+interrupts a move. Retry requires the original requested launcher destinations.
+
+Real package acceptance first installed the earlier `dotask-vFSm46` package in
+temporary `Programs/dotask` and `Bin` directories, producing the same pre-prompt
+receipt shape seen in the reported failure. The new installer moved that owned
+external command to the parent Programs directory, preserved an unrelated file
+in Bin and both builds, then disabled the additional command and uninstalled.
+No import, legacy-format adoption, or receipt edits were needed. Evidence is in
+`C:\tmp\dotask-installer-command-update-acceptance.log`.
+
+Start Menu tests exercise Unicode custom names, flat/nested placement, rename
+updates, reserved/unsafe-name rejection, and removal of only installer-created
+empty folders. Existing folders and folders with unrelated contents survive.
+A real console fixture rejected `CON`, accepted `My Tools 日本語`, and created
+`name/name.lnk`. Windows Shell resolved the link's installed-build target, the
+target ran, and uninstall removed its owned empty folder while keeping the base
+menu directory. WScript's shortcut inspection helper returned empty properties
+for the Unicode filename; inspecting an ASCII copy and using native Windows Shell
+both resolved the correct target, so no installer workaround was added.
+
+`build.cmd pack` created
+`artifacts/installers/windows-x64/dotask-ODBBRx/package/installer.exe`.
+Relocated native install/reuse/update/uninstall acceptance passed with the exact
+four-file payload, Unicode arguments/settings, toolchain-free metadata,
+Rust-to-C# execution, retained builds, and unowned-file preservation. Evidence is
+in `C:\tmp\dotask-installer-update-gate.log`,
+`C:\tmp\dotask-installer-update-package.log`, and
+`C:\tmp\dotask-installer-update-acceptance.log`. Tests use temporary application,
+command, and menu roots and disable actual PATH changes. Dotask itself declares
+no Start Menu shortcut. No active installation or user PATH changed; nothing was
+published or pushed. Linux/macOS acceptance remains deferred.
+
 ## Console installer prompts and Windows user PATH (2026-10-05)
 
 `build.cmd` passed 419 .NET Release tests and 39 Rust tests on Windows x64:

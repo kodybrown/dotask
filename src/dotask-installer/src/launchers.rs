@@ -38,6 +38,7 @@ pub fn verify(file: &OwnedFile) -> Result<()> {
 pub struct Prepared {
   pub destination: PathBuf,
   pub source: PathBuf,
+  pub shortcut_directory: Option<PathBuf>,
 }
 pub fn prepare(
   package: &Package,
@@ -48,7 +49,7 @@ pub fn prepare(
 ) -> Result<Vec<Prepared>> {
   let mut result = Vec::new();
   let mut destinations = HashSet::new();
-  let mut add = |source: PathBuf, destination: PathBuf| -> Result<()> {
+  let mut add = |source: PathBuf, destination: PathBuf, shortcut_directory: Option<PathBuf>| -> Result<()> {
     ensure!(
       destinations.insert(destination.to_string_lossy().to_lowercase()),
       "Duplicate launcher: {}",
@@ -58,6 +59,7 @@ pub fn prepare(
     result.push(Prepared {
       source,
       destination,
+      shortcut_directory,
     });
     Ok(())
   };
@@ -77,35 +79,45 @@ pub fn prepare(
           include_bytes!("../../Dotask.Shim/assets/win-x64.exe")
         };
         fs::write(&source, bytes)?;
-        add(source.clone(), directory.join(format!("{}.exe", command.name)))?;
+        add(source.clone(), directory.join(format!("{}.exe", command.name)), None)?;
         let sidecar = source.with_extension("shim");
         ensure!(!target.to_string_lossy().contains(['"', '\n', '\r']), "Invalid shim target");
         fs::write(&sidecar, format!("path = \"{}\"\n", target.display()))?;
-        add(sidecar, directory.join(format!("{}.shim", command.name)))?;
+        add(sidecar, directory.join(format!("{}.shim", command.name)), None)?;
       }
       #[cfg(unix)]
       {
         std::os::unix::fs::symlink(&target, &source)?;
-        add(source, directory.join(&command.name))?;
+        add(source, directory.join(&command.name), None)?;
       }
     }
   }
   for (index, shortcut) in package.shortcuts.iter().enumerate() {
+    let shortcut = Shortcut {
+      name: config::expand(&shortcut.name, values)?,
+      ..shortcut.clone()
+    };
+    files::shortcut_name(&shortcut.name)?;
     let mut locations = Vec::new();
     if shortcut.local && config::enabled(values, "local-shortcuts") {
-      locations.push(root.to_path_buf());
+      locations.push((root.to_path_buf(), false));
     }
     if shortcut.desktop && config::enabled(values, "desktop-shortcuts") {
-      locations.push(config::path(values, "desktop-dir")?);
+      locations.push((config::path(values, "desktop-dir")?, false));
     }
     if shortcut.start_menu && config::enabled(values, "start-menu-shortcuts") {
       ensure!(
         !cfg!(target_os = "macos"),
         "macOS has no Start menu; disable start-menu-shortcuts"
       );
-      locations.push(config::path(values, "start-menu-dir")?);
+      let mut directory = config::path(values, "start-menu-dir")?;
+      let nested = cfg!(windows) && config::enabled(values, "start-menu-nested");
+      if nested {
+        directory.push(&shortcut.name);
+      }
+      locations.push((directory, nested));
     }
-    for (n, directory) in locations.into_iter().enumerate() {
+    for (n, (directory, nested)) in locations.into_iter().enumerate() {
       let extension = if cfg!(windows) {
         "lnk"
       } else if cfg!(target_os = "macos") {
@@ -118,8 +130,13 @@ pub fn prepare(
         "desktop"
       };
       let source = stage.join(format!("shortcut-{index}-{n}.{extension}"));
-      shortcut_file(&source, build, shortcut)?;
-      add(source, directory.join(format!("{}.{extension}", shortcut.name)))?;
+      shortcut_file(&source, build, &shortcut)?;
+      let owned_directory = nested.then(|| directory.clone());
+      add(
+        source,
+        directory.join(format!("{}.{extension}", shortcut.name)),
+        owned_directory,
+      )?;
     }
   }
   Ok(result)
