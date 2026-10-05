@@ -100,18 +100,31 @@ impl Executor {
 
     let snapshot = tempfile::Builder::new().prefix("execution-").tempdir_in(session)?;
     self.trace(&format!("Compiling: {}", target.name));
-    let host = Host::locate()?;
-    let compiled: Value = host.request(
-      session,
-      json!({
-          "Operation": "compile", "TaskDirectory": self.directory.task_directory,
-          "RootDirectory": self.directory.root_directory, "Target": target,
-          "SnapshotDirectory": snapshot.path(),
-      }),
-    )?;
-    let assembly = compiled["AssemblyPath"]
-      .as_str()
-      .ok_or_else(|| anyhow::anyhow!("Missing compiler output path."))?;
+    let rust = target.file_path.extension().is_some_and(|e| e.eq_ignore_ascii_case("rs"));
+    let host = if rust { None } else { Some(Host::locate()?) };
+    let mut command = if rust {
+      Command::new(crate::rust_tasks::compile(
+        target,
+        &self.directory.task_directory,
+        snapshot.path(),
+      )?)
+    } else {
+      let host = host.as_ref().unwrap();
+      let compiled: Value = host.request(
+        session,
+        json!({
+            "Operation": "compile", "TaskDirectory": self.directory.task_directory,
+            "RootDirectory": self.directory.root_directory, "Target": target,
+            "SnapshotDirectory": snapshot.path(),
+        }),
+      )?;
+      let assembly = compiled["AssemblyPath"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing compiler output path."))?;
+      let mut command = Command::new(&host.dotnet);
+      command.arg(assembly);
+      command
+    };
     let context = Context {
       directory: self.directory.clone(),
       target_file: target.file_path.clone(),
@@ -129,8 +142,7 @@ impl Executor {
     write_json(&context_file, &context)?;
     self.trace(&format!("Executing: {}", target.name));
     let code = process::run(
-      Command::new(&host.dotnet)
-        .arg(assembly)
+      command
         .current_dir(&self.directory.root_directory)
         .env("DOTASK_EXECUTION_CONTEXT", &context_file),
     )?;

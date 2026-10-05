@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using DoTask.Cli.Metadata;
 
 namespace DoTask.Tests;
 
@@ -69,7 +68,7 @@ public sealed class RepositoryTaskTests
       /// <requires file="{{path}}" />
       public static class Target { public static void Main() { } }
       """);
-    var result = await project.RunAsync("catalog", "--root", "shared");
+    var result = await RustArtifacts.Run(project.Root, ["catalog", "--root", "shared"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Contains("portable relative path", result.StandardError);
     Assert.False(File.Exists(Path.Combine(project.Root, "shared/catalog.json")));
@@ -85,7 +84,7 @@ public sealed class RepositoryTaskTests
   {
     using var project = CatalogProject();
     project.Write("shared/group/run.cs", $"/// {metadata}\npublic static class Target {{ public static void Main() {{ }} }}");
-    var result = await project.RunAsync("catalog", "--root", "shared");
+    var result = await RustArtifacts.Run(project.Root, ["catalog", "--root", "shared"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Contains(error, result.StandardError);
     Assert.False(File.Exists(Path.Combine(project.Root, "shared/catalog.json")));
@@ -97,7 +96,7 @@ public sealed class RepositoryTaskTests
     using var project = CatalogProject();
     project.Write("shared/group/run.cs", "// task");
     var manifest = project.Write("shared/group/run.task.json", "{\"requires\":[\"group/check\"]}");
-    var result = await project.RunAsync("catalog", "--root", "shared");
+    var result = await RustArtifacts.Run(project.Root, ["catalog", "--root", "shared"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Contains("XML <requires task=", result.StandardError);
     Assert.Contains(manifest, result.StandardError);
@@ -133,13 +132,13 @@ public sealed class RepositoryTaskTests
   {
     using var project = CatalogProject();
     project.Write("shared-tasks/group/run.cs", "/// <summary>Original</summary>\npublic static class Target { public static void Main() { } }");
-    var generated = await project.RunAsync("catalog");
+    var generated = await RustArtifacts.Run(project.Root, ["catalog"]);
     Assert.True(generated.ExitCode == 0, generated.StandardError);
     var destination = Path.Combine(project.Root, "shared-tasks/catalog.json");
     var baseline = File.ReadAllBytes(destination);
-    Assert.Equal(0, (await project.RunAsync("catalog", "--verify")).ExitCode);
+    Assert.Equal(0, (await RustArtifacts.Run(project.Root, ["catalog", "--verify"])).ExitCode);
     project.Write("shared-tasks/group/run.cs", "/// <summary>Changed</summary>\npublic static class Target { public static void Main() { } }");
-    var stale = await project.RunAsync("catalog", "--verify");
+    var stale = await RustArtifacts.Run(project.Root, ["catalog", "--verify"]);
     Assert.Equal(1, stale.ExitCode);
     Assert.Contains("catalog.json is stale", stale.StandardError);
     Assert.Equal(baseline, File.ReadAllBytes(destination));
@@ -149,7 +148,7 @@ public sealed class RepositoryTaskTests
   public async Task RepositoryVerifyRequiresEveryStageForwardsOptionsAndStopsOnFailure()
   {
     using var project = new TestProject();
-    Copy(project, "verify.cs");
+    Copy(project, "verify.rs");
     project.Target("check", "File.AppendAllText(\"order\", \"check;\");");
     project.Target("_/dotnet/test", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
       "/// <option name=\"configuration\" choices=\"Debug,Release\" />");
@@ -167,26 +166,26 @@ public sealed class RepositoryTaskTests
       "/// <option name=\"verify\" type=\"bool\" />");
     project.Target("rust-cli", "File.AppendAllText(\"order\", \"cli:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
       "/// <option name=\"verify\" type=\"bool\" />");
-    var result = await project.RunAsync("verify", "-c", "Debug");
+    var result = await RustArtifacts.Run(project.Root, ["verify", "-c", "Debug"]);
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
     Assert.Equal("check;rust:True;cli:True;Debug;True;docs;True;shim:True", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify-docs.cs"));
-    result = await project.RunAsync("verify");
+    result = await RustArtifacts.Run(project.Root, ["verify"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Equal("check;rust:True;cli:True;Release;True;", File.ReadAllText(order));
     File.Delete(order);
     project.Target("_/dotnet/format", "Environment.Exit(23);", "/// <option name=\"verify\" type=\"bool\" />");
-    Assert.Equal(23, (await project.RunAsync("verify")).ExitCode);
+    Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
     Assert.Equal("check;rust:True;cli:True;Release;", File.ReadAllText(order));
     File.Delete(order);
     project.Target("rust-cli", "Environment.Exit(24);", "/// <option name=\"verify\" type=\"bool\" />");
-    Assert.Equal(24, (await project.RunAsync("verify")).ExitCode);
+    Assert.Equal(24, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
     Assert.Equal("check;rust:True;", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "rust-cli.cs"));
-    Assert.Equal(1, (await project.RunAsync("verify")).ExitCode);
+    Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
     Assert.Equal("check;rust:True;", File.ReadAllText(order));
   }
 
@@ -194,8 +193,8 @@ public sealed class RepositoryTaskTests
   public async Task DocumentationCheckFailsForMissingRequiredFile()
   {
     using var project = new TestProject();
-    Copy(project, "verify-docs.cs");
-    var result = await project.RunAsync("verify-docs");
+    Copy(project, "verify-docs.rs");
+    var result = await RustArtifacts.Run(project.Root, ["verify-docs"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Contains("Required document is missing: README.md", result.StandardError);
   }
@@ -211,10 +210,10 @@ public sealed class RepositoryTaskTests
       project.Files.WriteText("git-check-called", project.Parameters.Get<bool>("whitespace").ToString());
       Environment.Exit({{exitCode}});
       """, "/// <option name=\"whitespace\" type=\"bool\" default=\"false\" />");
-    var metadata = MetadataReader.Read(Path.Combine(project.Tasks, "verify-docs.cs"), project.Tasks);
+    var metadata = await RustArtifacts.Run(project.Root, ["help", "verify-docs"]);
     project.Target("git/check", "Environment.Exit(93);");
-    Assert.Contains(new Requirement("task", "git/check"), metadata.Requirements);
-    var result = await project.RunAsync("verify-docs");
+    Assert.Contains("task: git/check", metadata.StandardOutput);
+    var result = await RustArtifacts.Run(project.Root, ["verify-docs"]);
     Assert.Equal(exitCode, result.ExitCode);
     Assert.Equal("True", File.ReadAllText(Path.Combine(project.Root, "git-check-called")));
     Assert.Equal(exitCode == 0, result.StandardOutput.Contains("Required documentation exists", StringComparison.Ordinal));
@@ -224,7 +223,7 @@ public sealed class RepositoryTaskTests
   public async Task DocumentationCheckFailsWhenGitTaskIsMissing()
   {
     using var project = DocumentationProject();
-    var result = await project.RunAsync("verify-docs");
+    var result = await RustArtifacts.Run(project.Root, ["verify-docs"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Contains("Unknown target '_/git/check'", result.StandardError);
     Assert.DoesNotContain("Required documentation exists", result.StandardOutput);
@@ -238,28 +237,28 @@ public sealed class RepositoryTaskTests
     using (var reader = new StreamReader(stream)) {
       project.Write(".tasks/git/check.cs", reader.ReadToEnd());
     }
-    var version = await project.RunAsync("git/check");
+    var version = await RustArtifacts.Run(project.Root, ["git/check"]);
     Assert.True(version.ExitCode == 0, version.StandardError);
     Assert.Contains("OK: git version", version.StandardOutput);
-    Assert.NotEqual(0, (await project.RunAsync("git/check", "--whitespace")).ExitCode);
+    Assert.NotEqual(0, (await RustArtifacts.Run(project.Root, ["git/check", "--whitespace"])).ExitCode);
     await GitAsync("init");
     await GitAsync("config", "core.autocrlf", "false");
     await GitAsync("config", "core.whitespace", "blank-at-eol");
     var file = project.Write("tracked.txt", "clean\n");
     await GitAsync("add", "tracked.txt");
-    Assert.Equal(0, (await project.RunAsync("git/check", "--whitespace")).ExitCode);
+    Assert.Equal(0, (await RustArtifacts.Run(project.Root, ["git/check", "--whitespace"])).ExitCode);
 
     File.WriteAllText(file, "unstaged error \n");
-    var unstaged = await project.RunAsync("git/check", "--whitespace");
+    var unstaged = await RustArtifacts.Run(project.Root, ["git/check", "--whitespace"]);
     Assert.NotEqual(0, unstaged.ExitCode);
     Assert.Contains("trailing whitespace", unstaged.StandardOutput + unstaged.StandardError);
     Assert.Equal("unstaged error \n", File.ReadAllText(file));
     // The default remains a tool check even with a dirty working tree.
-    Assert.Equal(0, (await project.RunAsync("git/check")).ExitCode);
+    Assert.Equal(0, (await RustArtifacts.Run(project.Root, ["git/check"])).ExitCode);
 
     await GitAsync("add", "tracked.txt");
     File.WriteAllText(file, "working tree fixed\n");
-    var staged = await project.RunAsync("git/check", "--whitespace");
+    var staged = await RustArtifacts.Run(project.Root, ["git/check", "--whitespace"]);
     Assert.NotEqual(0, staged.ExitCode);
     Assert.Contains("trailing whitespace", staged.StandardOutput + staged.StandardError);
     Assert.Equal("working tree fixed\n", File.ReadAllText(file));
@@ -278,15 +277,13 @@ public sealed class RepositoryTaskTests
   private static TestProject CatalogProject()
   {
     var project = new TestProject();
-    Copy(project, "catalog.cs");
-    Copy(project, "MetadataReader.cs", "src/Dotask.Cli/Metadata/MetadataReader.cs");
-    Copy(project, "TargetDefinition.cs", "src/Dotask.Cli/Metadata/TargetDefinition.cs");
+    Copy(project, "catalog.rs");
     return project;
   }
 
   private static async Task<byte[]> GenerateCatalogAsync( TestProject project )
   {
-    var result = await project.RunAsync("catalog", "--root", "shared");
+    var result = await RustArtifacts.Run(project.Root, ["catalog", "--root", "shared"]);
     Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
     return File.ReadAllBytes(Path.Combine(project.Root, "shared/catalog.json"));
   }
@@ -294,7 +291,7 @@ public sealed class RepositoryTaskTests
   private static TestProject DocumentationProject()
   {
     var project = new TestProject();
-    Copy(project, "verify-docs.cs");
+    Copy(project, "verify-docs.rs");
     foreach (var path in new[] {
       "README.md", "LICENSE.md", "AGENTS.md", "docs/README.md", "docs/USAGE.md",
       "docs/SHARED-TASKS.md", "docs/INSTALLATION.md", "docs/TARGETS.md", "docs/AI-ASSISTANTS.md",

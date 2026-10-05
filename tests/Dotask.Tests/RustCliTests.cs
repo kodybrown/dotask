@@ -273,9 +273,11 @@ public sealed class RustCliTests
   }
 
   [Theory]
-  [InlineData(false)]
-  [InlineData(true)]
-  public async Task NativeCancellationStopsUncooperativeDescendantsAndRemovesContext( bool nested )
+  [InlineData(false, false)]
+  [InlineData(true, false)]
+  [InlineData(false, true)]
+  [InlineData(true, true)]
+  public async Task NativeCancellationStopsUncooperativeDescendantsAndRemovesContext( bool nested, bool rust )
   {
     using var project = new TestProject();
     project.Write(".tasks/wait.cs", """
@@ -300,6 +302,37 @@ public sealed class RustCliTests
       File.WriteAllText("task-ready", Environment.ProcessId.ToString());
       Thread.Sleep(Timeout.Infinite);
       """);
+    if (rust) {
+      File.Delete(Path.Combine(project.Tasks, "wait.cs"));
+      project.Write(".tasks/wait.rs", """
+        #[cfg(windows)]
+        #[link(name="kernel32")]
+        unsafe extern "system" { fn SetConsoleCtrlHandler(handler: Option<unsafe extern "system" fn(u32)->i32>, add:i32)->i32; }
+        #[cfg(windows)] unsafe extern "system" fn ignore(_:u32)->i32 { 1 }
+        #[cfg(unix)] unsafe extern "C" { fn signal(sig:i32, handler:usize)->usize; }
+        fn main() {
+          // Ignore cancellation in both processes to exercise CLI job/group cleanup.
+          #[cfg(windows)] unsafe { SetConsoleCtrlHandler(Some(ignore),1); }
+          #[cfg(unix)] unsafe { signal(2,1); }
+          if std::env::args().len() > 1 {
+            std::fs::write("child-ready",std::process::id().to_string()).unwrap();
+            loop { std::thread::sleep(std::time::Duration::from_secs(1)); }
+          }
+          dotask_sdk::run(task);
+        }
+        fn task(p:&dotask_sdk::BuildContext)->dotask_sdk::Result<()> {
+          let mut child = std::process::Command::new(std::env::current_exe()?).arg("child").spawn()?;
+          let until = std::time::Instant::now() + std::time::Duration::from_secs(20);
+          while !p.path("child-ready").is_file() && std::time::Instant::now() < until {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+          }
+          if !p.path("child-ready").is_file() { child.kill()?; dotask_sdk::bail!("Child failed to start"); }
+          std::fs::write("context-path",std::env::var("DOTASK_EXECUTION_CONTEXT")?)?;
+          std::fs::write("task-ready",std::process::id().to_string())?;
+          loop { std::thread::sleep(std::time::Duration::from_secs(1)); }
+        }
+        """);
+    }
     project.Target("nested", "await BuildContext.Current.ExecTargetAsync(\"wait\");", async: true);
     project.Write(".tasks/control-driver.cs", """
       using System.Diagnostics;

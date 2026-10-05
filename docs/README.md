@@ -15,10 +15,11 @@ run your first example. The preview is not yet published to a public package fee
 | Create a group interactively | [Creation wizard](TARGETS.md#interactive-group-creation) |
 | Compose existing tasks without C# | [YAML task groups](TARGETS.md#yaml-task-groups) |
 | Create a task or look up library APIs                 | [Authoring and configuration reference](TARGETS.md)              |
+| Write a Rust task with compiler-free metadata | [Rust tasks and SDK](TARGETS.md#rust-tasks) |
 | Ask an AI assistant to create or maintain tasks       | [AI assistant guide and reusable instructions](AI-ASSISTANTS.md) |
 | Follow a runnable example with expected output        | [Basic example](../examples/basic/README.md)                     |
 | Understand implementation decisions                   | [Design and execution contracts](DESIGN.md)                      |
-| Develop the Rust CLI alongside the C# runner | [Preview commands](../README.md#rust-cli-development-preview) and [transition design](DESIGN.md#rust-cli-transition) |
+| Develop the native CLI with the C# behavior reference | [Preview commands](../README.md#rust-cli-development-preview) and [transition design](DESIGN.md#rust-cli-transition) |
 | Continue Rust acceptance, packaging, and task authoring | [Rust continuation runbook](RUST-CONTINUATION.md) |
 | Review reusable Rust installer design and rollback boundaries | [Standalone installer design](DESIGN.md#standalone-installer-design) |
 | Check tested hosts, shells, and remaining limitations | [Verification status](VERIFICATION.md)                           |

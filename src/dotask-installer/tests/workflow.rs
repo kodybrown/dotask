@@ -106,6 +106,30 @@ fn validate_and_bad_inputs_do_not_install() {
     assert!(!f.root.exists());
   }
 }
+#[cfg(windows)]
+#[test]
+fn retained_uninstaller_launched_through_junction_removes_owned_files() {
+  let f = Fixture::new();
+  f.good(&[]);
+  let alias = f._temp.path().join("junction alias");
+  let linked = Command::new("cmd.exe")
+    .args(["/d", "/c", "mklink", "/J"])
+    .arg(&alias)
+    .arg(&f.root)
+    .output()
+    .unwrap();
+  assert!(linked.status.success(), "{linked:?}");
+  // Windows may report current_exe with the invocation's junction spelling,
+  // while the installer canonicalizes its root. Both identify the same file.
+  let result = Command::new(alias.join("installer/installer.exe"))
+    .arg("uninstall")
+    .output()
+    .unwrap();
+  fs::remove_dir(&alias).unwrap();
+  assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
+  assert!(!f.root.exists());
+  assert!(!f.bin.join("probe.exe").exists());
+}
 #[test]
 fn modified_owned_files_and_unowned_commands_are_protected() {
   let f = Fixture::new();

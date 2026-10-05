@@ -1,4 +1,4 @@
-dotask - portable C# tasks (Rust CLI development preview)
+dotask - portable C# and Rust tasks (Rust CLI development preview)
 Usage: dotask [--use-dir PATH] [TARGET [OPTIONS]]
        dotask help [TARGET]
        dotask completion <bash|zsh|fish|powershell>
@@ -32,5 +32,5 @@ Shared tasks:
 Selections: dotnet/build, "dotnet/{build,run,format}", "dotnet/*", private-tasks/my-group/my-task.
 Official tasks (_) are the default when the source is omitted. Commit .dotasks.yaml, .dotasks-lock.yaml, and .tasks/.
 
-Runs installed C# tasks and YAML task groups using .NET 10.
-Rust task execution and language variants are not yet available.
+Runs installed C# tasks using .NET 10, Rust tasks using Cargo/Rust 1.95+, and YAML groups.
+Rust metadata is compiler-free. Shared Rust language variants are not yet available.

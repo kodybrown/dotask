@@ -2,22 +2,82 @@
 
 This is the authoring contract for the current preview. See [usage](USAGE.md) for
 CLI behavior and [AI assistant guidance](AI-ASSISTANTS.md) for a task-writing
-workflow. A target is either a C# file-based application compiled with the helper
-library attached, or a declarative YAML `.task` group that calls existing targets.
-The [Rust CLI preview](../README.md#rust-cli-development-preview) can execute the
-same C# source and nested-call APIs. Its bundled support host attaches the same
-library; task source does not reference or depend on the CLI's implementation
-language. `.rs` authoring and cross-language execution are still future work.
+workflow. A target is a C# file-based application, a Rust `.rs` entry file using
+the bundled `dotask-sdk`, or a declarative YAML `.task` group. The native CLI
+supports calls in both directions between C# and Rust. C# metadata and compilation
+use the bundled support host and maintained authoring library. See
+[Rust tasks](#rust-tasks) for the Rust source and SDK contract.
 
 Jump to [a complete target](#a-complete-target), [reuse](#reuse-a-target),
 [options](#option-metadata), [YAML](#yaml-configuration),
 [context and nested calls](#context-and-target-calls),
 [processes and files](#processes-and-files), or [requirements](#requirements-and-scope).
 
+## Rust tasks
+
+Save this as `.tasks/hello.rs`, then run `dotask hello --name Rust`:
+
+```rust
+//! ---
+//! description: Print a greeting from a Rust task.
+//! options:
+//!   - { name: name, alias: n, default: Developer, description: Name to greet. }
+//! examples: [dotask hello --name Rust]
+//! ---
+use dotask_sdk::{BuildContext, Result};
+
+fn main() { dotask_sdk::run(task); }
+fn task(project: &BuildContext) -> Result<()> {
+    println!("Hello from Rust, {}!", project.string("name")?);
+    Ok(())
+}
+```
+
+The optional metadata block starts at the first nonblank line and ends at the
+second `//! ---`. Its YAML keys are `description`, `remarks`, `examples`,
+`capabilities`, `options`, and `requires`. Option keys are `name`, `alias`, `type`,
+`description`, `default`, `required`, `choices`, and `completion`. Types are
+`string`, `path`, `bool`, `int`, and `number`; completion is `file`, `directory`,
+or `none`. Defaults are scalar values. Requirements use `{ kind: tool|setting|task|file|os,
+value: ... }`. Quote commas inside flow-mapping descriptions. Unknown keys,
+duplicate/reserved options, invalid defaults, and escaping support paths fail
+before compilation. Metadata needs no Cargo or .NET host.
+
+Execution uses Rust 1.95+/Cargo and the bundled `sdk/` sources. Generated manifests,
+task/SDK snapshots, lockfiles, and build outputs are in a per-user external
+temporary cache. Source and declared support bytes identify immutable snapshots;
+Cargo handles build locking and compiler changes. Source-local `Cargo.toml`,
+`Cargo.lock`, and `target/` are never created. SDK dependencies are pinned; the
+first build may restore crates. Arbitrary per-task crate dependencies are not
+currently supported. A normal `fn main()` without metadata is also executable.
+
+Use `#[path = "_support/Helpers.rs"] mod helpers;` for a module next to a root task,
+and declare `requires: [{ kind: file, value: _support/Helpers.rs }]`. Requirement
+paths start at the task root, whereas Rust module paths start at the entry file;
+declare every required source or compile-time included file. Missing sources fail
+compilation. Helpers remain excluded from task discovery beneath `_support/`.
+
+`dotask_sdk::run` loads `BuildContext` and preserves `ProcessFailure` exit codes.
+Context exposes `root`, `invocation`, `task_file`, `task_name`, `path`, `os`,
+`architecture`, `parameters`, and `settings`. `string` and `boolean` read typed
+parameters; `parameter` and `setting` return JSON values, with case-insensitive
+dotted setting lookup. `setting_path` resolves a portable path from the root.
+For example, `project.parameter("count")?.as_i64()` reads an integer option.
+
+Build a standard `Command` using `project.command("tool")`, add exact argument
+tokens with `.args(...)`, then call `execute` to inherit streams or `capture` to
+read UTF-8 stdout. Both preserve process failures; the CLI owns cancellation and
+descendant cleanup. Calls use `exec_target("name", json!({...}))`, `target_exists`,
+or `exec_if_exists`. The optional reply contains `Exists`, `ExitCode`, and `Error`;
+only absence is `Exists: false`. Both languages share immutable configuration
+snapshots and cycle detection. `create_installer` returns the existing JSON
+artifact contract; `installer_artifact` constructs an executable artifact for
+the current host, and `set_installer_result` returns it to the invocation's caller.
+
 ## Target names
 
 Tasks are discovered recursively under `.tasks`. Their project-relative paths
-without `.cs` or `.task` are their full names. Directory/file identifiers start with an ASCII
+without `.cs`, `.rs`, or `.task` are their full names. Directory/file identifiers start with an ASCII
 letter and then use letters, digits, `_`, or `-`; matching is case-insensitive.
 The reserved official source directory `_` is allowed at the task root.
 
@@ -48,6 +108,10 @@ with source-relative `#:include` directives. See [shared task distribution](SHAR
 for installing copies, support-file declarations, and protected synchronization.
 
 ## YAML task groups
+
+Groups may call Rust tasks as well as C# tasks. A `.cs`, `.rs`, or `.task` file
+with the same full name currently conflicts; language variants and
+extension-qualified selection remain future work.
 
 Create `.tasks/check.task` to compose existing tasks without writing C#:
 
@@ -170,9 +234,9 @@ Native SDK directives such as `#:package`, `#:project`, and `#:include` are supp
 Included files remain relative to the original target. Put shared `.cs` files
 under an underscore-prefixed subdirectory such as `_support` so they are not discovered as targets.
 
-Discovery accepts `.cs` executable targets and `.task` YAML groups. Files such as `.txt`, `.md`, `.target`, `.targets`, `.yaml`, `.yml`, and
-`.json` are never targets, even when stored alongside tasks. Future `.rs`, `.py`,
-or `.go` support will add explicit language handlers, not execute arbitrary files.
+Discovery accepts `.cs` and `.rs` executable targets and `.task` YAML groups. Files such as `.txt`, `.md`, `.target`, `.targets`, `.yaml`, `.yml`, and
+`.json` are never targets, even when stored alongside tasks. Future `.py` or `.go`
+support would require explicit language handlers, not execute arbitrary files.
 For example, this repository stores its MSBuild bootstrap hook in
 `.tasks/misc/bootstrap.targets`; it does not appear in task help or completion.
 
@@ -226,8 +290,8 @@ behavior.
 `git diff --cached --check`, stopping on the first failure and preserving its
 exit code. These read-only checks find whitespace errors in tracked changes;
 they allow a dirty tree and do not examine untracked files. The repository's
-`verify-docs.cs` declares `<requires task="git/check" />` and explicitly calls
-`await project.ExecTargetAsync("_/git/check", new { Whitespace = true })` after
+`verify-docs.rs` declares `requires: [{ kind: task, value: git/check }]` and calls
+`project.exec_target("_/git/check", json!({"whitespace":true}))?` after
 checking required documents. The declaration alone does not run the task.
 
 `shared-tasks/` is the canonical authoring location in the DoTask repository.

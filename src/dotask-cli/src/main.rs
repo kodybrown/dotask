@@ -8,6 +8,7 @@ mod host;
 mod initialization;
 mod process;
 mod project;
+mod rust_tasks;
 mod shared;
 mod shared_files;
 mod transaction;

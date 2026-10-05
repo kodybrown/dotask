@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/dotask-cli", "src/dotask-installer"]
+members = ["src/dotask-cli", "src/dotask-installer", "src/dotask-sdk"]
 resolver = "3"
 
 # Cargo reads profiles from the workspace root. Preserve the installer's

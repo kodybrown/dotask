@@ -1,20 +1,21 @@
 # Using dotask
 
-dotask runs project-defined C# tasks. A **target** is one task file: `.tasks/build.cs`
+dotask runs project-defined C# and Rust tasks. A **target** is one task file: `.tasks/build.rs`
 becomes `dotask build`. A **parameter** is a declared command-line option for that
 target. **Settings** are shared values from `.dotasks.yaml`.
 
-The separately built [Rust CLI preview](../README.md#rust-cli-development-preview)
+The native [Rust CLI](../README.md#rust-cli-development-preview)
 implements the commands below, including initialization, shared-task management,
-shell completion, help, the task-group wizard, C# task execution, and nested calls.
+shell completion, help, the task-group wizard, C# and Rust task execution, and nested calls.
 Rust owns YAML configuration, groups, option binding, and requirement checks.
 CLI-only help/version, initialization, online shared-task management, and projects
 containing only YAML groups need no language host. Reading C# task metadata uses
 the staged .NET 10 support host without invoking the SDK; executing C# tasks
-requires the .NET 10 SDK. Private C# catalog management also reads C# metadata.
+requires the .NET 10 SDK. Rust execution requires Cargo/Rust 1.95+ and the bundled
+`sdk/` source directory; Rust metadata needs no toolchain. Private C# catalog management also reads C# metadata.
 
-The C# CLI remains the bootstrap and packaged application while native platform
-acceptance is completed; see [verification](VERIFICATION.md). Rust tasks,
+The Rust CLI is the repository bootstrap and installer payload. The C# CLI remains
+a behavior reference; see [verification](VERIFICATION.md). Shared Rust variants,
 `--lang`, and extension-qualified task calls remain future work. Both CLIs use
 the same shared-task catalog, hashes, lockfiles, and recovery journals. A native
 no-op sync preserves the existing lockfile's bytes and comments.
@@ -50,7 +51,7 @@ Tasks are discovered recursively. The task-root `_` directory contains official 
 Other hidden and underscore-prefixed entries,
 `bin`, `obj`, `node_modules`, and symbolic links/reparse points are skipped.
 
-The task's path relative to `.tasks`, without `.cs` or `.task`, is its full name. For example,
+The task's path relative to `.tasks`, without `.cs`, `.rs`, or `.task`, is its full name. For example,
 `_/dotnet/build.cs` is `_/dotnet/build`. `dotnet/build`
 and `build` work as shortcuts when unique. Exact project-relative names take
 precedence, so `.tasks/build.cs` owns `dotask build` and can orchestrate several

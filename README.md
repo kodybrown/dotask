@@ -1,8 +1,8 @@
 # dotask
 
-Portable project tasks written as individual C# files, with YAML `.task` groups
+Portable project tasks written as individual C# or Rust files, with YAML `.task` groups
 for composing existing tasks. Use `dotask --create-task` for interactive group creation. Put targets in `.tasks/`,
-describe them with XML documentation, and keep project-specific settings in
+describe C# tasks with XML documentation and Rust tasks with leading YAML documentation, and keep project-specific settings in
 `.dotasks.yaml`. Copy the same target file between projects without a
 registration step.
 
@@ -17,10 +17,11 @@ registration step.
 ```
 
 This is a **0.1.0 local preview**, with no public package release yet. Windows,
-Linux, and macOS are the intended hosts; Linux has been tested locally and the
-other two still need acceptance. See [verification status](docs/VERIFICATION.md).
+Linux, and macOS are intended hosts. Current native CLI/task work is verified on
+Windows x64; Linux/macOS acceptance for this cutover is deferred. See [verification status](docs/VERIFICATION.md).
 
-Use **.NET SDK 10.0.300 or later in the .NET 10 family**. The SDK compiles targets;
+Use **.NET SDK 10.0.300 or later in the .NET 10 family** for C# execution, and
+**Rust 1.95+/Cargo** for Rust execution. The .NET SDK compiles C# targets;
 a runtime-only installation is insufficient. Run `dotnet --version` from the
 project directory to check the selected SDK. The project's `global.json` can
 select an older SDK even if a suitable one is installed.
@@ -53,7 +54,7 @@ The .NET SDK, Git, and Rust 1.95+ with rustfmt, clippy, and the host linker are
 required; dotask does not need to be installed.
 The launchers compile this checkout, stage a temporary runner, and use it to run
 the repository's `verify` task in Release. That task checks prerequisites, builds
-and tests both Rust packages and the .NET solution, and checks formatting,
+and tests the Rust CLI, installer, SDK, and .NET solution, and checks formatting,
 documentation, and the shared catalog.
 The temporary runner is removed when the launcher finishes normally or reports a failure.
 
@@ -174,49 +175,28 @@ tests or `format --verify` to check solution whitespace. The project-specific
 `verify` requires every check, including docs and catalog validation; failures
 stop the sequence. It also requires Rust 1.95+, rustfmt, and clippy to build/test
 the standalone installer and Rust CLI preview before the .NET integration suite.
-Destination machines do not need Rust for the current C# CLI or standalone
-installer. See [installer tasks and schema](docs/INSTALLATION.md).
+Destination machines need Rust only to execute Rust tasks and a .NET SDK only
+to execute C# tasks. The standalone installer needs neither toolchain.
+See [installer tasks and schema](docs/INSTALLATION.md).
 The reusable `dotnet/verify` target still offers optional
 checks for consuming projects. Use the launchers for work on dotask itself so
 rebuilds run from a separate executable snapshot.
 
 ## Optional: install only inside this checkout
 
-For an isolated preview instead of a user-wide installation, run from the checkout root:
-
-```sh
-./build.sh pack
-dotnet tool install dotask --tool-path ./artifacts/tools --source ./artifacts/packages --version 0.1.0 --no-http-cache
-```
-
-On Windows use `.\build.cmd pack` for the first command.
-
-Run `./artifacts/tools/dotask` on Linux/macOS or `./artifacts/tools/dotask.exe` on
-Windows. To use the bare `dotask` command, add the **absolute** tools directory to
-the current shell's PATH. Run the applicable command while still at the checkout root:
-
-```sh
-# Bash or Zsh
-export PATH="$PWD/artifacts/tools:$PATH"
-```
-
-```fish
-set -gx PATH "$PWD/artifacts/tools" $PATH
-```
+Use the standalone installer with explicit isolated locations. This uses the
+same native payload as current-user installation, without changing the normal
+installation. On Windows:
 
 ```powershell
-$env:PATH = "$(Join-Path (Get-Location) 'artifacts/tools')$([IO.Path]::PathSeparator)$env:PATH"
+.\build.cmd install --installer-args '["--install-dir","C:/tmp/dotask-local-preview/app","--bin-dir","C:/tmp/dotask-local-preview/bin"]'
+& 'C:/tmp/dotask-local-preview/bin/dotask.exe' --version
 ```
 
-Confirm `dotask --version` prints `dotask 0.1.0`. These changes last for the
-current shell session. They do not perform a global installation or edit a profile.
-Keep this checkout in place while using its tool directory.
-
-After changing dotask's implementation, rebuild the package and replace the old
-preview by running `dotnet tool uninstall dotask --tool-path ./artifacts/tools`,
-then the install command above again. Use `--no-http-cache` when rebuilding the same
-preview version. Uninstall affects this tool directory only.
-
+On Unix, use `./build.sh install` and absolute temporary install/bin paths in the
+same JSON argument array. Uninstall through the retained installer inside the
+chosen application's `installer/` directory. Do not use `dotnet tool install`
+for the native payload; the C# CLI project remains a verification reference.
 ## Initialize a project
 
 With the current `dotask` installed, run this **from the project directory you
@@ -377,7 +357,7 @@ Tab: it should offer `Debug` and `Release`. See [completion details](docs/USAGE.
 ./build.sh shim --verify           # Verify bundled shim source/binary hashes
 ./build.sh rust-cli                # Build the native Rust CLI preview
 ./build.sh rust-cli --verify       # Rust CLI tests, rustfmt, and clippy
-./build.sh pack                    # dotnet/pack: build local CLI NuGet packages
+./build.sh pack                    # Create the native CLI standalone installer package
 ./build.sh install                 # Install the current source for this user
 ./build.sh help                    # Project task help
 ```
@@ -388,24 +368,24 @@ launchers run `verify`; with arguments they forward them unchanged to dotask.
 Both launchers select the checkout containing the script even when called from
 another directory; relative task paths and `--use-dir` start at that checkout.
 
-The bootstrap always builds its runner in Release using normal incremental SDK
-builds. A task's `-c Debug` selects that task's configuration independently.
-The runner and all dependencies are copied from the evaluated publish directory
+The bootstrap builds the native runner in Release with Cargo and publishes the
+C# support host. A task's `-c Debug` selects its C# configuration independently.
+The native executable, SDK sources, and evaluated C# publish output are copied
 into a unique OS temporary directory, allowing tasks to rebuild or clean the
 original outputs on Windows. Bootstrapping alone does not install anything;
 the explicit `install` task does. First use can restore
 NuGet packages and requires access to the configured feeds.
 
-The MSBuild copy hook lives in `.tasks/misc/bootstrap.targets` and is imported
-by the CLI project. It is build support data, so dotask does not discover it as a
-task. Discovery accepts `.cs` targets and declarative `.task` YAML groups.
+Windows staging lives in `.tasks/misc/prepare-bootstrap.ps1`; Bash stages the
+same layout. These launchers only build/stage the runner. Discovery accepts
+`.cs` and `.rs` targets and declarative `.task` YAML groups.
 
 After adding, editing, renaming, or removing a shared task or one of its declared
 support files, run `./build.sh catalog` **after your final edits/formatting and
 before committing**. Commit the regenerated `shared-tasks/catalog.json` with the
 sources. Run `./build.sh` afterward; its catalog verification fails if the index
-is stale and never rewrites it. `catalog.cs` contains the generation logic and
-reuses the CLI metadata parser; there is no separate catalog helper task file.
+is stale and never rewrites it. `catalog.rs` uses the CLI's compiler-free metadata
+transport; Roslyn still reads C# documentation in the support host.
 
 `verify-docs` checks required files, then calls its declared `git/check` dependency
 with `--whitespace` to check staged and unstaged Git diffs. Plain `git/check` only
@@ -418,9 +398,10 @@ standard shared formatter; it checks the solution and standalone C# tasks.
 Without `--verify`, it applies formatting and runs the optional official
 `text/fixeol` task when installed. The shared library's canonical task sources
 live in `shared-tasks/`; the format, install, and pack copies under `.tasks/_/dotnet/`
-are kept identical. Installation uses one `install.cs` file. `pack` creates local
-NuGet packages from `settings.project`, with `--output` defaulting to
-`artifacts/packages`; it does not publish to a feed.
+are kept identical. Installation uses one shared `install.cs` file to invoke the
+Rust `create-installer` task. The local `pack.rs` creates the native installer;
+explicit `dotnet/pack` remains the generic .NET packaging task, using
+`settings.project` (the retained C# reference here). Neither publishes a release.
 
 Repository builds respect an existing user-level `Directory.Build.props` output
 policy. Runtime task builds use an isolated external cache. Windows, Linux, and
@@ -431,10 +412,10 @@ The [documentation index](docs/README.md) links to all guides and design contrac
 
 ## Rust CLI development preview
 
-The root Cargo workspace contains `src/dotask-cli` and `src/dotask-installer`,
+The root Cargo workspace contains `src/dotask-cli`, `src/dotask-installer`, and `src/dotask-sdk`,
 with a single root `Cargo.lock` and release profile. The new CLI builds a native
-`dotask` executable alongside the existing installer. The C# CLI remains the
-bootstrap runner and the application packaged by the installer.
+`dotask` executable alongside the installer. The Rust CLI is the bootstrap
+runner and installer payload. The C# CLI remains a behavior reference.
 The C# task authoring library and shared tasks remain maintained components.
 See the [transition design](docs/DESIGN.md#rust-cli-transition) for the agreed
 replacement stages and future task-language selection.
@@ -457,7 +438,7 @@ On Linux/macOS:
 /tmp/_rust/dotask/target/release/dotask --use-dir ./examples/basic/.tasks hello --name Rust
 ```
 
-The preview runs existing `.cs` tasks and `.task` groups, including parameters,
+The preview runs `.cs` and `.rs` tasks and `.task` groups, including parameters,
 YAML defaults, nested calls, structured installer results, exit codes, and Ctrl+C.
 Bare invocation and `help` list project tasks; `help TARGET` and `TARGET --help`
 read metadata without compilation. CLI-only `--help`/`-h` and `--version` need
@@ -468,8 +449,9 @@ The native CLI also implements `--init`, shared-task listing/save/add/sync/remov
 shell completion, full project/target help, and `--create-task`. Configuration,
 binding, requirements, and YAML groups run in Rust. Initialization and YAML-only
 projects need no .NET host. Existing shared-task ownership, local-edit protection,
-and recovery journals are preserved. `.rs` execution and language selection remain
-pending. These preview commands do not install it or replace an active CLI.
+and recovery journals are preserved. Rust tasks use the bundled `sdk/` sources;
+see [Rust authoring](docs/TARGETS.md#rust-tasks). Shared Rust language variants and
+language selection remain pending. These build commands do not install or replace an active CLI.
 
 Use `rust-cli --verify` through the launcher for its tests, rustfmt, and clippy.
 The complete repository gate requires those checks too. `.cargo/config.toml`

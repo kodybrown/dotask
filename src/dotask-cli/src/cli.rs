@@ -29,6 +29,14 @@ fn run_inner(arguments: Vec<OsString>) -> Result<i32> {
       })
     })
     .collect::<Result<Vec<_>>>()?;
+  if args.first().is_some_and(|s| s == "__metadata") {
+    if args.len() != 3 {
+      bail!("__metadata requires request and response files.");
+    }
+    process::initialize()?;
+    crate::rust_tasks::batch(Path::new(&args[1]), Path::new(&args[2]))?;
+    return Ok(0);
+  }
   if args.first().is_some_and(|s| s == "__exec") {
     if args.len() != 2 {
       bail!("__exec requires a request file.");

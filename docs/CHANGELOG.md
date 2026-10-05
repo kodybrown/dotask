@@ -362,3 +362,29 @@ acceptance, installation, and publication.
   checks of all 10 Bash blocks, and `git diff --check` passed. Linux/macOS commands
   are documented for later execution; this documentation change does not add
   platform acceptance evidence.
+
+### 2026-10-05 Author Rust tasks and package the native CLI
+
+- Add `.rs` task discovery, leading YAML metadata, and the bundled Rust task SDK.
+  Keep help/completion compiler-free; compile immutable source/support/SDK
+  snapshots in an external cache. Preserve typed arguments, nested C#/Rust calls,
+  settings snapshots, failures, cancellation, and installer-result isolation.
+- Convert repository `installer-engine`, `rust-cli`, `create-installer`, `verify`,
+  `verify-docs`, `catalog`, and `shim` tasks and Rust build support to Rust. Add a
+  local Rust `pack` target that returns the native standalone installer package.
+  Preserve maintained shared C# tasks, library, catalog, and ownership contracts.
+- Bootstrap the native runner with staged SDK and C# support. Package the native
+  CLI and support from fresh evaluated publish inventories, excluding stale files.
+  Normalize retained-uninstaller identity through Windows junction paths so
+  self-uninstall can remove owned files while preserving unowned files.
+- Update authoring, usage, installation, design, agent guidance, and the Windows
+  continuation plan for the native packaging cutover.
+- Verification: `build.cmd` passed 416 .NET Release tests and 27 Rust tests on
+  Windows x64, plus formatting/clippy/docs/catalog/shim/whitespace checks.
+  `build.cmd pack` in both self-contained modes and relocated temporary
+  install/reuse/update/uninstall acceptance passed, including mixed-language execution, Unicode arguments,
+  self-contained C# help without `dotnet` on PATH, and user-file preservation.
+  Both LLVM-rebuilt shim binaries were unchanged; evaluated output paths remain
+  external and the Bash launcher passed syntax checking. Linux/macOS acceptance
+  remains deferred. No active installation changed; nothing was published or
+  pushed.

@@ -24,6 +24,7 @@ public sealed class BootstrapTests
       Assert.StartsWith("dotask-bootstrap", Path.GetFileName(stagedDirectory));
       Assert.Equal(fixture.Identity, File.ReadAllText(Path.Combine(Path.GetDirectoryName(stagedDirectory)!, "bootstrap-owner")));
       Assert.False(File.Exists(assembly));
+      Assert.DoesNotContain("stale-publish-file.txt", json.RootElement.GetProperty("supportFiles").EnumerateArray().Select(item => item.GetString()));
       Assert.Empty(Directory.EnumerateDirectories(fixture.Temporary, "dotask-bootstrap*"));
     }
   }
@@ -33,7 +34,7 @@ public sealed class BootstrapTests
   {
     using var fixture = new Fixture();
     Assert.Equal(0, (await fixture.Run("inspect")).ExitCode);
-    fixture.Project.Write("src/Dotask.Cli/Program.cs", "this is not valid C#;");
+    fixture.Project.Write("src/main.rs", "this is not valid Rust;");
     var failed = await fixture.Run("inspect");
     Assert.NotEqual(0, failed.ExitCode);
     Assert.DoesNotContain("REPORT:", failed.StandardOutput);
@@ -48,43 +49,58 @@ public sealed class BootstrapTests
 
     public Fixture()
     {
-      foreach (var file in new[] { "build.sh", "build.cmd", "bootstrap.targets" }) {
+      foreach (var file in new[] { "build.sh", "build.cmd", "prepare-bootstrap.ps1" }) {
         using var stream = typeof(BootstrapTests).Assembly.GetManifestResourceStream("Bootstrap/" + file)!;
         using var reader = new StreamReader(stream);
-        Project.Write(file == "bootstrap.targets" ? ".tasks/misc/" + file : file, reader.ReadToEnd());
+        Project.Write(file == "prepare-bootstrap.ps1" ? ".tasks/misc/" + file : file, reader.ReadToEnd());
       }
       // Preserve the user output policy while exercising a custom publish path.
       Project.WriteBuildProperties();
-      Project.Write("src/Dotask.Cli/Dotask.Cli.csproj", """
+      Project.Write("src/Dotask.CSharpHost/Dotask.CSharpHost.csproj", """
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <TargetFramework>net10.0</TargetFramework>
             <OutputType>Exe</OutputType>
-            <AssemblyName>dotask</AssemblyName>
+            <AssemblyName>Dotask.CSharpHost</AssemblyName>
             <ImplicitUsings>enable</ImplicitUsings>
             <PublishDir>$(FixtureOutputRoot)/custom publish output/</PublishDir>
           </PropertyGroup>
-          <Import Project="../../.tasks/misc/bootstrap.targets" />
         </Project>
         """);
-      Project.Write("src/Dotask.Cli/Program.cs", """
-        Console.WriteLine("REPORT:" + System.Text.Json.JsonSerializer.Serialize(new {
-          args, cwd = Environment.CurrentDirectory, assembly = typeof(Program).Assembly.Location
-        }));
-        if (args.FirstOrDefault() == "rebuild") {
-          // Recreate the original build AND publish output while the staged
-          // runner is alive. Running from either original output fails on Windows.
-          foreach (var verb in new[] { "clean", "publish" }) {
-            var start = new System.Diagnostics.ProcessStartInfo("dotnet") { UseShellExecute = false };
-            foreach (var argument in new[] { verb, "src/Dotask.Cli/Dotask.Cli.csproj", "-c", "Release", "--nologo" })
-              start.ArgumentList.Add(argument);
-            using var child = System.Diagnostics.Process.Start(start)!;
-            child.WaitForExit();
-            if (child.ExitCode != 0) return child.ExitCode;
-          }
-        }
-        return args.Length == 2 && args[0] == "exit" ? int.Parse(args[1]) : 0;
+      Project.Write("src/Dotask.CSharpHost/Program.cs", "return 0;");
+      Project.Write("Cargo.toml", """
+        [package]
+        name = "dotask-cli"
+        version = "0.0.0"
+        edition = "2024"
+        [workspace]
+        [dependencies]
+        serde_json = "=1.0.151"
+        [[bin]]
+        name = "dotask"
+        path = "src/main.rs"
         """);
+      var cargoOutput = Path.Combine(Path.GetTempPath(), "_rust", "dotask-bootstrap-tests", Identity).Replace('\\', '/');
+      Project.Write(".cargo/config.toml", "[build]\ntarget-dir = \"" + cargoOutput + "\"\n");
+      Project.Write("src/main.rs", """
+        fn main() {
+          let args: Vec<_> = std::env::args().skip(1).collect();
+          println!("REPORT:{}", serde_json::json!({
+            "args":args, "cwd":std::env::current_dir().unwrap(), "assembly":std::env::current_exe().unwrap(),
+            "supportFiles":std::fs::read_dir(std::env::current_exe().unwrap().parent().unwrap().join("csharp")).unwrap()
+              .map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect::<Vec<_>>()
+          }));
+          if args.first().is_some_and(|s| s == "rebuild") {
+            // The live runner must be a physical copy so Cargo can overwrite its
+            // normal output on Windows while this process remains alive.
+            let code = std::process::Command::new("cargo").args(["build", "--release", "--locked"]).status().unwrap();
+            if !code.success() { std::process::exit(code.code().unwrap_or(1)); }
+          }
+          if args.len() == 2 && args[0] == "exit" { std::process::exit(args[1].parse().unwrap()); }
+        }
+        """);
+      Project.Write("src/dotask-sdk/Cargo.toml", "[package]\nname = \"dotask-sdk\"\nversion = \"0.0.0\"\n");
+      Project.Write("src/dotask-sdk/src/lib.rs", "// bootstrap fixture SDK\n");
       Directory.CreateDirectory(Temporary);
       File.WriteAllText(Path.Combine(Temporary, "bootstrap-owner"), Identity);
       Project.Write("bootstrap-owner", Identity);
@@ -94,6 +110,23 @@ public sealed class BootstrapTests
     public async Task<ProcessResult> Run( params string[] arguments )
     {
       using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+      if (!File.Exists(Path.Combine(Project.Root, "Cargo.lock"))) {
+        await ProcessRunner.RunAsync(new ProcessDefinition {
+          Executable = "cargo",
+          Arguments = ["generate-lockfile", "--offline"],
+          WorkingDirectory = Project.Root,
+          CaptureOutput = true
+        }, timeout.Token);
+        var properties = await ProcessRunner.RunAsync(new ProcessDefinition {
+          Executable = "dotnet",
+          Arguments = ["msbuild", "src/Dotask.CSharpHost/Dotask.CSharpHost.csproj", "-p:Configuration=Release", "-getProperty:PublishDir"],
+          WorkingDirectory = Project.Root,
+          CaptureOutput = true
+        }, timeout.Token);
+        var publish = Path.GetFullPath(properties.StandardOutput.Trim(), Path.Combine(Project.Root, "src/Dotask.CSharpHost"));
+        Directory.CreateDirectory(publish);
+        File.WriteAllText(Path.Combine(publish, "stale-publish-file.txt"), "Must not enter the runner or a payload.");
+      }
       // CALL is deliberately avoided so CMD does not expand arguments twice.
       var command = OperatingSystem.IsWindows()
         ? new[] { "/d", "/c", "..\\build.cmd" }.Concat(arguments).ToArray()

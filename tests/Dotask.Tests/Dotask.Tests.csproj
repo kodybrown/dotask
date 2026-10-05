@@ -6,17 +6,16 @@
   </PropertyGroup>
   <ItemGroup>
     <AssemblyMetadata Include="RepositoryRoot" Value="$(MSBuildProjectDirectory)/../.." />
-    <EmbeddedResource Include="../../.tasks/shim.cs" LogicalName="Shim/build-task.cs" />
+    <EmbeddedResource Include="../../.tasks/shim.rs" LogicalName="Shim/build-task.rs" />
     <EmbeddedResource Include="../../src/Dotask.Shim/shim.c;../../src/Dotask.Shim/kernel32.def;../../src/Dotask.Shim/assets/hashes.json"
                       LogicalName="Shim/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../src/Dotask.Shim/assets/win-*.exe"
                       LogicalName="Shim/assets/%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../../.tasks/verify.cs;../../.tasks/verify-docs.cs;../../.tasks/catalog.cs"
-                      LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../../src/Dotask.Cli/Metadata/MetadataReader.cs;../../src/Dotask.Cli/Metadata/TargetDefinition.cs"
+    <EmbeddedResource Include="../../.tasks/verify.rs;../../.tasks/verify-docs.rs;../../.tasks/catalog.rs"
                       LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../build.sh;../../build.cmd;../../.tasks/misc/bootstrap.targets"
                       LogicalName="Bootstrap/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../.tasks/misc/prepare-bootstrap.ps1" LogicalName="Bootstrap/prepare-bootstrap.ps1" />
     <EmbeddedResource Include="../../shared-tasks/**/*">
       <!-- Resource identifiers are portable names, not platform filesystem paths. -->
       <LogicalName>$([System.String]::Copy('Shared/%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '/'))</LogicalName>

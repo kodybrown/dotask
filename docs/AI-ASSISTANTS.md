@@ -5,12 +5,13 @@ Use this guide when creating, editing, explaining, or running dotask tasks in a
 [AGENTS.md](../AGENTS.md). This guide describes implemented preview behavior;
 services and the other [deferred features](DESIGN.md#deferred) are not APIs.
 
-The [Rust CLI preview](../README.md#rust-cli-development-preview) is a separate
-development runner for existing C# tasks and YAML groups, including nested calls,
+The [Rust CLI](../README.md#rust-cli-development-preview) runs C# and Rust tasks
+and YAML groups, including nested calls,
 project management, help, shell completion, and the interactive group wizard.
 Keep its staged `csharp/` support directory for C# metadata and the .NET SDK for
-C# execution. Native initialization and YAML-only projects need no .NET host. `.rs` task
-execution, `--lang`, group-only `--add`, and extension-qualified calls are
+C# execution. Rust tasks use the bundled `sdk/` sources and Rust 1.95+/Cargo;
+[Rust metadata and help](TARGETS.md#rust-tasks) need no toolchain. Native initialization
+and YAML-only projects need no .NET host. Shared Rust variants, `--lang`, group-only `--add`, and extension-qualified calls are
 [agreed future behavior](DESIGN.md#rust-cli-transition), not implemented commands.
 
 In the dotask source checkout, use `./build.sh` (Windows: `.\build.cmd`) to
@@ -23,7 +24,8 @@ below applies to consuming projects, not that repository gate.
 After final edits/formatting to any shared task or declared support file, run
 `./build.sh catalog`, then `./build.sh`; its catalog check detects stale output
 without rewriting it. Commit the generated `shared-tasks/catalog.json` with
-those sources. The generator's methods are inside `.tasks/catalog.cs`.
+those sources. The generator is `.tasks/catalog.rs`, using the native CLI's
+compiler-free metadata transport for C# catalog entries.
 Repository `verify-docs` checks required documents and delegates Git whitespace
 checks to its declared `git/check` dependency with `Whitespace = true`.
 Ordinary `git/check` remains a tool-availability check; `--whitespace` checks

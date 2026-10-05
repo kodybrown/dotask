@@ -6,7 +6,7 @@ These instructions apply to every task in this repository.
 
 - Product and command: `dotask`
 - C# namespace: `DoTask` (including `DoTask.Cli` and `DoTask.Runtime`)
-- Project type: Rust CLI preview, .NET 10 CLI and C# support/library, and Rust installer
+- Project type: Rust CLI and task SDK, .NET 10 reference CLI and C# support/library, and Rust installer
 - Integration checkout: the primary checkout on `develop`, located with `git worktree list --porcelain`
 - Integration branch: `develop`
 - Task worktree root: `../worktrees/ai` relative to the integration checkout
@@ -113,9 +113,9 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   Custom task directories must stay beneath that root; the override is not saved.
 - One C# file per executable target; XML documentation owns C# target metadata.
   Declarative `.task` YAML groups compose existing targets without registration.
-- Discovery accepts `.cs` targets and `.task` YAML groups; ordinary documents,
-  `.yaml` files, and MSBuild `.targets` files are not tasks. The bootstrap copy hook lives
-  in `.tasks/misc/bootstrap.targets`.
+- Discovery accepts `.cs` and `.rs` targets and `.task` YAML groups; ordinary documents,
+  `.yaml` files, and MSBuild `.targets` files are not tasks. Windows native bootstrap
+  staging lives in `.tasks/misc/prepare-bootstrap.ps1`.
 - Author reusable task changes in `shared-tasks/`. Keep installed copies under
   `.tasks/_/`, including `dotask-installer/`, identical to their canonical sources.
 - Recursive task paths define full names; shared copies include source/group/task.
@@ -137,7 +137,7 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - Shared `dotask-installer/install` requires a `create-installer` returning an
   `InstallerArtifact`, then launches it. It never falls back to copying files.
   Dotask’s standalone Rust installer uses YAML receipts and preserves
-  existing ownership; publishing stays in `.tasks/create-installer.cs`. See `docs/INSTALLATION.md`.
+  existing ownership; payload publishing stays in `.tasks/create-installer.rs`. See `docs/INSTALLATION.md`.
   Preserve installation ownership, immutable builds, and activation recovery journals.
   Test with explicit temporary install/bin roots; do not modify the user's active install.
 - Use an ambient `BuildContext.Current`, ordinary composition, and no DI container.
@@ -155,8 +155,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - Focused tests may use `dotnet test dotask.slnx --filter ...` directly.
 - The launchers accept dotask arguments, resolve their own checkout, and preserve
   failures. No installed dotask, Make, or Python is required. CI uses the same launchers.
-- Keep bootstrap logic limited to publishing and staging a temporary runner from
-  the evaluated `PublishDir`. All build/test/format/docs/catalog/package operations
+- Keep bootstrap logic limited to building and staging the native runner, SDK,
+  and support host from the evaluated `PublishDir`. All build/test/format/docs/catalog/package operations
   belong in `.tasks`. Never run repository rebuilds from the live build output.
 - `verify` requires every stage. The reusable `dotnet/verify` task's optional
   checks are not the repository verification gate.
@@ -175,13 +175,14 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   share its `Cargo.lock` and release profile. `installer-engine` builds the host
   installer; `rust-cli` builds the native CLI preview. Each accepts `--verify`
   for tests, formatting, and clippy. Keep Rust outputs external too.
-- The Rust CLI runs existing C# tasks and YAML groups using the separately staged
+- The Rust CLI runs Rust tasks, C# tasks, and YAML groups using the separately staged
   `Dotask.CSharpHost`, with Rust-owned discovery, selection, execution, and nested
   calls, YAML configuration/groups, binding, requirements, help, initialization,
   shared-task management, completion, and the task-group wizard. The support
-  host only reads C# metadata and compiles C# tasks. Rust task execution remains
-  pending. Keep the C# CLI as the bootstrap, packaging, and installation entry
-  point until the Rust replacement is verified. Preserve `src/Dotask` as the
+  host only reads C# metadata and compiles C# tasks. Rust tasks use the bundled
+  `src/dotask-sdk` through external manifests/source snapshots. Local orchestration
+  tasks, bootstrap, and installer packaging use Rust. Retain the C# CLI as the
+  behavior reference and preserve `src/Dotask` as the
   maintained C# task library. See `docs/DESIGN.md` for the agreed transition.
 - Cargo output is configured in `.cargo/config.toml`; build tasks, staging,
   packaging, and native tests query `cargo metadata` for its evaluated target

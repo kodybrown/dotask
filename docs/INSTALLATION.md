@@ -256,12 +256,17 @@ There is no Windows Installed Apps registration or Inno Setup dependency.
 
 ## Build and install dotask itself
 
-The source creator publishes dotask using evaluated MSBuild `PublishDir`, builds
-the Rust engine, and delegates packaging to the shared creator. Compiler output
-remains external. Final packages go beneath `settings.installer-output`.
+The Rust `create-installer.rs` task builds the native CLI and installer engine,
+publishes the C# support host using evaluated MSBuild `PublishDir`, and packages
+a fresh payload containing `dotask[.exe]`, `csharp/`, and `sdk/`. It invokes the
+existing Rust installer directly and returns the normal `InstallerArtifact`.
+The Rust `pack` task uses the same creator. Compiler output remains external;
+final packages go beneath `settings.installer-output`.
 Rust 1.95 or newer, Cargo, rustfmt, and clippy are required for source verification.
-The required gate includes Rust tests and the .NET suite; destination machines do
-not need these tools.
+The required gate includes Rust tests and the .NET suite. Destination machines
+need Rust/Cargo only to execute Rust tasks and the .NET SDK only to execute C#
+tasks. A self-contained payload needs neither toolchain for Rust-only metadata,
+CLI help, initialization, or C# metadata.
 
 ```powershell
 .\build.cmd
@@ -272,7 +277,7 @@ not need these tools.
 ```
 
 Unix uses `./build.sh` and absolute temporary paths. `--self-contained=false`
-requires the application's .NET runtime on the destination; it never changes the
+requires the C# support host's .NET runtime on the destination; it never changes the
 Rust installer's runtime requirements. `build.cmd installer-engine` builds only
 the host engine. `build.cmd installer-engine --verify` runs Rust checks.
 

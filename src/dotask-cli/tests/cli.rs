@@ -63,6 +63,28 @@ fn in_project(root: &std::path::Path, args: &[&str]) -> Output {
 }
 
 #[test]
+fn rust_help_and_completion_read_metadata_without_any_toolchain() {
+  let project = tempfile::tempdir().unwrap();
+  std::fs::create_dir(project.path().join(".tasks")).unwrap();
+  std::fs::write(project.path().join(".tasks/run.rs"), "//! ---\n//! description: Native task\n//! options: [{name: label, choices: [first, second], default: first}]\n//! ---\nnot valid Rust;\n").unwrap();
+  let help = in_project(project.path(), &["help", "run"]);
+  assert!(help.status.success(), "{help:?}");
+  assert!(String::from_utf8_lossy(&help.stdout).contains("Native task"));
+  let completion = in_project(
+    project.path(),
+    &[
+      "__complete",
+      "--line",
+      "dotask run --label ",
+      "--shell",
+      "powershell",
+    ],
+  );
+  assert!(completion.status.success(), "{completion:?}");
+  assert!(String::from_utf8_lossy(&completion.stdout).contains("second"));
+}
+
+#[test]
 fn initialization_preserves_existing_state_and_uses_invocation_directory() {
   let parent = tempfile::tempdir().unwrap();
   std::fs::write(parent.path().join(".dotasks.yaml"), "invalid: [").unwrap();

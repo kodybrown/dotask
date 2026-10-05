@@ -7,7 +7,7 @@ context, typed values, safe argument passing, portable paths, filesystem helpers
 and target-call transport.
 It has no third-party runtime dependencies or DI container.
 
-`src/Dotask.Cli` builds the `dotask` command. Discovery, XML metadata, YAML loading,
+`src/Dotask.Cli` retains the C# behavior reference. Discovery, XML metadata, YAML loading,
 binding, help, completion, SDK compilation, and execution are separate components.
 Roslyn reads actual C# documentation trivia, and YamlDotNet parses configuration.
 `Program.cs` only wires cancellation and invokes the application.
@@ -20,12 +20,14 @@ installer at `src/dotask-installer`, and the maintained C# authoring library at
 release profile. Preserve the installer's pinned dependencies and external
 output directory when adding workspace members.
 
-The Rust CLI now runs existing C# tasks and YAML groups. It owns command parsing,
+The Rust CLI now runs C# tasks, Rust tasks, and YAML groups. It owns command parsing,
 root discovery, exact/shortcut selection, sessions, group sequencing, process
 execution, nested-call dispatch, and exit/cancellation handling. It also owns
 YAML configuration/groups, binding, requirement validation, initialization, shared
 management, help, shell completion, and the interactive group wizard. The C# CLI at
-`src/Dotask.Cli` remains the bootstrap runner and packaged application. See the
+`src/Dotask.Cli` remains the reference implementation. Rust is the bootstrap
+runner and packaged application; `src/dotask-sdk` is its maintained Rust task
+helper crate. See the
 [preview commands](../README.md#rust-cli-development-preview).
 
 `src/Dotask.CSharpHost` is a separate .NET support executable with a private,
@@ -89,8 +91,17 @@ the wizard writes only after an explicit save and supports discarding an unfinis
 step with `:back`. Native configuration preserves quoted scalars, rejects duplicate
 keys regardless of case, and bounds nesting and alias expansion.
 
-Platform acceptance and packaging cutover remain before the Rust CLI replaces the
-packaged C# CLI. Rust task execution and catalog duplication follow that replacement.
+The Windows scope now combines Rust task authoring with bootstrap and packaging
+cutover. Repository orchestration tasks are `.rs` files, including `pack` and
+`create-installer`; shared C# tasks and their authoring library remain maintained.
+Rust tasks declare leading `//!` YAML metadata and compile through isolated,
+content-addressed manifests/source snapshots outside the project. SDK dependencies
+are pinned; Cargo retains a lockfile per snapshot and checks compiler fingerprints.
+Support modules must be declared as task-root-relative file requirements. Help
+never compiles or runs tasks. Catalog generation still emits existing C# shared
+entries; shared Rust variants and language selection are subsequent work.
+Linux/macOS and live remote catalog acceptance remain pending independently of
+the Windows cutover. Installation and publication are separate user actions.
 
 ## Discovery and metadata
 

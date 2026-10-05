@@ -1,5 +1,54 @@
 # Verification
 
+## Rust tasks, native bootstrap, and installer packaging (2026-10-05)
+
+On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, the native `build.cmd`
+gate passed 416 .NET Release tests, 17 Rust installer tests, 8 native CLI
+integration tests, and 2 wizard tests. Rust workspace/task formatting, clippy,
+C# formatting, required documentation, shared catalog freshness, bundled shim
+hashes, and whitespace checks passed. The standalone SDK is included in Cargo
+checks and documentation tests. No Linux/macOS or Windows ARM64 acceptance is
+claimed.
+
+Rust authoring tests cover compiler-free metadata, typed defaults, portable paths,
+Unicode and exact arguments, source/support invalidation, external outputs,
+Rust/C# nested calls in both directions, immutable settings, absent versus failing
+targets, cycle detection, full exit codes, and invocation-local installer results.
+Direct/nested Ctrl+C tests now cover both task languages and uncooperative
+descendants. Bootstrap tests verify physical runner snapshots, argument forwarding,
+failure cleanup, rejection of stale binaries, and exclusion of stale publish files.
+Repository tests execute the actual Rust orchestration sources.
+
+`build.cmd pack` created a native standalone installer. Its complete package was
+copied outside the checkout to a temporary directory with spaces and Japanese
+characters. Explicit temporary install/bin roots passed first installation,
+byte-identical receipt reuse, changed-build activation with both builds retained,
+native version/arguments, Rust-to-C# execution with Unicode settings, and C# help
+with an empty `PATH`. Retained self-uninstall removed owned commands and preserved
+an unowned file. This acceptance exposed a Windows junction-spelling bug in
+self-uninstaller detection; its regression failed before canonicalization and
+passed after the fix. The normal user installation was not modified.
+
+All four .NET projects' evaluated `BaseOutputPath`,
+`BaseIntermediateOutputPath`, and `PublishDir` remain under `C:\tmp\_dotnet`.
+Cargo metadata evaluates to `C:/tmp/_rust/dotask/target`; task snapshots and
+compilation stay in the per-user external temporary cache. Publish staging copies
+the evaluated `ResolvedFileToPublish` inventory into fresh directories.
+`build.cmd pack --self-contained=false` also passed after the self-contained
+publish; its payload retained `Dotask.Library.dll` and excluded stale
+`coreclr.dll` and `Dotask.CSharpHost.exe` files.
+
+`build.cmd shim` rebuilt both bundled Windows shims using temporary LLVM 22.1.8
+tools; both binaries remained byte-identical. The manifest now tracks the Rust
+build task. `bash -n build.sh` passed as a syntax check only. Stable rustfmt's
+warnings about the user's nightly-only options remain expected. The required
+format verification passes; the optional apply-mode formatter still encounters
+the existing shared `text/fixeol` task's missing literal `Makefile` input.
+
+Shared Rust language variants and live remote-catalog acceptance remain pending.
+The C# authoring library and reference CLI remain maintained. Nothing was
+installed into active roots, published, or pushed.
+
 ## Native CLI command parity and Cargo output policy (2026-10-02)
 
 On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, `build.cmd` passed all

@@ -547,7 +547,9 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
   if installed_engine.exists() {
     match fs::remove_file(&installed_engine) {
       Ok(()) => (),
-      Err(_) if cfg!(windows) && std::env::current_exe()? == installed_engine => {
+      // The invocation can use a junction or extended-length spelling, whereas
+      // root is canonical. Normalize both before identifying self-uninstall.
+      Err(_) if cfg!(windows) && files::absolute(&std::env::current_exe()?, root)? == installed_engine => {
         let temporary = tempfile::Builder::new().prefix("dotask-uninstalled-").tempdir()?.keep();
         let moved = temporary.join(engine_name());
         fs::rename(&installed_engine, &moved)

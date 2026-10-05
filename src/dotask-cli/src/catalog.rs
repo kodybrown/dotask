@@ -29,12 +29,9 @@ pub(crate) fn sources(root: &Path, task_root: bool, groups: bool) -> Result<Vec<
       if !["bin", "obj", "node_modules"].contains(&name.as_str()) {
         result.extend(sources(&entry.path(), false, groups)?);
       }
-    } else if entry
-      .path()
-      .extension()
-      .and_then(|e| e.to_str())
-      .is_some_and(|e| e.eq_ignore_ascii_case("cs") || (groups && e.eq_ignore_ascii_case("task")))
-    {
+    } else if entry.path().extension().and_then(|e| e.to_str()).is_some_and(|e| {
+      e.eq_ignore_ascii_case("cs") || (groups && (e.eq_ignore_ascii_case("rs") || e.eq_ignore_ascii_case("task")))
+    }) {
       result.push(entry.path());
     }
   }
@@ -59,6 +56,12 @@ pub(crate) fn load(root: &Path, session: &Path) -> Result<Catalog> {
       .iter()
       .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("task")))
       .map(|p| group(p, root)),
+  );
+  targets.extend(
+    files
+      .iter()
+      .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("rs")))
+      .map(|p| crate::rust_tasks::metadata(p, root)),
   );
   targets.sort_by(|a, b| {
     a.name
@@ -97,7 +100,7 @@ pub(crate) fn identifier(value: &str) -> bool {
   value.as_bytes().first().is_some_and(u8::is_ascii_alphabetic)
     && value.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
 }
-fn read_name(file: &Path, root: &Path) -> Result<(String, Option<String>)> {
+pub(crate) fn read_name(file: &Path, root: &Path) -> Result<(String, Option<String>)> {
   let stem = file.file_stem().unwrap().to_string_lossy();
   let parts: Vec<_> = stem.split(' ').collect();
   if parts.len() > 2 || parts.iter().any(|s| !identifier(s)) {

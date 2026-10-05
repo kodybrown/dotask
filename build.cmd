@@ -24,17 +24,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
-rem MSBuild stages the evaluated publish output; no bin/obj paths are assumed.
-dotnet publish src/Dotask.Cli/Dotask.Cli.csproj -c Release --nologo --verbosity minimal "-p:DotaskBootstrapDirectory=%dotask_bootstrap_dir%"
+rem Stage the native runner, SDK, and evaluated C# support publish output.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".tasks\misc\prepare-bootstrap.ps1" -Destination "%dotask_bootstrap_dir%"
 set "dotask_exit_code=%errorlevel%"
 if not "%dotask_exit_code%"=="0" goto cleanup
 if [%1]==[] goto default_target
-dotnet "%dotask_bootstrap_dir%\dotask.dll" %*
+"%dotask_bootstrap_dir%\dotask.exe" %*
 set "dotask_exit_code=%errorlevel%"
 goto cleanup
 
 :default_target
-dotnet "%dotask_bootstrap_dir%\dotask.dll" verify
+"%dotask_bootstrap_dir%\dotask.exe" verify
 set "dotask_exit_code=%errorlevel%"
 
 :cleanup

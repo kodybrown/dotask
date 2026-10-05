@@ -350,9 +350,9 @@ generation with unchanged inputs produces identical output.
 
 Descriptions, support files, and required same-source task IDs come from the
 task's XML documentation, using the same parser as help and private tasks.
-All catalog-generation methods live in `.tasks/catalog.cs`. The task includes
-the CLI parser's C# sources and uses the same
-Roslyn package as the CLI; it never compiles or executes the tasks being indexed.
+Catalog generation lives in `.tasks/catalog.rs`. It requests batch metadata
+through the native CLI, which uses the C# support host's maintained Roslyn parser;
+it never compiles or executes the tasks being indexed.
 The generated `catalog.json` remains the downloadable index, not a file authors
 maintain per task. It contains portable IDs, `runtime: csharp`, entry points,
 file paths, hashes, and requirements. Unsupported runtimes are rejected. Only

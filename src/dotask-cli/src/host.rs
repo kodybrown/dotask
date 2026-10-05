@@ -10,6 +10,7 @@ use std::process::{Command, Stdio};
 pub(crate) struct Host {
   pub dotnet: OsString,
   assembly: PathBuf,
+  apphost: Option<PathBuf>,
 }
 
 impl Host {
@@ -41,7 +42,16 @@ impl Host {
           .filter(|v| Path::new(v).is_file())
       })
       .unwrap_or_else(|| OsString::from("dotnet"));
-    Ok(Self { dotnet, assembly })
+    let apphost = assembly.parent().unwrap().join(if cfg!(windows) {
+      "Dotask.CSharpHost.exe"
+    } else {
+      "Dotask.CSharpHost"
+    });
+    Ok(Self {
+      dotnet,
+      assembly,
+      apphost: apphost.is_file().then_some(apphost),
+    })
   }
 
   pub fn request<T: DeserializeOwned>(&self, directory: &Path, mut request: Value) -> Result<T> {
@@ -52,9 +62,15 @@ impl Host {
     let diagnostics = exchange.path().join("diagnostics.txt");
     request["Version"] = Value::from(2);
     write_json(&input, &request)?;
+    let mut command = if let Some(apphost) = &self.apphost {
+      Command::new(apphost)
+    } else {
+      let mut command = Command::new(&self.dotnet);
+      command.arg(&self.assembly);
+      command
+    };
     let code = process::run(
-      Command::new(&self.dotnet)
-        .arg(&self.assembly)
+      command
         .arg(&input)
         .arg(&output)
         .env_remove("DOTASK_EXECUTION_CONTEXT")
