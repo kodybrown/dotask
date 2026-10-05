@@ -180,7 +180,7 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   Rust tasks, C# tasks and YAML groups. C# compilation invokes the installed
   .NET SDK directly with isolated MSBuild hooks and the maintained helper DLL.
   Rust tasks use `src/dotask-sdk` through external source snapshots. Ship only
-  the native command, `Dotask.Library.dll` and the Rust helper source crate;
+  the native command, `Dotask.dotnet.dll` and the Rust helper source crate;
   never bundle language runtimes, SDKs, Roslyn or a managed support host.
   Keep the C# CLI as the behavior reference. See `docs/DESIGN.md`.
 - Cargo output is configured in `.cargo/config.toml`; build tasks, staging,

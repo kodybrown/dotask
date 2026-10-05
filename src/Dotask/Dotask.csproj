@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>Dotask.Library</AssemblyName>
+    <AssemblyName>Dotask.dotnet</AssemblyName>
     <RootNamespace>DoTask</RootNamespace>
     <PackageId>Dotask.Library</PackageId>
     <Description>Portable helpers and ambient execution context for dotask targets.</Description>

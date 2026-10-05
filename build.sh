@@ -32,7 +32,7 @@ using var json = JsonDocument.Parse(text[text.IndexOf('{')..]);
 if (args[1] == "publish") {
   var root = json.RootElement.GetProperty("Properties").GetProperty("PublishDir").GetString()!;
   Directory.CreateDirectory(args[2]);
-  File.Copy(Path.Combine(root, "Dotask.Library.dll"), Path.Combine(args[2], "Dotask.Library.dll"));
+  File.Copy(Path.Combine(root, "Dotask.dotnet.dll"), Path.Combine(args[2], "Dotask.dotnet.dll"));
 }
 Console.WriteLine(args[1] == "cargo" ? json.RootElement.GetProperty("target_directory").GetString()
   : json.RootElement.GetProperty("Properties").GetProperty("PublishDir").GetString());

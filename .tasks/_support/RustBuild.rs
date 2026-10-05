@@ -76,7 +76,7 @@ pub fn publish_library(
   // The task helper is a platform-neutral DLL with no package dependencies.
   // Explicitly select it from evaluated PublishDir: no runtime, symbols, stale
   // host or other publish files can enter the application payload.
-  fs::copy(directory.join("Dotask.Library.dll"), staged.path().join("Dotask.Library.dll"))?;
+  fs::copy(directory.join("Dotask.dotnet.dll"), staged.path().join("Dotask.dotnet.dll"))?;
   Ok((
     staged,
     metadata["Properties"]["Version"].as_str().context("Missing Version")?.into(),

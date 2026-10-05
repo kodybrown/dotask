@@ -61,7 +61,7 @@ public sealed class BootstrapTests
           <PropertyGroup>
             <TargetFramework>net10.0</TargetFramework>
             <OutputType>Library</OutputType>
-            <AssemblyName>Dotask.Library</AssemblyName>
+            <AssemblyName>Dotask.dotnet</AssemblyName>
             <ImplicitUsings>enable</ImplicitUsings>
             <PublishDir>$(FixtureOutputRoot)/custom publish output/</PublishDir>
           </PropertyGroup>

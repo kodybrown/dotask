@@ -33,7 +33,7 @@ impl Host {
     let assembly = std::env::current_exe()?
       .parent()
       .context("CLI has no parent")?
-      .join("Dotask.Library.dll");
+      .join("Dotask.dotnet.dll");
     if !assembly.is_file() {
       bail!(
         "C# task helpers are missing at {}. Stage the complete dotask application.",
@@ -142,7 +142,7 @@ impl Host {
         r#"<Project>
 <PropertyGroup Condition="{other}"><_DotaskOriginalTargets>$([MSBuild]::GetPathOfFileAbove('Directory.Build.targets', '$(MSBuildProjectDirectory)'))</_DotaskOriginalTargets></PropertyGroup>
 <Import Condition="{other} and '$(_DotaskOriginalTargets)' != ''" Project="$(_DotaskOriginalTargets)" />
-<ItemGroup Condition="{own}"><Reference Include="Dotask.Library"><HintPath>{dll}</HintPath><Private>true</Private></Reference><Compile Include="{bootstrap}" /></ItemGroup>
+<ItemGroup Condition="{own}"><Reference Include="Dotask.dotnet"><HintPath>{dll}</HintPath><Private>true</Private></Reference><Compile Include="{bootstrap}" /></ItemGroup>
 <Target Name="DotaskRecordOutput" AfterTargets="Build" Condition="{own}"><WriteLinesToFile File="{record}" Lines="$(TargetPath)" Overwrite="true" /></Target>
 </Project>"#,
         dll = escape(&self.assembly.display().to_string()),

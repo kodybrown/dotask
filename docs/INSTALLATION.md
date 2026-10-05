@@ -258,7 +258,7 @@ There is no Windows Installed Apps registration or Inno Setup dependency.
 
 The Rust `create-installer.rs` task builds the native CLI and installer engine,
 publishes the C# helper library using evaluated MSBuild `PublishDir`, and packages
-a fresh payload containing `dotask[.exe]`, `Dotask.Library.dll`, and `sdk/`. It invokes the
+a fresh payload containing `dotask[.exe]`, `Dotask.dotnet.dll`, and `sdk/`. It invokes the
 existing Rust installer directly and returns the normal `InstallerArtifact`.
 The Rust `pack` task uses the same creator. Compiler output remains external;
 final packages go beneath `settings.installer-output`.

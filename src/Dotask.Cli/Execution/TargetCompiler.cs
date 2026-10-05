@@ -57,7 +57,7 @@ public sealed class TargetCompiler
       new XElement("Import", new XAttribute("Condition", otherCondition + " and '$(_DotaskOriginalTargets)' != ''"),
         new XAttribute("Project", "$(_DotaskOriginalTargets)")),
       new XElement("ItemGroup", new XAttribute("Condition", rootCondition),
-        new XElement("Reference", new XAttribute("Include", "Dotask.Library"),
+        new XElement("Reference", new XAttribute("Include", "Dotask.dotnet"),
           new XElement("HintPath", Escape(typeof(BuildContext).Assembly.Location)), new XElement("Private", "true")),
         new XElement("Compile", new XAttribute("Include", Escape(bootstrap)))),
       new XElement("Target", new XAttribute("Name", "DotaskRecordOutput"), new XAttribute("AfterTargets", "Build"),

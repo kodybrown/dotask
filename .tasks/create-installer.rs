@@ -38,7 +38,7 @@ fn task(project: &BuildContext) -> Result<()> {
     "dotask"
   };
   fs::copy(cargo_output.join(executable), payload.join(executable))?;
-  fs::copy(published.path().join("Dotask.Library.dll"), payload.join("Dotask.Library.dll"))?;
+  fs::copy(published.path().join("Dotask.dotnet.dll"), payload.join("Dotask.dotnet.dll"))?;
   rust_build::stage_sdk(project, &payload.join("sdk"))?;
   let config = temporary.path().join("installer.yaml");
   // JSON is a YAML subset. The installer emits the final readable YAML and

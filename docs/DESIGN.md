@@ -2,7 +2,7 @@
 
 ## Structure
 
-`src/Dotask` builds `Dotask.Library.dll` with the `DoTask` namespace: ambient
+`src/Dotask` builds `Dotask.dotnet.dll` with the `DoTask` namespace: ambient
 context, typed values, safe argument passing, portable paths, filesystem helpers,
 and target-call transport.
 It has no third-party runtime dependencies or DI container.
@@ -30,7 +30,7 @@ runner and packaged application; `src/dotask-sdk` is its maintained Rust task
 helper crate. See the
 [preview commands](../README.md#rust-cli-development-preview).
 
-The installed application contains the native executable, `Dotask.Library.dll`,
+The installed application contains the native executable, `Dotask.dotnet.dll`,
 and the Rust helper source crate under `sdk/`. No language runtime, compiler,
 Roslyn assembly, managed CLI or separate support host is shipped. Both task
 languages use an ordinary-comment YAML header beginning `// dotask: 1` and

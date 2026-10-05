@@ -8,7 +8,7 @@ services and the other [deferred features](DESIGN.md#deferred) are not APIs.
 The [Rust CLI](../README.md#rust-cli-development-preview) runs C# and Rust tasks
 and YAML groups, including nested calls,
 project management, help, shell completion, and the interactive group wizard.
-Stage `Dotask.Library.dll` and the `sdk/` helper crate beside the native executable.
+Stage `Dotask.dotnet.dll` and the `sdk/` helper crate beside the native executable.
 C# execution uses the installed .NET SDK; Rust uses Rust 1.95+/Cargo. Metadata for
 both languages is an ordinary-comment YAML header and needs no toolchain.
 Native initialization

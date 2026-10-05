@@ -439,3 +439,16 @@ acceptance, installation, and publication.
   the chat's primary checkout; preserve matching baseline example sources and
   confirm all measured executable hashes remain unchanged. Rebased/integrated
   documentation gates and 26 relative links/anchors pass.
+
+### 2026-10-05 Rename the C# helper assembly to Dotask.dotnet
+
+- Emit `Dotask.dotnet.dll` and update native/reference task compilation,
+  bootstrap staging, installer packaging, bootstrap fixtures, and current
+  guidance. Preserve the `DoTask` namespace, task APIs, and package ID.
+- Verification: a clean external Release rebuild and `build.cmd` passed all
+  419 .NET tests, 31 Rust tests, and required formatting/clippy/docs/catalog/
+  shim/whitespace gates on Windows x64. `build.cmd pack` and relocated temporary
+  install/reuse/update/uninstall acceptance passed with the exact four-file
+  payload, the new DLL, and no old DLL. Output-path evaluation, Bash syntax,
+  mixed-language execution, Unicode, and `git diff --check` passed.
+  No active installation changed; nothing was published or pushed.

@@ -1,5 +1,26 @@
 # Verification
 
+## C# helper assembly filename (2026-10-05)
+
+`build.cmd` passed 419 .NET Release tests and 31 Rust tests on Windows x64,
+including native/reference C# compilation, bootstrap staging, and mixed-language
+calls using `Dotask.dotnet.dll`. Formatting/clippy/docs/catalog/shim/whitespace
+gates passed. A clean external Release rebuild refreshed dependency manifests
+that had retained the previous assembly filename after the rename; all 48
+focused initialization cases then passed before the full gate.
+
+`build.cmd pack` produced the exact four-file application payload with
+`Dotask.dotnet.dll` and no `Dotask.Library.dll`. Relocated temporary
+install/reuse/update/uninstall acceptance passed, including Unicode settings,
+Rust-to-C# execution, metadata without toolchains, and unowned-file preservation.
+The helper remains 58,368 bytes. Its `DoTask` namespace and task APIs are
+unchanged; the maintained package ID remains `Dotask.Library`.
+
+Evaluated .NET output paths remain external under `C:\tmp\_dotnet`, and the
+updated Bash launcher passed syntax checking. Historical measurements retain
+their original filenames. No active installation changed; nothing was
+published or pushed.
+
 ## Common task headers and minimal native distribution (2026-10-05)
 
 On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, `build.cmd` passed

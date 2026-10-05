@@ -23,7 +23,7 @@ try {
   else { $dotaskPublished = [IO.Path]::GetFullPath((Join-Path (Split-Path $dotaskHostProject) $dotaskPublish.Properties.PublishDir)) }
   New-Item -ItemType Directory -Path (Join-Path $Destination 'sdk/src') -Force | Out-Null
   Copy-Item -LiteralPath (Join-Path $dotaskCargo.target_directory 'release/dotask.exe') -Destination $Destination
-  Copy-Item -LiteralPath (Join-Path $dotaskPublished 'Dotask.Library.dll') -Destination $Destination
+  Copy-Item -LiteralPath (Join-Path $dotaskPublished 'Dotask.dotnet.dll') -Destination $Destination
   Copy-Item -LiteralPath 'src/dotask-sdk/Cargo.toml' -Destination (Join-Path $Destination 'sdk')
   Copy-Item -LiteralPath 'src/dotask-sdk/src/lib.rs' -Destination (Join-Path $Destination 'sdk/src')
 } catch {
