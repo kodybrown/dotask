@@ -351,3 +351,14 @@ acceptance, installation, and publication.
   Stable rustfmt warns about nightly-only options. Native Linux/macOS and remote
   catalog acceptance remain pending; the C# CLI remains the packaged application.
   No active installation changed, and nothing was published or pushed.
+
+### 2026-10-05 Document how to continue the Rust transition
+
+- Add an indexed continuation runbook with Linux prerequisites and acceptance
+  commands, isolated native/shared-task checks, macOS CI and manual acceptance
+  boundaries, and the ordered packaging, Rust SDK, variant, and task-duplication
+  work. Keep future interfaces distinct from current CLI behavior.
+- Verification: `build.cmd verify-docs`, 35 relative links/anchors, syntax-only
+  checks of all 10 Bash blocks, and `git diff --check` passed. Linux/macOS commands
+  are documented for later execution; this documentation change does not add
+  platform acceptance evidence.
