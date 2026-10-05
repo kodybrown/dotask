@@ -435,3 +435,7 @@ acceptance, installation, and publication.
   common-header/minimal-helper packaging in `7b28895`. Accepted local integration
   preserves the report and external artifacts; no install, publish, push, or
   changes to the other task's implementation.
+- Document the non-force Git cleanup fallback after the app archive tool rejects
+  the chat's primary checkout; preserve matching baseline example sources and
+  confirm all measured executable hashes remain unchanged. Rebased/integrated
+  documentation gates and 26 relative links/anchors pass.

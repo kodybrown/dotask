@@ -240,7 +240,7 @@ These historical PowerShell commands were run against `1df4d14` in the original
 experiment checkout. They are not reproduction commands for current `develop`:
 the newer source has different metadata and no `Dotask.CSharpHost` project.
 The recorded worktree paths below refer to the disposable checkout before its
-accepted archival. To reproduce the experiment in another checkout, select the
+accepted removal. To reproduce the experiment in another checkout, select the
 exact original baseline, substitute that checkout's path, and obtain each
 project's `PublishDir` with `dotnet msbuild ... -getProperty:PublishDir`.
 Publish commands use the evaluated user-policy directory; no `-o`, `PublishDir`,
@@ -318,7 +318,7 @@ git diff --check
 The report is preserved at
 `C:\Users\kodyb\Projects\dotask\docs\scratch\2026-10-05-windows-cli-size-experiment.md`.
 The external experiment root and measured binaries remain at
-`C:\tmp\_dotnet\dotask-aot-size-5945`; archival of the disposable worktree does
+`C:\tmp\_dotnet\dotask-aot-size-5945`; removal of the disposable worktree does
 not remove them. A Git archive of `1df4d14`'s `examples/basic` is preserved as
 `baseline-example.zip`, with extracted files under
 `baseline-example/examples/basic`, so the old binaries can still be exercised
@@ -335,5 +335,10 @@ $baselineTasks = "$experimentRoot\baseline-example\examples\basic\.tasks"
 & "$experimentRoot\aot\dotask.exe" --use-dir $baselineTasks
 ```
 
-Local integration and archival/branch cleanup were explicitly accepted. No
-installation, publication, or push is part of that acceptance.
+Local integration and worktree/branch cleanup were explicitly accepted. The app
+archive tool refused because it classified this chat's checkout as primary.
+Cleanup therefore uses non-force Git removal of the accepted disposable
+worktree, after integrated ancestry and clean status are proven, rather than an
+app archive. The report and measurements are committed on `develop`, and the
+external experiment files are preserved separately. No installation, publication,
+or push is part of that acceptance.
