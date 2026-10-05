@@ -1,15 +1,15 @@
-DoTask Notes.mdx
 
 **/.vs/
+**/*.nupkg
+**/*.snupkg
+**/*.suo
+**/*.user
 **/artifacts/
 **/bin/
+**/notes.mdx
 **/obj/
 **/target/
 **/TestResults/
-**/*.user
-**/*.suo
-*.nupkg
-*.snupkg
 
 # Intentional delivery assets, even when a user's global ignore excludes EXEs.
 !src/Dotask.Shim/assets/win-x64.exe
