@@ -63,7 +63,11 @@ pub fn prepare(
   };
   for (index, command) in package.commands.iter().enumerate() {
     let target = build.join(&command.executable);
-    for (location, directory) in [root.to_path_buf(), config::path(values, "bin-dir")?].into_iter().enumerate() {
+    let mut directories = vec![root.to_path_buf()];
+    if config::enabled(values, "additional-command") {
+      directories.push(config::path(values, "bin-dir")?);
+    }
+    for (location, directory) in directories.into_iter().enumerate() {
       let source = stage.join(format!("command-{index}-{location}"));
       #[cfg(windows)]
       {

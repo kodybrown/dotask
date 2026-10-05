@@ -287,13 +287,23 @@ The implemented interface and native acceptance limits are documented in
 
 ### Inputs and desktop integration
 
-Install and uninstall are unattended unless `--interactive` is specified. Missing
-required information, invalid values, or unresolved conflicts stop with an
-actionable error and nonzero exit status; redirected input never causes a prompt.
+Install and uninstall are console-interactive by default. Installer YAML may
+disable prompts; explicit `--interactive` / `--non-interactive` override it.
+Redirected interactive execution fails with unattended-mode guidance. Package
+creation and validation never prompt. Missing required information, invalid
+values, or unresolved conflicts stop with an actionable error and nonzero status.
 Named typed inputs own prompts and choices. Value precedence is CLI overrides,
 explicit YAML values, environment-profile defaults, OS defaults, then common
 defaults. Interactive answers may replace defaults. Environment profiles include
 Linux desktop/distribution differences such as Omarchy.
+
+Always create stable commands in the chosen app root. Additional commands are
+optional, default No, and suggest that root's parent instead of consulting `BIN`.
+Windows can append the selected command directory to user PATH, preserving
+existing entries; an existing persistent PATH entry skips that question.
+Confirmation follows a location summary. Ctrl+C prints `Canceled` and exits 130;
+activation journals preserve the existing recovery contract. YAML owns prompt
+labels and defaults, while CLI values override individual questions.
 
 Shortcuts are available to console and GUI applications. YAML declares which
 options are allowed and their defaults; CLI overrides and interactive choices

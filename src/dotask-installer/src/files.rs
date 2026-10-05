@@ -117,14 +117,17 @@ pub fn safe_path(path: &Path) -> Result<()> {
   Ok(())
 }
 pub fn overlaps(left: &Path, right: &Path) -> bool {
+  contains(left, right) || contains(right, left)
+}
+pub fn contains(directory: &Path, path: &Path) -> bool {
   if cfg!(windows) {
-    let a = left.to_string_lossy().replace('\\', "/").to_lowercase();
-    let b = right.to_string_lossy().replace('\\', "/").to_lowercase();
+    let a = directory.to_string_lossy().replace('\\', "/").to_lowercase();
+    let b = path.to_string_lossy().replace('\\', "/").to_lowercase();
     let a = a.trim_end_matches('/');
     let b = b.trim_end_matches('/');
-    a == b || a.starts_with(&format!("{b}/")) || b.starts_with(&format!("{a}/"))
+    a == b || b.starts_with(&format!("{a}/"))
   } else {
-    left.starts_with(right) || right.starts_with(left)
+    path.starts_with(directory)
   }
 }
 pub fn absolute(path: &Path, base: &Path) -> Result<PathBuf> {

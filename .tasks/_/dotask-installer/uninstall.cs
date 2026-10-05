@@ -2,7 +2,7 @@
 // description: "Run the retained installer to uninstall an application without rebuilding it."
 // options:
 //   - {"name": "install-dir", "type": "path", "required": true, "completion": "directory", "description": "Application installation root."}
-//   - {"name": "interactive", "type": "bool", "default": "false", "description": "Enable confirmation and settings prompts."}
+//   - {"name": "non-interactive", "type": "bool", "default": "false", "description": "Disable prompts for unattended uninstall; otherwise use installer.yaml."}
 //   - {"name": "remove-settings", "type": "bool", "default": "false", "description": "Remove declared application settings; otherwise preserve them."}
 // examples: ["dotask uninstall --install-dir C:/Temp/example"]
 // end-dotask
@@ -17,8 +17,8 @@ public static class Target
     var root = project.Parameters.GetPath("install-dir");
     var executable = Path.Combine(root, "installer", project.IsWindows ? "installer.exe" : "installer");
     List<string> arguments = ["uninstall", "--install-dir", root];
-    if (project.Parameters.Get<bool>("interactive"))
-      arguments.Add("--interactive");
+    if (project.Parameters.Get<bool>("non-interactive"))
+      arguments.Add("--non-interactive");
     if (project.Parameters.Get<bool>("remove-settings"))
       arguments.Add("--remove-settings");
     await project.RunInstallerAsync(new InstallerArtifact {

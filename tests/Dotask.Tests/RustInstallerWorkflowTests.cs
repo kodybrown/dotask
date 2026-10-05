@@ -75,9 +75,10 @@ public sealed class RustInstallerWorkflowTests
       platform = OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux",
       architecture = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "x64",
       payload,
+      interactive = false,
       commands = new[] { new { name = "gui-probe", executable = OperatingSystem.IsWindows() ? "gui-probe.exe" : "gui-probe" } },
       shortcuts = new[] { new { name = "GUI Probe", executable = OperatingSystem.IsWindows() ? "gui-probe.exe" : "gui-probe", arguments = new[] { marker }, desktop = true, local = true, terminal = OperatingSystem.IsMacOS() } },
-      values = new Dictionary<string, object> { ["install-dir"] = installed, ["bin-dir"] = bin, ["desktop-dir"] = desktop, ["desktop-shortcuts"] = true, ["local-shortcuts"] = true }
+      values = new Dictionary<string, object> { ["install-dir"] = installed, ["bin-dir"] = bin, ["additional-command"] = true, ["add-to-path"] = false, ["desktop-dir"] = desktop, ["desktop-shortcuts"] = true, ["local-shortcuts"] = true }
     }));
     project.Write(".dotasks.yaml", JsonSerializer.Serialize(new {
       version = 1,

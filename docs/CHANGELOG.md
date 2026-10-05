@@ -452,3 +452,27 @@ acceptance, installation, and publication.
   payload, the new DLL, and no old DLL. Output-path evaluation, Bash syntax,
   mixed-language execution, Unicode, and `git diff --check` passed.
   No active installation changed; nothing was published or pushed.
+
+### 2026-10-05 Add console installer defaults and Windows PATH prompts
+
+- Default the console installer to interactive execution, configurable through
+  `installer.yaml` and explicit `--interactive` / `--non-interactive` overrides.
+  Use ordered path questions, Y/N defaults, a location summary and confirmation,
+  and print `Canceled` on Ctrl+C, EOF, or declined confirmation.
+- Always create a command in the chosen application root. Make the additional
+  shim optional, default No, and suggest the selected root's parent. Permit
+  parent-directory shims while protecting managed builds and unowned files.
+  Configure labels/defaults through YAML; ignore the user's `BIN` convention.
+- Offer Windows user PATH addition for the selected command directory, skipping
+  that question when already on persistent PATH. Preserve existing entries and
+  registry string types, notify Windows, and retain PATH entries on uninstall.
+  Update unattended installer/shared-uninstall guidance and regenerate its
+  canonical catalog without rewriting project ownership baselines.
+- Verification: `build.cmd` passed 419 .NET and 39 Rust tests plus all required
+  formatting/clippy/docs/catalog/shim/whitespace checks. Real console prompts,
+  Ctrl+C, final cancellation, root-only and parent-shim layouts passed; native
+  PATH writes were tested in a disposable registry key. `build.cmd pack` and
+  relocated temporary install/reuse/update/uninstall acceptance passed, including
+  mixed-language tasks, Unicode, and unowned-file preservation. Evaluated output
+  paths remain external. No active installation or user PATH changed; nothing
+  was published or pushed.

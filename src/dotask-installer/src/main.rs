@@ -1,13 +1,28 @@
 mod config;
+mod console;
 mod engine;
 mod files;
 mod launchers;
 mod model;
+mod user_path;
 
 use anyhow::{ensure, Context, Result};
 use std::path::PathBuf;
 fn main() {
+  // Keep Ctrl+C's existing immediate exit behavior. Activation journals make
+  // interruption recoverable; printing here also works while stdin is blocked.
+  if let Err(error) = ctrlc::set_handler(|| {
+    eprintln!("\nCanceled");
+    std::process::exit(130);
+  }) {
+    eprintln!("Installer error: {error}");
+    std::process::exit(1);
+  }
   if let Err(error) = run() {
+    if error.is::<console::Canceled>() {
+      eprintln!("Canceled");
+      std::process::exit(130);
+    }
     eprintln!("Installer error: {error:#}");
     std::process::exit(1);
   }
@@ -16,7 +31,7 @@ fn run() -> Result<()> {
   let options = config::Options::parse(std::env::args().skip(1))?;
   if options.help {
     println!(
-            "dotask-installer [install|uninstall] [--config FILE] [--interactive]\n  --install-dir ABSOLUTE_PATH   Installation root\n  --bin-dir ABSOLUTE_PATH       Command directory\n  --set NAME=VALUE              Override a YAML input\n  --profile NAME               Select environment defaults\n  --prune-old-versions          Keep new and previously active builds\n  --desktop-shortcuts --start-menu-shortcuts --local-shortcuts\n  --leave-settings | --remove-settings  Uninstall settings policy\n  --validate                   Validate package without installing\n  package --config FILE --output NEW_DIRECTORY\nUnattended by default. Rollback and version switching are not supported."
+            "dotask-installer [install|uninstall] [--config FILE]\n  --interactive | --non-interactive  Override installer.yaml prompt mode\n  --install-dir ABSOLUTE_PATH   Installation root\n  --bin-dir ABSOLUTE_PATH       Enable an additional command in this directory\n  --additional-command         Enable the additional command (default: false)\n  --add-to-path                Add the selected command directory to user PATH (Windows)\n  --set NAME=VALUE              Override a YAML input\n  --profile NAME               Select environment defaults\n  --prune-old-versions          Keep new and previously active builds\n  --desktop-shortcuts --start-menu-shortcuts --local-shortcuts\n  --leave-settings | --remove-settings  Uninstall settings policy\n  --validate                   Validate package without installing or prompting\n  package --config FILE --output NEW_DIRECTORY\nInteractive by default; use --non-interactive for automation. Rollback and version switching are not supported."
         );
     return Ok(());
   }

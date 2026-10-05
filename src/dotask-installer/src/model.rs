@@ -9,6 +9,8 @@ pub struct Package {
   pub platform: String,
   pub architecture: String,
   pub payload: String,
+  #[serde(default = "interactive_default")]
+  pub interactive: bool,
   #[serde(default)]
   pub inputs: BTreeMap<String, Input>,
   #[serde(default)]
@@ -22,6 +24,10 @@ pub struct Package {
   pub shortcuts: Vec<Shortcut>,
   #[serde(default)]
   pub settings: Vec<String>,
+}
+
+fn interactive_default() -> bool {
+  true
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

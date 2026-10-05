@@ -195,6 +195,7 @@ name = "dotask-installer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ctrlc",
  "serde",
  "serde-saphyr",
  "serde_json",

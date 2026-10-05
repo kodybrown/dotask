@@ -120,7 +120,7 @@ public sealed class InstallationIntegrationTests
       var engine = RustArtifacts.Binary("dotask-installer");
       return await ProcessRunner.RunAsync(new ProcessDefinition {
         Executable = engine,
-        Arguments = ["--config", config, "--install-dir", Path.Combine(root, "installed-probe"), "--bin-dir", bin],
+        Arguments = ["--non-interactive", "--set", "add-to-path=false", "--config", config, "--install-dir", Path.Combine(root, "installed-probe"), "--bin-dir", bin],
         CaptureOutput = true,
         ThrowOnError = false
       }, CancellationToken.None);

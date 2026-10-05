@@ -1,12 +1,13 @@
 use crate::{
-  files,
+  console, files,
   model::{Input, Package},
+  user_path,
 };
 use anyhow::{bail, ensure, Context, Result};
 use serde_json::Value;
 use std::{
   collections::BTreeMap,
-  io::{IsTerminal, Write},
+  io::{BufRead, IsTerminal, Write},
   path::{Path, PathBuf},
 };
 
@@ -15,7 +16,7 @@ pub struct Options {
   pub package: bool,
   pub output: Option<PathBuf>,
   pub uninstall: bool,
-  pub interactive: bool,
+  pub interactive: Option<bool>,
   pub validate: bool,
   pub config: Option<PathBuf>,
   pub profile: Option<String>,
@@ -35,7 +36,10 @@ impl Options {
         "install" => (),
         "uninstall" => result.uninstall = true,
         "--help" | "-h" => result.help = true,
-        "--interactive" => result.interactive = true,
+        "--interactive" | "--non-interactive" => {
+          ensure!(result.interactive.is_none(), "Specify only one interaction flag");
+          result.interactive = Some(arg == "--interactive");
+        }
         "--validate" => result.validate = true,
         "--config" => result.config = Some(args.next().context("--config requires a path")?.into()),
         "--profile" => result.profile = Some(args.next().context("--profile requires a name")?),
@@ -59,17 +63,26 @@ impl Options {
             "Duplicate input: {arg}"
           );
         }
-        "--prune-old-versions" | "--desktop-shortcuts" | "--start-menu-shortcuts" | "--local-shortcuts" => {
+        "--prune-old-versions"
+        | "--desktop-shortcuts"
+        | "--start-menu-shortcuts"
+        | "--local-shortcuts"
+        | "--additional-command"
+        | "--add-to-path" => {
           result.values.insert(arg[2..].into(), true.into());
         }
         _ => bail!("Unknown argument: {arg}. Use --help."),
       }
     }
-    ensure!(
-      !result.interactive || (std::io::stdin().is_terminal() && std::io::stdout().is_terminal()),
-      "--interactive requires a terminal"
-    );
     Ok(result)
+  }
+  pub fn prompts(&self, package: &Package) -> Result<bool> {
+    let interactive = !self.package && !self.validate && self.interactive.unwrap_or(package.interactive);
+    ensure!(
+      !interactive || (std::io::stdin().is_terminal() && std::io::stdout().is_terminal()),
+      "Interactive installation requires a terminal. Use --non-interactive for unattended execution."
+    );
+    Ok(interactive)
   }
 }
 pub fn platform() -> &'static str {
@@ -173,13 +186,16 @@ pub fn validate(package: &Package) -> Result<()> {
   }
   Ok(())
 }
-fn standard_inputs() -> BTreeMap<String, Input> {
+pub fn standard_inputs() -> BTreeMap<String, Input> {
   let mut result = BTreeMap::new();
   for name in [
     "prune-old-versions",
     "desktop-shortcuts",
     "start-menu-shortcuts",
     "local-shortcuts",
+    "additional-command",
+    "add-to-path",
+    "confirm-install",
   ] {
     result.insert(
       name.into(),
@@ -187,7 +203,7 @@ fn standard_inputs() -> BTreeMap<String, Input> {
         kind: "boolean".into(),
         required: true,
         prompt: Some(name.replace('-', " ")),
-        default: Some(false.into()),
+        default: Some((name == "confirm-install" || (name == "add-to-path" && cfg!(windows))).into()),
         choices: vec![],
       },
     );
@@ -204,9 +220,36 @@ fn standard_inputs() -> BTreeMap<String, Input> {
       },
     );
   }
+  for (name, prompt) in [
+    ("install-dir", "Install application in"),
+    ("additional-command", "Place an additional command in another directory?"),
+    ("bin-dir", "Additional command directory"),
+    ("add-to-path", "Add this directory to your user PATH?"),
+    ("confirm-install", "Install with these settings?"),
+  ] {
+    result.get_mut(name).unwrap().prompt = Some(prompt.into());
+  }
+  result.get_mut("prune-old-versions").unwrap().prompt = None;
   result
 }
 pub fn resolve(package: &Package, options: &Options) -> Result<BTreeMap<String, Value>> {
+  resolve_with_io(
+    package,
+    options,
+    options.prompts(package)?,
+    &mut std::io::stdin().lock(),
+    &mut std::io::stdout(),
+    user_path::contains,
+  )
+}
+fn resolve_with_io(
+  package: &Package,
+  options: &Options,
+  interactive: bool,
+  reader: &mut impl BufRead,
+  writer: &mut impl Write,
+  on_path: impl Fn(&Path) -> Result<bool>,
+) -> Result<BTreeMap<String, Value>> {
   let mut inputs = standard_inputs();
   inputs.extend(package.inputs.clone());
   for key in package
@@ -226,16 +269,8 @@ pub fn resolve(package: &Package, options: &Options) -> Result<BTreeMap<String, 
   } else {
     format!("{home_path}/.local/lib/{}", package.application.id)
   };
-  let bin = std::env::var("BIN").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| {
-    if cfg!(windows) {
-      format!("{local}/bin")
-    } else {
-      format!("{home_path}/.local/bin")
-    }
-  });
   let mut values = BTreeMap::from([
     ("install-dir".into(), root.into()),
-    ("bin-dir".into(), bin.into()),
     ("desktop-dir".into(), format!("{home_path}/Desktop").into()),
   ]);
   if cfg!(windows) {
@@ -281,30 +316,73 @@ pub fn resolve(package: &Package, options: &Options) -> Result<BTreeMap<String, 
   }
   values.extend(package.values.clone());
   values.extend(options.values.clone());
-  for (key, input) in &inputs {
+  if options.values.contains_key("bin-dir") && !options.values.contains_key("additional-command") {
+    values.insert("additional-command".into(), true.into());
+  }
+  let leading = [
+    "install-dir",
+    "additional-command",
+    "bin-dir",
+    "add-to-path",
+    "desktop-shortcuts",
+    "start-menu-shortcuts",
+    "local-shortcuts",
+  ];
+  let mut order = leading.to_vec();
+  order.extend(inputs.keys().map(String::as_str).filter(|key| !leading.contains(key)));
+  for key in order {
+    let input = &inputs[key];
     ensure!(
       ["string", "path", "boolean", "choice"].contains(&input.kind.as_str()),
       "Invalid input type: {key}"
     );
-    let allowed = match key.as_str() {
+    let allowed = match key {
       "desktop-shortcuts" => package.shortcuts.iter().any(|s| s.desktop),
       "start-menu-shortcuts" => package.shortcuts.iter().any(|s| s.start_menu),
       "local-shortcuts" => package.shortcuts.iter().any(|s| s.local),
+      "desktop-dir" => enabled(&values, "desktop-shortcuts"),
+      "start-menu-dir" => enabled(&values, "start-menu-shortcuts"),
+      "bin-dir" => enabled(&values, "additional-command"),
+      "add-to-path" => cfg!(windows),
+      "confirm-install" => false,
       _ => true,
     };
-    if options.interactive
-      && !options.values.contains_key(key)
-      && allowed
-      && let Some(prompt) = &input.prompt
-    {
-      let default = values.get(key).map(text).transpose()?.unwrap_or_default();
-      print!("{prompt} [{}]: ", default);
-      std::io::stdout().flush()?;
-      let mut answer = String::new();
-      ensure!(std::io::stdin().read_line(&mut answer)? > 0, "Input cancelled");
-      if !answer.trim().is_empty() {
-        values.insert(key.clone(), answer.trim().into());
+    if key == "bin-dir" && !values.contains_key(key) {
+      // Compute this after the install-dir answer. BIN is deliberately ignored:
+      // the suggested command directory is the selected installation's parent.
+      let root = path(&values, "install-dir")?;
+      values.insert(
+        key.into(),
+        root
+          .parent()
+          .context("Installation needs a parent directory")?
+          .to_string_lossy()
+          .into_owned()
+          .into(),
+      );
+    }
+    let already_on_path = key == "add-to-path" && cfg!(windows) && on_path(&command_directory(&values)?)?;
+    if already_on_path {
+      if interactive {
+        writeln!(writer, "{} is already on PATH.", command_directory(&values)?.display())?;
       }
+      // No prompt and no registry write when the selected directory is present.
+      values.insert(key.into(), false.into());
+    }
+    if interactive
+      && !options.values.contains_key(key)
+      && !(key == "additional-command" && options.values.contains_key("bin-dir"))
+      && allowed
+      && !already_on_path
+    {
+      let default = values
+        .get(key)
+        .map(text)
+        .transpose()?
+        .map(|v| expand(&v, &values))
+        .transpose()?
+        .unwrap_or_default();
+      values.insert(key.into(), console::ask(input, &default, reader, writer)?.into());
     }
     if let Some(value) = values.get(key) {
       let raw = expand(&text(value)?, &values)?;
@@ -323,10 +401,18 @@ pub fn resolve(package: &Package, options: &Options) -> Result<BTreeMap<String, 
         "Invalid choice for {key}: {raw}"
       );
       ensure!(
-        allowed || converted != Value::Bool(true),
+        ![
+          "desktop-shortcuts",
+          "start-menu-shortcuts",
+          "local-shortcuts",
+          "add-to-path"
+        ]
+        .contains(&key)
+          || allowed
+          || converted != Value::Bool(true),
         "{key} is not allowed by installer.yaml"
       );
-      values.insert(key.clone(), converted);
+      values.insert(key.into(), converted);
     } else {
       ensure!(!input.required, "Missing required input: {key}. Use --set {key}=VALUE");
     }
@@ -341,4 +427,91 @@ pub fn path(values: &BTreeMap<String, Value>, name: &str) -> Result<PathBuf> {
 }
 pub fn enabled(values: &BTreeMap<String, Value>, key: &str) -> bool {
   values.get(key) == Some(&Value::Bool(true))
+}
+pub fn command_directory(values: &BTreeMap<String, Value>) -> Result<PathBuf> {
+  path(
+    values,
+    if enabled(values, "additional-command") {
+      "bin-dir"
+    } else {
+      "install-dir"
+    },
+  )
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use serde_json::json;
+  fn package() -> Package {
+    serde_json::from_value(json!({"schema":1,"application":{"id":"test","name":"Test","version":"1"},
+      "platform":platform(),"architecture":architecture(),"payload":"payload","commands":[{"name":"test","executable":"test.exe"}]})).unwrap()
+  }
+  #[test]
+  fn interaction_flags_override_yaml_and_reject_conflicts() {
+    assert!(package().interactive);
+    assert_eq!(Options::parse(["--non-interactive".into()]).unwrap().interactive, Some(false));
+    assert_eq!(Options::parse(["--interactive".into()]).unwrap().interactive, Some(true));
+    assert!(Options::parse(["--interactive".into(), "--non-interactive".into()]).is_err());
+    let mut package = package();
+    package.interactive = false;
+    assert!(!Options::default().prompts(&package).unwrap());
+    package.interactive = true;
+    assert!(!Options {
+      validate: true,
+      ..Options::default()
+    }
+    .prompts(&package)
+    .unwrap());
+  }
+  #[test]
+  fn optional_command_defaults_to_no_and_parent_follows_install_answer() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("custom app 日本語");
+    let answers = format!("{}\n\n{}", root.display(), if cfg!(windows) { "n\n" } else { "" });
+    let mut output = Vec::new();
+    let values = resolve_with_io(
+      &package(),
+      &Options::default(),
+      true,
+      &mut answers.as_bytes(),
+      &mut output,
+      |_| Ok(false),
+    )
+    .unwrap();
+    assert!(!enabled(&values, "additional-command"));
+    assert_eq!(
+      path(&values, "bin-dir").unwrap(),
+      files::absolute(temp.path(), temp.path()).unwrap()
+    );
+    let output = String::from_utf8(output).unwrap();
+    assert!(output.contains("[y/N]"));
+    assert!(!output.contains("Additional command directory ["));
+  }
+  #[cfg(windows)]
+  #[test]
+  fn selected_parent_already_on_path_skips_path_question() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().join("custom app");
+    let parent = files::absolute(temp.path(), temp.path()).unwrap();
+    let answers = format!("{}\ny\n\n", root.display());
+    let mut output = Vec::new();
+    let values = resolve_with_io(
+      &package(),
+      &Options::default(),
+      true,
+      &mut answers.as_bytes(),
+      &mut output,
+      |directory| {
+        assert_eq!(directory, parent);
+        Ok(true)
+      },
+    )
+    .unwrap();
+    assert!(enabled(&values, "additional-command"));
+    assert!(!enabled(&values, "add-to-path"));
+    let output = String::from_utf8(output).unwrap();
+    assert!(output.contains("is already on PATH"));
+    assert!(!output.contains("Add this directory"));
+  }
 }

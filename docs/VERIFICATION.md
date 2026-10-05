@@ -1,5 +1,39 @@
 # Verification
 
+## Console installer prompts and Windows user PATH (2026-10-05)
+
+`build.cmd` passed 419 .NET Release tests and 39 Rust tests on Windows x64:
+6 installer unit cases, 19 installer workflow cases, 4 CLI unit cases, and
+10 CLI integration cases. Formatting/clippy/docs/catalog/shim/whitespace gates
+passed. The initial gate encountered a Windows executable lock from a concurrent
+console acceptance invocation; console checks were moved to an independent copy
+and the complete gate then passed. Evaluated .NET output paths and Cargo's target
+directory remain external under `C:\tmp\_dotnet` and `C:\tmp\_rust`.
+
+Real console acceptance exercised the default install path, additional command
+default No, root-only install/uninstall, opting into an additional parent-directory
+shim, and declining PATH changes. Both command layouts launched and uninstalled
+successfully. Ctrl+C printed `Canceled` while waiting for input. A directory on
+the existing persistent system PATH printed the existing-entry message and
+skipped its question; declining final confirmation printed `Canceled`, returned
+130, and created no installation. Unit cases cover EOF, Y/N retry/defaults,
+YAML/CLI interaction precedence, dynamic parent paths, and skipped PATH prompts.
+Native registry append tests use a disposable `HKCU\Software` test key, never the
+user's environment, and verify preservation of entries and REG_SZ/REG_EXPAND_SZ
+types, expansion/case/quoted paths, and duplicate prevention.
+
+`build.cmd pack` produced
+`artifacts/installers/windows-x64/dotask-tjEuox/package/installer.exe`.
+Relocated temporary install/reuse/update/uninstall acceptance passed with the
+exact four-file native payload, Unicode arguments/settings, metadata with an
+empty toolchain PATH, Rust-to-C# calls, retained builds, and unowned-file
+preservation. Automation supplied `--non-interactive --set add-to-path=false`.
+Evidence is in `C:\tmp\dotask-installer-prompt-gate.log`,
+`C:\tmp\dotask-installer-prompt-package.log`, and
+`C:\tmp\dotask-installer-prompt-acceptance.log`. No active installation or actual
+user/system PATH changed; nothing was published or pushed. Linux/macOS acceptance
+remains deferred.
+
 ## C# helper assembly filename (2026-10-05)
 
 `build.cmd` passed 419 .NET Release tests and 31 Rust tests on Windows x64,

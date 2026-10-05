@@ -67,6 +67,7 @@ application:
 platform: windows
 architecture: x64
 payload: ./published
+interactive: true
 commands:
   - name: example
     executable: example.exe
@@ -87,9 +88,12 @@ inputs:
     prompt: Choose a channel
 defaults:
   common:
+    additional-command: false
+    confirm-install: true
     desktop-shortcuts: false
     local-shortcuts: true
   windows:
+    add-to-path: true
     start-menu-shortcuts: true
 profiles:
   omarchy:
@@ -125,26 +129,47 @@ Unresolved references fail. Built-in path inputs must resolve to absolute paths.
 
 ## Unattended and interactive execution
 
-The installer never prompts unless `--interactive` is specified, which requires a
-terminal. Missing required values, invalid configuration, and ownership conflicts
-stop with a diagnostic and nonzero exit code. Interactive answers replace defaults;
-CLI-supplied inputs skip their prompts. Automation does not require a second
-confirmation flag after explicitly requesting install or uninstall.
+The installer is console-only. Install and uninstall default to prompting;
+`interactive: false` in `installer.yaml` selects unattended execution.
+`--interactive` and `--non-interactive` override that setting and are mutually
+exclusive. Interactive execution requires a terminal; redirected execution fails
+with guidance to use `--non-interactive`, rather than silently installing.
+Package creation, help, and `--validate` never prompt. Missing required values,
+invalid configuration, and ownership conflicts stop with a diagnostic and nonzero
+exit code. Interactive answers replace defaults; CLI-supplied inputs skip their
+individual prompts. Automation does not require a second confirmation flag.
+
+The install prompts ask for the complete application directory, an optional
+additional command (default No), its directory when enabled, and on Windows
+whether to add the selected command directory to the user PATH (default Yes).
+The additional directory is derived from the chosen install directory's parent,
+including interactive changes, unless YAML or `--bin-dir` supplies another path.
+If no additional command is selected, the application directory is the PATH
+candidate. A directory already on persistent user/system PATH produces an
+informational message and skips the PATH question and write. A final location
+summary precedes the install confirmation. Boolean answers accept Y/N, yes/no,
+and true/false; Enter accepts the shown default. Ctrl+C, end of input, or declining
+confirmation prints `Canceled` and exits 130. Cancellation before confirmation
+creates no installation. Interrupted activation retains its recovery journal.
 
 ```sh
-./installer --install-dir /tmp/example/apps/example --bin-dir /tmp/example/bin
+./installer --non-interactive --install-dir /tmp/example/apps/example --bin-dir /tmp/example/bin
 ./installer --interactive
-./installer --set desktop-shortcuts=false --prune-old-versions
+./installer --non-interactive --set desktop-shortcuts=false --prune-old-versions
 ./installer --validate
 ./installer uninstall --install-dir /tmp/example/apps/example
 ```
 
 Built-in inputs are `install-dir`, `bin-dir`, `desktop-dir`, `start-menu-dir`,
 `desktop-shortcuts`, `start-menu-shortcuts`, `local-shortcuts`, and
-`prune-old-versions`. Boolean flags enable the corresponding option; use
+`prune-old-versions`, plus `additional-command`, `add-to-path`, and
+`confirm-install`. These defaults and their prompt labels can be overridden using
+`defaults`, `values`, and `inputs` in installer YAML. `confirm-install` controls
+the final confirmation's default, not unattended execution. Boolean flags enable
+the corresponding option; use
 `--set NAME=false` to disable it. Shortcut and pruning defaults are false unless
 YAML changes them. `--validate` checks package/configuration without installing.
-Failures return 1; success returns 0. Detailed errors identify failed operations;
+Failures return 1, cancellation returns 130, and success returns 0. Detailed errors identify failed operations;
 output can be captured by the invoking automation. There is no separate log-file
 or dry-run installation-plan interface yet.
 
@@ -153,15 +178,29 @@ artifact's default argument tokens; `[]` clears them. It does not forward build
 options implicitly. Configure creator defaults on the creator's full target name.
 
 ```sh
-dotask install --installer-args '["--interactive"]'
+dotask install --installer-args '["--non-interactive", "--set", "add-to-path=false"]'
 ```
 
 ## Locations, launchers, and version retention
 
 Default application roots are `%LOCALAPPDATA%/Programs/<id>` on Windows and
 `~/.local/lib/<id>` on Linux/macOS. `--install-dir` selects the complete application
-root, not its parent. Command directories default to `%LOCALAPPDATA%/bin` or
-`~/.local/bin`; a nonempty `BIN` overrides that default. PATH is not modified.
+root, not its parent. A stable command is always created inside that root. An
+additional command is optional (`additional-command: false` by default); its
+suggested directory is the application root's parent. `BIN` is not consulted.
+`--bin-dir` enables the additional command unless `--set additional-command=false`
+explicitly disables it. Its location must be outside the application root;
+an ancestor such as `%LOCALAPPDATA%/Programs` is permitted. Updates must retain
+the recorded additional-command choice and its directory.
+
+On Windows, `add-to-path` defaults to true and applies to the additional command
+directory when enabled, or the application directory otherwise. The installer
+appends only a missing directory to persistent **user** PATH, preserves existing
+entries and the registry string type, and notifies Windows of the change. Existing
+terminals keep their environment; reopen them to use the new command. Uninstall
+removes only owned shims/sidecars and retains PATH entries, including shared parent
+directories that may contain other applications' commands. Automatic PATH changes
+are unavailable on Linux/macOS; add the selected directory to your shell's PATH.
 Explicit directory aliases are resolved before operating; managed child links
 and junctions are rejected.
 
@@ -229,7 +268,8 @@ On Windows, invoke `installer.exe`. Uninstall uses installed build snapshots and
 ownership receipts; the original payload/package is unnecessary. Settings are
 preserved by default. `--leave-settings` makes that explicit; `--remove-settings`
 removes declared application-owned settings paths. They are mutually exclusive.
-The shared task exposes `--remove-settings` and `--interactive`.
+The shared task exposes `--remove-settings` and `--non-interactive`; otherwise
+the retained installer's YAML controls prompt mode.
 Application documents and unrelated files must never be declared as settings.
 Settings remain in their ordinary locations, not linked into version directories.
 
@@ -272,7 +312,7 @@ or completion. No language runtime, SDK, Roslyn or support host is bundled.
 .\build.cmd
 .\build.cmd create-installer
 # Use fresh, isolated locations for acceptance:
-.\build.cmd install --installer-args '["--install-dir","C:/Temp/dotask-acceptance/apps/dotask","--bin-dir","C:/Temp/dotask-acceptance/bin"]'
+.\build.cmd install --installer-args '["--non-interactive","--set","add-to-path=false","--install-dir","C:/Temp/dotask-acceptance/apps/dotask","--bin-dir","C:/Temp/dotask-acceptance/bin"]'
 ```
 
 Unix uses `./build.sh` and absolute temporary paths. All packages use the user's

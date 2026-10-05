@@ -160,6 +160,11 @@ application itself. `create-installer` must build only, then call
 for custom orchestration; do not scrape stdout or guess artifact paths.
 `installer-args` is a JSON string array replacing default installer arguments.
 An exact project `install` can delegate to `_/dotask-installer/install` explicitly.
+The console installer prompts by default. For unattended execution, pass
+`--installer-args '["--non-interactive"]'` to install, or `--non-interactive` to
+uninstall. Installer YAML owns defaults, prompt mode, and labels; Windows PATH
+changes are configurable with `add-to-path`. Verification must use temporary
+install/command roots and `--set add-to-path=false` to preserve the user's PATH.
 
 Dotask's standalone Rust installer uses YAML receipts and the `installer/` plus
 `app/<build>/` layout. Older formats are unsupported; use fresh destinations or

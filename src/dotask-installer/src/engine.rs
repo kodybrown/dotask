@@ -1,7 +1,8 @@
 use crate::{
   config::{self, Options},
-  files, launchers,
+  console, files, launchers,
   model::*,
+  user_path,
 };
 use anyhow::{ensure, Context, Result};
 use std::{
@@ -231,8 +232,14 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
     root.parent().is_some() && root.file_name().is_some(),
     "Cannot install at a filesystem root"
   );
-  let bin = config::path(&values, "bin-dir")?;
-  ensure!(!files::overlaps(&bin, &root), "bin-dir and install-dir must not overlap");
+  let additional = config::enabled(&values, "additional-command");
+  let bin = config::command_directory(&values)?;
+  // An external launcher may live in the app root's parent (Programs), but
+  // never inside the managed installation, including its immutable builds.
+  ensure!(
+    !additional || !files::contains(&root, &bin),
+    "Additional command directory must be outside install-dir"
+  );
   let payload_source = files::absolute(Path::new(&package.payload), config_file.parent().unwrap())?;
   ensure!(
     !files::overlaps(&root, &payload_source),
@@ -264,7 +271,7 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
       "Invalid settings path: {expanded}"
     );
     ensure!(
-      !files::overlaps(&root, &path) && !files::overlaps(&bin, &path),
+      !files::overlaps(&root, &path) && !files::contains(&path, &bin),
       "Settings must be separate from app/command directories"
     );
     for base in config::builtins()?.values() {
@@ -274,6 +281,12 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
   }
   let prepared_dir = files::temporary()?;
   let prepared = launchers::prepare(&package, &root, &directory, &values, prepared_dir.path())?;
+  for setting in &settings {
+    ensure!(
+      !prepared.iter().any(|p| files::overlaps(Path::new(setting), &p.destination)),
+      "Settings must not claim command launchers or shortcuts"
+    );
+  }
   // Validation is also the packaging smoke check; it performs no installation.
   if options.validate {
     println!(
@@ -282,8 +295,24 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
     );
     return Ok(());
   }
+  if options.prompts(&package)? {
+    println!("\nApplication directory: {}", root.display());
+    if additional {
+      println!("Additional command directory: {}", bin.display());
+    }
+    println!(
+      "Add command directory to user PATH: {}",
+      config::enabled(&values, "add-to-path")
+    );
+    let input = package
+      .inputs
+      .get("confirm-install")
+      .cloned()
+      .unwrap_or_else(|| config::standard_inputs().remove("confirm-install").unwrap());
+    console::confirm(&input, config::enabled(&values, "confirm-install"))?;
+  }
   let _root_lock = lock(&root)?;
-  let _bin_lock = lock(&bin)?;
+  let _bin_lock = if additional { Some(lock(&bin)?) } else { None };
   let management = root.join("installer");
   let mut old = if root.exists() {
     Some(load_receipt(&root).context(
@@ -299,8 +328,9 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
       "Application identity does not match existing installation"
     );
     ensure!(
-      receipt.values.get("bin-dir") == values.get("bin-dir"),
-      "Retain the original bin-dir when updating"
+      config::enabled(&receipt.values, "additional-command") == additional
+        && (!additional || config::command_directory(&receipt.values)? == bin),
+      "Retain the original additional-command and bin-dir choices when updating"
     );
     if !management.join("pending.yaml").exists() {
       files::verify_file(&management.join(engine_name()), &receipt.engine_hash)?;
@@ -427,6 +457,14 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
   files::write_atomic(&management.join("installer.yaml"), yaml.as_bytes())?;
   receipt.launchers = launchers::apply(&prepared, &old.map(|r| r.launchers).unwrap_or_default())
     .context("Activate command launchers and shortcuts")?;
+  if config::enabled(&receipt.values, "add-to-path") {
+    let _path_lock = lock(&std::env::temp_dir().join("dotask-user-path"))?;
+    if user_path::add(&bin)? {
+      println!("Added {} to your user PATH. Reopen your terminal to use it.", bin.display());
+    } else {
+      println!("{} is already on PATH.", bin.display());
+    }
+  }
   files::write_yaml(&management.join("installation.yaml"), &receipt)?;
   fs::remove_file(pending_path)?;
   if config::enabled(&receipt.values, "prune-old-versions") {
@@ -466,8 +504,12 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
     "Installation is incomplete; retry its original installer before uninstalling"
   );
   let mut receipt = load_receipt(root)?;
-  let bin = config::path(&receipt.values, "bin-dir")?;
-  let _bin_lock = lock(&bin)?;
+  let bin = config::command_directory(&receipt.values)?;
+  let _bin_lock = if config::enabled(&receipt.values, "additional-command") {
+    Some(lock(&bin)?)
+  } else {
+    None
+  };
   files::verify_file(&management.join(engine_name()), &receipt.engine_hash)?;
   files::verify_file(&management.join("installer.yaml"), &receipt.config_hash)?;
   for launcher in &receipt.launchers {
@@ -493,19 +535,22 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
     let _ = record;
   }
   let mut remove_settings = options.remove_settings;
-  if options.interactive {
-    use std::io::Write;
-    print!("Uninstall {} from {}? [false]: ", receipt.app_id, root.display());
-    std::io::stdout().flush()?;
-    let mut answer = String::new();
-    std::io::stdin().read_line(&mut answer)?;
-    ensure!(answer.trim() == "true", "Uninstall cancelled");
+  let package: Package = files::read_yaml(&management.join("installer.yaml"))?;
+  if options.prompts(&package)? {
+    let input = Input {
+      kind: "boolean".into(),
+      required: true,
+      prompt: Some(format!("Uninstall {} from {}?", receipt.app_id, root.display())),
+      default: None,
+      choices: vec![],
+    };
+    console::confirm(&input, false)?;
     if !options.settings_explicit {
-      print!("Remove declared application settings? [false]: ");
-      std::io::stdout().flush()?;
-      answer.clear();
-      std::io::stdin().read_line(&mut answer)?;
-      remove_settings = answer.trim() == "true";
+      let input = Input {
+        prompt: Some("Remove declared application settings?".into()),
+        ..input
+      };
+      remove_settings = console::ask(&input, "false", &mut std::io::stdin().lock(), &mut std::io::stdout())? == "true";
     }
   }
   if remove_settings {

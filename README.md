@@ -86,20 +86,22 @@ standalone installer. Dotask's payload contains only the native Release command,
 directory; older builds are retained. Windows gets a small `.exe` launcher and
 `.shim` file; Linux/macOS get a symlink. No shim compiler is needed.
 
-The command directory is the installer’s `--bin-dir` when provided, otherwise the `BIN`
-environment variable, otherwise the platform default below. If it is not already
-on PATH, add **that one directory** once:
+The console installer prompts by default; use `--non-interactive` for automation.
+A stable command always lives in the chosen application directory. It offers an
+additional command (default No), suggesting that directory's parent. `--bin-dir`
+selects and enables an additional location; `BIN` is not consulted. On Windows,
+the installer offers to add the selected command directory to your user PATH,
+skipping that question when it is already present. Reopen your terminal afterward.
+On Linux/macOS, add the selected directory to your shell's PATH yourself:
 
-- **Bash:** add `export PATH="$HOME/.local/bin:$PATH"` to `~/.bashrc`.
+- **Bash:** add `export PATH="$HOME/.local/lib/dotask:$PATH"` to `~/.bashrc`.
 - **Zsh:** add that line to `~/.zshrc`.
-- **Fish:** run `fish_add_path "$HOME/.local/bin"`.
-- **Windows:** add `%LOCALAPPDATA%\bin` to your **user Path** in Environment
-  Variables, then open a new terminal.
+- **Fish:** run `fish_add_path "$HOME/.local/lib/dotask"`.
 
 Pass installer options through `--installer-args` as a JSON array; see the
 [installer examples](docs/INSTALLATION.md#build-and-install-dotask-itself).
 For a custom command directory, substitute its path. The installer prints the
-selected installation location; it never edits PATH or shell profiles.
+selected installation location; it never edits shell profiles.
 Then run `dotask --version` (expected: `dotask 0.1.0`).
 
 The installation is independent of this source checkout. To check which command
@@ -189,7 +191,7 @@ same native payload as current-user installation, without changing the normal
 installation. On Windows:
 
 ```powershell
-.\build.cmd install --installer-args '["--install-dir","C:/tmp/dotask-local-preview/app","--bin-dir","C:/tmp/dotask-local-preview/bin"]'
+.\build.cmd install --installer-args '["--non-interactive","--set","add-to-path=false","--install-dir","C:/tmp/dotask-local-preview/app","--bin-dir","C:/tmp/dotask-local-preview/bin"]'
 & 'C:/tmp/dotask-local-preview/bin/dotask.exe' --version
 ```
 

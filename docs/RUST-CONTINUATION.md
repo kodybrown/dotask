@@ -48,7 +48,9 @@ The full gate checks all Rust workspace members, standalone Rust task formatting
 .NET tests, C# formatting, documentation, shared catalog freshness, bundled shim
 hashes, and Git whitespace. `pack` creates an installer package without installing
 it. Copy the entire printed package directory outside the checkout before testing
-it. Use explicit fresh temporary install/bin roots; never use active defaults.
+it. Use explicit fresh temporary install/bin roots and `--non-interactive --set
+add-to-path=false` for unattended acceptance; never use active defaults or modify
+the user's PATH. Test console prompts separately from a staged installer copy.
 
 Package acceptance must exercise first installation, identical-build reuse,
 changed-build activation, installed native arguments/streams, C# and Rust tasks,

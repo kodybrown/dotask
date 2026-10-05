@@ -35,7 +35,7 @@
       "files": [
         {
           "path": "dotask-installer/uninstall.cs",
-          "sha256": "6f2d7133b91d4b93f352026f90ac6931db69e6e3f2e02bdb15ac042d46b67255"
+          "sha256": "770745c3050c03b69562cb704638bf9b86c69762f57a86be3adfd0614dbaa3c6"
         }
       ],
       "requires": []

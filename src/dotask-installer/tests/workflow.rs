@@ -28,7 +28,7 @@ impl Fixture {
         "architecture":if cfg!(target_arch="aarch64"){"arm64"}else{"x64"}, "payload":"payload",
         "commands":[{"name":"probe","executable":executable}],
         "shortcuts":[{"name":"Probe","executable":executable,"terminal":true,"local":true,"desktop":true,"start-menu":true}],
-        "values":{"install-dir":root,"bin-dir":bin},
+        "values":{"install-dir":root,"bin-dir":bin,"additional-command":true,"add-to-path":false},
         "settings":[temp.path().join("settings").to_str().unwrap()]
     });
     fs::write(&config, serde_saphyr::to_string(&package).unwrap()).unwrap();
@@ -41,12 +41,11 @@ impl Fixture {
     }
   }
   fn run(&self, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
-      .arg("--config")
-      .arg(&self.config)
-      .args(args)
-      .output()
-      .unwrap()
+    let mut command = Command::new(env!("CARGO_BIN_EXE_dotask-installer"));
+    if !args.iter().any(|arg| ["--interactive", "--non-interactive"].contains(arg)) {
+      command.arg("--non-interactive");
+    }
+    command.arg("--config").arg(&self.config).args(args).output().unwrap()
   }
   fn good(&self, args: &[&str]) {
     let result = self.run(args);
@@ -123,6 +122,7 @@ fn retained_uninstaller_launched_through_junction_removes_owned_files() {
   // while the installer canonicalizes its root. Both identify the same file.
   let result = Command::new(alias.join("installer/installer.exe"))
     .arg("uninstall")
+    .arg("--non-interactive")
     .output()
     .unwrap();
   fs::remove_dir(&alias).unwrap();
@@ -231,7 +231,7 @@ fn retained_engine_uninstalls_without_original_package() {
   } else {
     "installer"
   });
-  let output = Command::new(engine).arg("uninstall").output().unwrap();
+  let output = Command::new(engine).args(["uninstall", "--non-interactive"]).output().unwrap();
   assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
   assert!(!f.root.exists());
 }
@@ -266,7 +266,11 @@ fn package_snapshot_runs_after_source_is_removed() {
   } else {
     "installer"
   });
-  let result = Command::new(&engine).current_dir(f._temp.path()).output().unwrap();
+  let result = Command::new(&engine)
+    .arg("--non-interactive")
+    .current_dir(f._temp.path())
+    .output()
+    .unwrap();
   assert!(result.status.success(), "{}", String::from_utf8_lossy(&result.stderr));
   assert!(f.root.join("installer/installation.yaml").exists());
 }
@@ -374,5 +378,53 @@ fn updating_while_stable_shim_is_in_use_only_changes_sidecar() {
   f.good(&[]);
   assert_ne!(before, fs::read_to_string(f.bin.join("probe.shim")).unwrap());
   drop(held);
+  assert!(f.uninstall(&[]).status.success());
+}
+
+#[test]
+fn root_only_install_and_parent_command_directory_preserve_unowned_files() {
+  for additional in [false, true] {
+    let f = Fixture::new();
+    let mut package: Value = serde_saphyr::from_str(&fs::read_to_string(&f.config).unwrap()).unwrap();
+    package["values"]["additional-command"] = additional.into();
+    package["values"].as_object_mut().unwrap().remove("bin-dir");
+    fs::write(&f.config, serde_saphyr::to_string(&package).unwrap()).unwrap();
+    let unrelated = f._temp.path().join("another application.exe");
+    fs::write(&unrelated, "keep").unwrap();
+    f.good(&[]);
+    let name = if cfg!(windows) { "probe.exe" } else { "probe" };
+    assert!(f.root.join(name).exists());
+    assert_eq!(f._temp.path().join(name).exists(), additional);
+    assert_eq!(f.receipt()["values"]["additional-command"], additional);
+    f.good(&[]);
+    f.update("2.0.0");
+    f.good(&[]);
+    assert!(Command::new(f.root.join(name)).arg("--help").output().unwrap().status.success());
+    assert!(f.uninstall(&[]).status.success());
+    assert!(!f.root.exists());
+    assert!(!f._temp.path().join(name).exists());
+    assert_eq!(fs::read_to_string(unrelated).unwrap(), "keep");
+  }
+}
+
+#[test]
+fn default_interaction_requires_terminal_and_yaml_can_select_unattended() {
+  let f = Fixture::new();
+  let output = Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
+    .args(["--config", f.config.to_str().unwrap()])
+    .output()
+    .unwrap();
+  assert!(!output.status.success());
+  assert!(String::from_utf8_lossy(&output.stderr).contains("--non-interactive"));
+  assert!(!f.root.exists());
+  let mut package: Value = serde_saphyr::from_str(&fs::read_to_string(&f.config).unwrap()).unwrap();
+  package["interactive"] = false.into();
+  fs::write(&f.config, serde_saphyr::to_string(&package).unwrap()).unwrap();
+  let output = Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
+    .args(["--config", f.config.to_str().unwrap()])
+    .output()
+    .unwrap();
+  assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+  assert!(f.root.exists());
   assert!(f.uninstall(&[]).status.success());
 }
