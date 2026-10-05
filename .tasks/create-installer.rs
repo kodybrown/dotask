@@ -46,7 +46,7 @@ fn task(project: &BuildContext) -> Result<()> {
   fs::write(
     &config,
     serde_json::to_vec(&json!({
-      "schema":1,"application":{"id":"dotask","name":"dotask","version":version,"author":"Kody Brown","description":"Portable project tasks"},
+      "schema":1,"application":{"id":"dotask","name":"DoTask","version":version,"author":"Kody Brown","copyright":"Copyright (C) 2026 Kody Brown","description":"Portable project tasks"},
       "platform":project.os(),"architecture":project.architecture(),"payload":payload,"interactive":true,
       "inputs":{"install-dir":{"type":"path","required":true,"prompt":"Install dotask in"},
         "additional-command":{"type":"boolean","default":false,"prompt":"Place an additional dotask command in another directory?"}},

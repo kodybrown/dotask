@@ -495,3 +495,20 @@ acceptance, installation, and publication.
   command relocation/disable, and relocated mixed-language package acceptance
   passed. No active installation or user PATH changed; nothing was published or
   pushed. Linux/macOS acceptance remains deferred.
+
+### 2026-10-05 Polish the installer console layout
+
+- Add application, settings, and summary sections with separators spanning the
+  current visible console width minus one column. Indent prompts/results/errors,
+  wrap banner descriptions, and include cancellation under the summary. Preserve
+  plain unattended output and existing installation/ownership behavior.
+- Add optional installer application copyright metadata and supply DoTask's
+  display name, copyright, and description in its package. Document the creator's
+  explicit mapping to installer YAML, shortcut permissions versus defaults, and
+  the second shim's existing always-permitted behavior.
+- Verification: `build.cmd` passed 419 .NET and 48 Rust tests and all required
+  gates. Real Windows console success/error/Ctrl+C layouts, width checks, and
+  metadata rendering passed. `build.cmd pack`, relocated package acceptance,
+  and upgrade/command relocation from the earlier package passed. Evaluated
+  build outputs remain external. No active installation or user PATH changed;
+  nothing was published or pushed. Linux/macOS acceptance remains deferred.

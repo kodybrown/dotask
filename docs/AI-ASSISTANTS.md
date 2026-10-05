@@ -171,6 +171,11 @@ use `name: '${shortcut-name}'` in installer YAML to enable a safe custom name;
 `start-menu-nested` selects Windows `name/name.lnk` placement. Dotask's own
 package declares no menu shortcut. Use temporary Start Menu/desktop roots when
 testing shortcut creation, updates, and ownership-safe cleanup.
+The standalone engine reads packaged `installer.yaml`, never `.dotasks.yaml`.
+The creator chooses which project settings become installer configuration;
+project identity is not copied implicitly. `application.name`, `description`,
+and optional `copyright` supply the interactive console banner. Shortcut
+declarations grant permissions while defaults choose the initial answers.
 
 Dotask's standalone Rust installer uses YAML receipts and the `installer/` plus
 `app/<build>/` layout. Older formats are unsupported; use fresh destinations or

@@ -226,6 +226,10 @@ fn verify_entries(package: &Package, payload: &Path) -> Result<()> {
   Ok(())
 }
 pub fn install(config_file: &Path, package: Package, options: &Options) -> Result<()> {
+  let interactive = options.prompts(&package)?;
+  if interactive {
+    console::begin(&package.application, false)?;
+  }
   config::validate(&package)?;
   let values = config::resolve(&package, options)?;
   let root = config::path(&values, "install-dir")?;
@@ -296,15 +300,17 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
     );
     return Ok(());
   }
-  if options.prompts(&package)? {
-    println!("\nApplication directory: {}", root.display());
+  if interactive {
+    console::settings()?;
+    console::message(&format!("Application directory: {}", root.display()));
     if additional {
-      println!("Additional command directory: {}", bin.display());
+      console::message(&format!("Additional command directory: {}", bin.display()));
     }
-    println!(
+    console::message(&format!(
       "Add command directory to user PATH: {}",
       config::enabled(&values, "add-to-path")
-    );
+    ));
+    println!();
     let input = package
       .inputs
       .get("confirm-install")
@@ -312,6 +318,7 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
       .unwrap_or_else(|| config::standard_inputs().remove("confirm-install").unwrap());
     console::confirm(&input, config::enabled(&values, "confirm-install"))?;
   }
+  console::summary()?;
   let _root_lock = lock(&root)?;
   let management = root.join("installer");
   let mut old = if root.exists() {
@@ -496,7 +503,7 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
       || match files::safe_path(Path::new(name)).and_then(|()| files::remove_empty(Path::new(name))) {
         Ok(()) => Path::new(name).exists(),
         Err(error) => {
-          eprintln!("Retained shortcut directory {name}: {error:#}");
+          console::diagnostic(&format!("Retained shortcut directory {name}: {error:#}"));
           true
         }
       }
@@ -504,9 +511,12 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
   if config::enabled(&receipt.values, "add-to-path") {
     let _path_lock = lock(&std::env::temp_dir().join("dotask-user-path"))?;
     if user_path::add(&bin)? {
-      println!("Added {} to your user PATH. Reopen your terminal to use it.", bin.display());
+      console::message(&format!(
+        "Added {} to your user PATH. Reopen your terminal to use it.",
+        bin.display()
+      ));
     } else {
-      println!("{} is already on PATH.", bin.display());
+      console::message(&format!("{} is already on PATH.", bin.display()));
     }
   }
   files::write_yaml(&management.join("installation.yaml"), &receipt)?;
@@ -519,20 +529,20 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
       match remove_build(&root, &build, &expected, false) {
         Ok(()) => {
           receipt.builds.remove(&build);
-          println!("Pruned {build}");
+          console::message(&format!("Pruned {build}"));
         }
-        Err(e) => eprintln!("Retained {build}: {e:#}"),
+        Err(e) => console::diagnostic(&format!("Retained {build}: {e:#}")),
       }
     }
     files::write_yaml(&management.join("installation.yaml"), &receipt)?;
   }
-  println!(
+  console::message(&format!(
     "Installed {} {}\n  Application: {}\n  Active build: {}",
     package.application.name,
     package.application.version,
     root.display(),
     id
-  );
+  ));
   Ok(())
 }
 
@@ -579,6 +589,8 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
   let mut remove_settings = options.remove_settings;
   let package: Package = files::read_yaml(&management.join("installer.yaml"))?;
   if options.prompts(&package)? {
+    console::begin(&package.application, true)?;
+    console::settings()?;
     let input = Input {
       kind: "boolean".into(),
       required: true,
@@ -595,6 +607,7 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
       remove_settings = console::ask(&input, "false", &mut std::io::stdin().lock(), &mut std::io::stdout())? == "true";
     }
   }
+  console::summary()?;
   if remove_settings {
     for setting in &receipt.settings {
       files::safe_path(Path::new(setting))?;
@@ -646,10 +659,10 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
         let moved = temporary.join(engine_name());
         fs::rename(&installed_engine, &moved)
           .context("Close the retained installer and uninstall using a package copy")?;
-        eprintln!(
+        console::diagnostic(&format!(
           "Temporary running uninstaller can be removed after exit: {}",
           temporary.display()
-        );
+        ));
       }
       Err(e) => return Err(e.into()),
     }
@@ -661,9 +674,13 @@ pub fn uninstall(root: &Path, options: &Options) -> Result<()> {
   files::remove_empty(&root.join("app"))?;
   remove_empty_tree(root)?;
   if root.exists() {
-    println!("Uninstalled {}; retained unowned files in {}", receipt.app_id, root.display());
+    console::message(&format!(
+      "Uninstalled {}; retained unowned files in {}",
+      receipt.app_id,
+      root.display()
+    ));
   } else {
-    println!("Uninstalled {}", receipt.app_id);
+    console::message(&format!("Uninstalled {}", receipt.app_id));
   }
   Ok(())
 }

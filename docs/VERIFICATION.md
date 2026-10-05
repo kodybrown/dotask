@@ -1,5 +1,37 @@
 # Verification
 
+## Installer console sections and banner metadata (2026-10-05)
+
+`build.cmd` passed 419 .NET Release tests and 48 Rust tests on Windows x64:
+10 installer unit cases, 24 installer workflows, and 14 CLI cases. All required
+formatting/clippy/docs/catalog/shim/whitespace gates passed. New formatting cases
+check separators at visible widths 80, 40, 30, 8, and 1, including a Unicode title,
+and banner metadata/description wrapping. Evaluated .NET and Cargo output paths
+remain external under `C:\tmp\_dotnet` and `C:\tmp\_rust`.
+
+Real Windows console acceptance reported width 80 and displayed 79-column
+application, Installation Settings, and Installation Summary separators. The
+banner showed configured copyright and description, prompts/settings were
+indented, and success details appeared below Summary. A fixture-owned unowned
+command produced a distinct error label and indented details below that same
+section; its file remained unchanged. Ctrl+C printed Summary and `Canceled`
+without creating an installation. Console acceptance uses an independent engine
+copy, temporary destinations, and `add-to-path=false`.
+
+`build.cmd pack` created
+`artifacts/installers/windows-x64/dotask-GoE9eS/package/installer.exe`, with
+DoTask display metadata and the copyright from the repository's MIT notice.
+Relocated four-file payload install/reuse/update/uninstall acceptance passed,
+including Unicode, toolchain-free metadata, Rust-to-C# calls, and unowned-file
+preservation. A temporary upgrade from the earlier package still moved and
+disabled its owned second command correctly. Unattended output remained plain.
+Evidence is in `C:\tmp\dotask-installer-console-gate.log`,
+`C:\tmp\dotask-installer-console-package.log`,
+`C:\tmp\dotask-installer-console-acceptance.log`, and
+`C:\tmp\dotask-installer-console-update-acceptance.log`. No active installation
+or user PATH changed; nothing was published or pushed. Linux/macOS acceptance
+remains deferred.
+
 ## Owned launcher updates and configurable Start Menu shortcuts (2026-10-05)
 
 `build.cmd` passed 419 .NET Release tests and 46 Rust tests on Windows x64:

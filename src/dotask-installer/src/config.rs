@@ -389,7 +389,7 @@ fn resolve_with_io(
     let already_on_path = key == "add-to-path" && cfg!(windows) && on_path(&command_directory(&values)?)?;
     if already_on_path {
       if interactive {
-        writeln!(writer, "{} is already on PATH.", command_directory(&values)?.display())?;
+        writeln!(writer, "  {} is already on PATH.", command_directory(&values)?.display())?;
       }
       // No prompt and no registry write when the selected directory is present.
       values.insert(key.into(), false.into());
@@ -412,7 +412,7 @@ fn resolve_with_io(
         if key == "shortcut-name"
           && let Err(error) = files::shortcut_name(&expand(&answer, &values)?)
         {
-          writeln!(writer, "{error}")?;
+          writeln!(writer, "  {error}")?;
           continue;
         }
         break answer;
@@ -454,6 +454,9 @@ fn resolve_with_io(
       values.insert(key.into(), converted);
     } else {
       ensure!(!input.required, "Missing required input: {key}. Use --set {key}=VALUE");
+    }
+    if interactive && key == "install-dir" {
+      writeln!(writer)?;
     }
   }
   Ok(values)

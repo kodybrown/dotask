@@ -196,11 +196,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ctrlc",
+ "libc",
  "serde",
  "serde-saphyr",
  "serde_json",
  "sha2",
  "tempfile",
+ "unicode-width",
  "windows",
  "zip",
 ]

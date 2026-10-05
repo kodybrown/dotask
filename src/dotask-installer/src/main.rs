@@ -12,18 +12,18 @@ fn main() {
   // Keep Ctrl+C's existing immediate exit behavior. Activation journals make
   // interruption recoverable; printing here also works while stdin is blocked.
   if let Err(error) = ctrlc::set_handler(|| {
-    eprintln!("\nCanceled");
+    console::canceled();
     std::process::exit(130);
   }) {
-    eprintln!("Installer error: {error}");
+    console::error(&error.into());
     std::process::exit(1);
   }
   if let Err(error) = run() {
     if error.is::<console::Canceled>() {
-      eprintln!("Canceled");
+      console::canceled();
       std::process::exit(130);
     }
-    eprintln!("Installer error: {error:#}");
+    console::error(&error);
     std::process::exit(1);
   }
 }

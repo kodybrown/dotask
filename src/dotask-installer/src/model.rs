@@ -38,6 +38,8 @@ pub struct Application {
   pub version: String,
   #[serde(default)]
   pub author: String,
+  #[serde(default, skip_serializing_if = "String::is_empty")]
+  pub copyright: String,
   #[serde(default)]
   pub description: String,
 }

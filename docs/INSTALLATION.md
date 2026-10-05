@@ -5,6 +5,35 @@ The shared tasks live under `_/dotask-installer/`; their C# implementation does 
 restrict application payloads to .NET. Application builds remain project-specific.
 Custom `create-installer` targets and other installer technologies remain supported.
 
+## Where installer configuration comes from
+
+The standalone installer reads `installer.yaml` beside its executable, or the
+file selected with `--config`. It never discovers or reads `.dotasks.yaml` on
+the destination machine. The project-owned `create-installer` task builds that
+package and supplies its application metadata, permitted shortcuts, prompt
+labels, and defaults.
+
+In dotask's source project, `.dotasks.yaml` owns project identity and task settings
+such as `installer-output`. `.tasks/create-installer.rs` currently writes the
+installer's application identity, description, copyright, commands, and defaults
+explicitly; top-level project name/description are not copied automatically.
+For other applications, the shared creator reads the YAML selected by the
+`installer-config` setting and packages it with the prepared payload.
+
+| Installer YAML | Purpose |
+| --- | --- |
+| `application.name`, `description`, `copyright` | Console banner metadata; copyright/description are optional |
+| `shortcuts[].start-menu`, `desktop`, `local` | Permit shortcut locations; a location with no permitted shortcut cannot be enabled |
+| `defaults.*.start-menu-shortcuts`, `desktop-shortcuts`, `local-shortcuts` | Choose whether permitted shortcuts are enabled by default |
+| `defaults.*.additional-command` | Default for the second command/shim, initially false; it is always permitted by the engine |
+| `defaults.*.add-to-path` | Default for Windows user PATH addition |
+| `interactive`, `inputs`, `defaults`, `values` | Prompt mode, labels, defaults, and supplied values; command-line options override them |
+
+An additional-command default of false hides no capability: it sets the initial
+No answer. The engine currently has no separate permission flag to forbid an
+additional shim. Dotask's package declares no shortcuts, so it offers no Start
+Menu or desktop shortcut questions.
+
 ## Shared tasks
 
 Use the tool to install the new group and remove the old tracked task:
@@ -63,6 +92,7 @@ application:
   name: Example App
   version: 1.2.0
   author: Example Author
+  copyright: Copyright (C) 2026 Example Author
   description: A desktop application.
 platform: windows
 architecture: x64
@@ -140,6 +170,15 @@ Package creation, help, and `--validate` never prompt. Missing required values,
 invalid configuration, and ownership conflicts stop with a diagnostic and nonzero
 exit code. Interactive answers replace defaults; CLI-supplied inputs skip their
 individual prompts. Automation does not require a second confirmation flag.
+
+Interactive output begins with an application banner, optional copyright and
+description, then indented prompts. `Installation Settings` separates the chosen
+locations from the final confirmation. `Installation Summary` precedes results,
+errors, or cancellation; errors use a separate label and indented detail lines.
+Uninstall uses the corresponding Uninstallation sections. Separator lines span
+the current visible console width minus one column, rechecking width after
+resizes. Unicode display widths and narrow windows are respected; unavailable
+width information falls back to 80 columns. Unattended output remains plain.
 
 The install prompts ask for the complete application directory, an optional
 additional command (default No), its directory when enabled, and on Windows

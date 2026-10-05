@@ -305,6 +305,15 @@ Confirmation follows a location summary. Ctrl+C prints `Canceled` and exits 130;
 activation journals preserve the existing recovery contract. YAML owns prompt
 labels and defaults, while CLI values override individual questions.
 
+The standalone installer reads only its packaged installer YAML. The creator
+maps project settings to that document explicitly; it does not make the installer
+depend on source-project configuration. Application name, optional copyright,
+and description own the console banner. Interactive prompts, settings, and summary
+use consistent indentation and separators sized to the visible console width
+minus one column; unattended output stays plain. Shortcut declarations grant
+location permissions, while defaults set initial answers. The additional command
+is always available today; its false default is a preference, not a permission.
+
 Launcher preferences may change during an update. Ownership comes from the
 receipt's actual launcher inventory, not a required match against old preference
 values. Lock previous and desired locations, verify owned files, refuse unowned
