@@ -29,7 +29,7 @@ public sealed class TaskWizardTests
   public async Task BackDiscardsOnlyTheUnfinishedStep( string unfinished )
   {
     using var project = new TestProject();
-    project.Target("run", metadata: "/// <option name=\"message\" />");
+    project.Target("run", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"message\"}\n// end-dotask\n");
     var output = await Run(project, "checks", "Keep my work", "y", "run", "1", "n", "saved",
       "y", unfinished, "n", "y", "y");
     var target = new TargetCatalog(project.Tasks).Get("checks");
@@ -54,10 +54,13 @@ public sealed class TaskWizardTests
   {
     using var project = new TestProject();
     project.Target("_/dotnet/check", "throw new Exception(\"Must not run\");", """
-      /// <summary>Inspect project.</summary>
-      /// <option name="configuration" choices="Debug,Release" default="Debug" />
-      /// <option name="count" type="int" />
-      /// <option name="flag" type="bool" />
+      // dotask: 1
+      // description: "Inspect project."
+      // options:
+      //   - {"name": "configuration", "choices": ["Debug", "Release"], "default": "Debug"}
+      //   - {"name": "count", "type": "int"}
+      //   - {"name": "flag", "type": "bool"}
+      // end-dotask
       """);
     project.Write(".dotasks.yaml", "targets:\n  _/dotnet/check:\n    defaults: {configuration: Release}\n");
     var output = await Run(project, "verify", "Verify things.", "y", "Inspect", "1", "n", "", "invalid", "3", "true", "n", "y", "y");
@@ -135,8 +138,11 @@ public sealed class TaskWizardTests
   {
     using var project = new TestProject();
     project.Target("run", metadata: """
-      /// <option name="message" required="true" />
-      /// <option name="output" type="path" />
+      // dotask: 1
+      // options:
+      //   - {"name": "message", "required": true}
+      //   - {"name": "output", "type": "path"}
+      // end-dotask
       """);
     await Run(project, "new", "", "y", "run", "1", "n", ":empty", "./artifacts/output", "n", "n", "y");
     var parameters = new TargetCatalog(project.Tasks).Get("new").Group!.Steps[0].Parameters;

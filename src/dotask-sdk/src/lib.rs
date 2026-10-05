@@ -205,7 +205,7 @@ impl BuildContext {
     Ok(value)
   }
   /// Batch metadata remains an explicit, compiler-free CLI operation. Catalog
-  /// authoring can read C# through Roslyn without depending on the reference CLI.
+  /// authoring reads common YAML headers without any language toolchain.
   pub fn metadata(&self, root: &Path, files: &[PathBuf]) -> Result<Value> {
     let directory = tempfile::tempdir()?;
     let request = directory.path().join("request.json");

@@ -17,9 +17,12 @@ public sealed class CompletionTests
   {
     using var project = new TestProject();
     project.Target("run", "ThisDeliberatelyDoesNotCompile();", """
-      /// <summary>Run app.</summary>
-      /// <option name="configuration" alias="c" choices="Debug,Release" />
-      /// <option name="detailed" type="bool" />
+      // dotask: 1
+      // description: "Run app."
+      // options:
+      //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"]}
+      //   - {"name": "detailed", "type": "bool"}
+      // end-dotask
       """);
     Assert.Contains(CompletionEngine.Complete(line, project.Root), c => c.Value == expected);
     Assert.False(Directory.Exists(Path.Combine(project.Tasks, "obj")));
@@ -29,7 +32,7 @@ public sealed class CompletionTests
   public void UsedOptionsAreNotSuggestedAgain()
   {
     using var project = new TestProject();
-    project.Target("run", metadata: "/// <option name=\"configuration\" alias=\"c\" choices=\"Debug,Release\" />");
+    project.Target("run", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     var suggestions = CompletionEngine.Complete("dotask run -c Debug --", project.Root);
     Assert.DoesNotContain(suggestions, c => c.Value == "--configuration");
   }
@@ -44,7 +47,7 @@ public sealed class CompletionTests
   public void FullAndShortNamesUseTheSameCompletionMetadata( string line, string expected )
   {
     using var project = new TestProject();
-    project.Target("dotnet run", "DoesNotCompile();", "/// <option name=\"configuration\" alias=\"c\" choices=\"Debug,Release\" />");
+    project.Target("dotnet run", "DoesNotCompile();", "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     project.Write(".tasks/config.yaml", "invalid: [");
     Assert.Contains(CompletionEngine.Complete(line, project.Root), c => c.Value == expected);
   }
@@ -53,15 +56,15 @@ public sealed class CompletionTests
   public void CompletionOmitsAmbiguousAliasesAndHonorsExplicitEntryPoints()
   {
     using var project = new TestProject();
-    project.Target("dotnet format", metadata: "/// <option name=\"verify\" type=\"bool\" />");
-    project.Target("rust format", metadata: "/// <option name=\"check\" type=\"bool\" />");
+    project.Target("dotnet format", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
+    project.Target("rust format", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"check\", \"type\": \"bool\"}\n// end-dotask\n");
     var names = CompletionEngine.Complete("dotask ", project.Root);
     Assert.DoesNotContain(names, c => c.Value == "format");
     Assert.Contains(names, c => c.Value == "dotnet-format");
     Assert.Contains(names, c => c.Value == "rust-format");
     Assert.DoesNotContain(CompletionEngine.Complete("dotask format --", project.Root), c => c.Value is "--verify" or "--check");
     Assert.Contains(CompletionEngine.Complete("dotask dotnet-format --", project.Root), c => c.Value == "--verify");
-    project.Target("format", metadata: "/// <option name=\"all\" type=\"bool\" />");
+    project.Target("format", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"all\", \"type\": \"bool\"}\n// end-dotask\n");
     Assert.Single(CompletionEngine.Complete("dotask f", project.Root), c => c.Value == "format");
     Assert.Contains(CompletionEngine.Complete("dotask format --", project.Root), c => c.Value == "--all");
     Assert.DoesNotContain(CompletionEngine.Complete("dotask format --", project.Root), c => c.Value is "--verify" or "--check");
@@ -73,7 +76,7 @@ public sealed class CompletionTests
     using var project = new TestProject();
     var custom = Path.Combine(project.Root, "custom tasks");
     Directory.CreateDirectory(custom);
-    File.Copy(project.Target("custom", metadata: "/// <option name=\"output\" type=\"path\" completion=\"directory\" />"), Path.Combine(custom, "custom.cs"));
+    File.Copy(project.Target("custom", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"output\", \"type\": \"path\", \"completion\": \"directory\"}\n// end-dotask\n"), Path.Combine(custom, "custom.cs"));
     project.Write("custom tasks/config.yaml", "this is intentionally invalid YAML [");
     Directory.CreateDirectory(Path.Combine(project.Root, "output files"));
     Assert.Contains(CompletionEngine.Complete("dotask --use-dir 'custom tasks' custom --output out", project.Root),

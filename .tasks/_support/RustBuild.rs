@@ -35,8 +35,11 @@ pub fn cargo(project: &BuildContext, arguments: &[&str], manifest: &str) -> Resu
   }
   project.execute(&mut command)
 }
-pub fn publish_host(project: &BuildContext, properties: &[String]) -> Result<(dotask_sdk::tempfile::TempDir, String)> {
-  let application = project.path("src/Dotask.CSharpHost/Dotask.CSharpHost.csproj");
+pub fn publish_library(
+  project: &BuildContext,
+  properties: &[String],
+) -> Result<(dotask_sdk::tempfile::TempDir, String)> {
+  let application = project.path("src/Dotask/Dotask.csproj");
   let output = project.capture(
     project
       .command("dotnet")
@@ -67,42 +70,17 @@ pub fn publish_host(project: &BuildContext, properties: &[String]) -> Result<(do
   } else {
     application.parent().unwrap().join(directory)
   };
-  let staged = dotask_sdk::tempfile::Builder::new().prefix("dotask-host-publish-").tempdir()?;
-  // Copy the evaluated publish inventory, not every file left in PublishDir.
-  // Switching self-contained mode cannot accidentally package stale runtimes.
-  for item in metadata["Items"]["ResolvedFileToPublish"]
-    .as_array()
-    .context("Missing publish inventory")?
-  {
-    let relative = Path::new(item["RelativePath"].as_str().context("Missing publish RelativePath")?);
-    if relative.is_absolute() || relative.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
-      dotask_sdk::bail!("Publish inventory must use relative paths.");
-    }
-    let destination = staged.path().join(relative);
-    fs::create_dir_all(destination.parent().unwrap())?;
-    fs::copy(directory.join(relative), destination)?;
-  }
+  let staged = dotask_sdk::tempfile::Builder::new()
+    .prefix("dotask-library-publish-")
+    .tempdir()?;
+  // The task helper is a platform-neutral DLL with no package dependencies.
+  // Explicitly select it from evaluated PublishDir: no runtime, symbols, stale
+  // host or other publish files can enter the application payload.
+  fs::copy(directory.join("Dotask.Library.dll"), staged.path().join("Dotask.Library.dll"))?;
   Ok((
     staged,
     metadata["Properties"]["Version"].as_str().context("Missing Version")?.into(),
   ))
-}
-pub fn copy_tree(source: &Path, destination: &Path) -> Result<()> {
-  fs::create_dir_all(destination)?;
-  for entry in fs::read_dir(source)? {
-    let entry = entry?;
-    let file_type = entry.file_type()?;
-    if file_type.is_symlink() {
-      dotask_sdk::bail!("Cannot stage symbolic link {}", entry.path().display());
-    }
-    let target = destination.join(entry.file_name());
-    if file_type.is_dir() {
-      copy_tree(&entry.path(), &target)?;
-    } else {
-      fs::copy(entry.path(), target)?;
-    }
-  }
-  Ok(())
 }
 pub fn stage_sdk(project: &BuildContext, destination: &Path) -> Result<()> {
   fs::create_dir_all(destination.join("src"))?;

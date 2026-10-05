@@ -28,7 +28,7 @@ public sealed class DiscoveryAndMetadataTests
     project.Target("run");
     foreach (var extension in new[] { "txt", "md", "target", "targets", "yaml", "yml", "json", "rs", "py", "go" }) {
       project.Write("notes." + extension, "not a task");
-      project.Write(".tasks/misc/bootstrap." + extension, "/// <summary>This must not be discovered.</summary>");
+      project.Write(".tasks/misc/bootstrap." + extension, "// dotask: 1\n// description: \"This must not be discovered.\"\n// end-dotask\n");
     }
     var target = Assert.Single(new TargetCatalog(project.Tasks).Targets);
     Assert.Equal("run", target.Name);
@@ -61,19 +61,23 @@ public sealed class DiscoveryAndMetadataTests
   }
 
   [Fact]
-  public void MetadataUsesClassDocumentationAndRealXmlEntities()
+  public void MetadataUsesFileHeaderAndPreservesText()
   {
     using var project = new TestProject();
     var file = project.Target("run", metadata: """
-      /// <summary>Run &amp; inspect <c>the app</c>.</summary>
-      /// <option name="configuration" alias="c" default="Debug" choices="Debug, Release">The build mode.</option>
-      /// <requires tool="dotnet" />
-      /// <requires setting="application" />
-      /// <requires task="dotnet/restore" />
-      /// <requires file="dotnet/_support/Helper.cs" />
-      /// <capability name="network" />
-      /// <remarks>More detail.</remarks>
-      /// <example>dotask run -c Release</example>
+      // dotask: 1
+      // description: "Run & inspect the app."
+      // remarks: "More detail."
+      // options:
+      //   - {"name": "configuration", "alias": "c", "default": "Debug", "choices": ["Debug", "Release"], "description": "The build mode."}
+      // requires:
+      //   - {"kind": "tool", "value": "dotnet"}
+      //   - {"kind": "setting", "value": "application"}
+      //   - {"kind": "task", "value": "dotnet/restore"}
+      //   - {"kind": "file", "value": "dotnet/_support/Helper.cs"}
+      // capabilities: ["network"]
+      // examples: ["dotask run -c Release"]
+      // end-dotask
       """);
     var target = MetadataReader.Read(file);
     Assert.Null(target.Error);
@@ -89,14 +93,14 @@ public sealed class DiscoveryAndMetadataTests
   }
 
   [Theory]
-  [InlineData("/// <option name=\"configuration\" alias=\"cc\" />", "single-letter")]
-  [InlineData("/// <option name=\"help\" />", "reserved")]
-  [InlineData("/// <option name=\"a\" alias=\"c\" /><option name=\"C\" />", "Duplicate")]
-  [InlineData("/// <option name=\"x\" type=\"date\" />", "unsupported type")]
-  [InlineData("/// <summary>Broken", "Metadata error")]
-  [InlineData("/// <requires tool=\"dotnet\" setting=\"x\" />", "one tool")]
-  [InlineData("/// <requires task=\"\" />", "one tool")]
-  [InlineData("/// <requires task=\"dotnet/restore\" file=\"dotnet/helper.txt\" />", "one tool")]
+  [InlineData("// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"cc\"}\n// end-dotask\n", "single-letter")]
+  [InlineData("// dotask: 1\n// options:\n//   - {\"name\": \"help\"}\n// end-dotask\n", "reserved")]
+  [InlineData("// dotask: 1\n// options:\n//   - {\"name\": \"a\", \"alias\": \"c\"}\n//   - {\"name\": \"C\"}\n// end-dotask\n", "Duplicate")]
+  [InlineData("// dotask: 1\n// options:\n//   - {\"name\": \"x\", \"type\": \"date\"}\n// end-dotask\n", "unsupported type")]
+  [InlineData("// dotask: 1\n// [invalid\n// end-dotask\n", "Metadata error")]
+  [InlineData("// dotask: 1\n// requires:\n//   - {\"kind\": \"invalid\", \"value\": \"invalid\"}\n// end-dotask\n", "one tool")]
+  [InlineData("// dotask: 1\n// requires:\n//   - {\"kind\": \"task\", \"value\": \"\"}\n// end-dotask\n", "one tool")]
+  [InlineData("// dotask: 1\n// requires: [{kind: task, value: x, extra: y}]\n// end-dotask", "Unknown")]
   public void InvalidMetadataProducesAnIndividualTargetError( string metadata, string expected )
   {
     using var project = new TestProject();
@@ -128,7 +132,7 @@ public sealed class DiscoveryAndMetadataTests
   public void FilenamesDefineFullNamesAndOptionalShortNames( string filename, string fullName, string? shortName )
   {
     using var project = new TestProject();
-    var file = project.Target(filename, metadata: "/// <summary>A reusable target.</summary>");
+    var file = project.Target(filename, metadata: "// dotask: 1\n// description: \"A reusable target.\"\n// end-dotask\n");
     var target = MetadataReader.Read(file);
     Assert.Null(target.Error);
     Assert.Equal(fullName, target.Name);
@@ -225,21 +229,23 @@ public sealed class DiscoveryAndMetadataTests
   }
 
   [Fact]
-  public void MetadataCanBeOnMainAndCanUseBlockComments()
+  public void MetadataBelongsToFileAndIgnoresCommentLikeTextInCode()
   {
     using var project = new TestProject();
     var file = project.Write(".tasks/test.cs", """
+      // dotask: 1
+      // description: A documented task.
+      // options: [{name: name, alias: n, description: A name.}]
+      // end-dotask
+      // Ordinary comments and XML documentation remain code documentation.
       public static class Target
       {
-        /** <summary>A documented method.</summary>
-         * <option name="name" alias="n">A name.</option>
-         */
-        public static void Main() { }
+        public static void Main() { Console.WriteLine("// description: wrong"); }
       }
       """);
     var target = MetadataReader.Read(file);
     Assert.Null(target.Error);
-    Assert.Equal("A documented method.", target.Description);
+    Assert.Equal("A documented task.", target.Description);
     Assert.Single(target.Options);
   }
 }

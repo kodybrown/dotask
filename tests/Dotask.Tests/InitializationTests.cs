@@ -53,7 +53,7 @@ public class InitializationTests
   public async Task InitPreservesExistingTasksConfigurationCommentsAndLockFile()
   {
     using var project = new TestProject { NativeRunner = NativeRunner };
-    var task = project.Target("init", "DoesNotCompile();", "/// <summary>A handwritten task.</summary>");
+    var task = project.Target("init", "DoesNotCompile();", "// dotask: 1\n// description: \"A handwritten task.\"\n// end-dotask\n");
     var source = File.ReadAllBytes(task);
     var first = await project.RunAsync("--init");
     Assert.Equal(0, first.ExitCode);

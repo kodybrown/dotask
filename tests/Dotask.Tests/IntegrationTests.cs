@@ -17,9 +17,9 @@ public sealed class IntegrationTests
     project.Write("Broken.csproj", "This project must never be evaluated by check.");
     project.Write(".tasks/config.yaml", "settings: { solution: Broken.csproj }");
     project.Target("dotnet test", "File.WriteAllText(\"tests-ran\", \"bad\");",
-      "/// <option name=\"configuration\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\"}\n// end-dotask\n");
     project.Target("dotnet format", "File.WriteAllText(\"format-ran\", \"bad\");",
-      "/// <option name=\"verify\" type=\"bool\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     var result = await project.RunAsync("check");
     Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
     Assert.Equal("", result.StandardError);
@@ -35,8 +35,8 @@ public sealed class IntegrationTests
   public async Task HelpShowsSourceDescriptionsAndCompilationErrorsAreReportedOnExecution()
   {
     using var project = new TestProject();
-    project.Target("broken", "DoesNotExist();", "/// <summary>A target with a compiler error.</summary>");
-    project.Target("good", "Console.WriteLine(\"TARGET-RAN\");", "/// <summary>A good target.</summary>");
+    project.Target("broken", "DoesNotExist();", "// dotask: 1\n// description: \"A target with a compiler error.\"\n// end-dotask\n");
+    project.Target("good", "Console.WriteLine(\"TARGET-RAN\");", "// dotask: 1\n// description: \"A good target.\"\n// end-dotask\n");
     var help = await project.RunAsync();
     Assert.Equal(0, help.ExitCode);
     Assert.Contains("A target with a compiler error.", help.StandardOutput);
@@ -64,7 +64,7 @@ public sealed class IntegrationTests
       var project = BuildContext.Current;
       await project.ExecTargetAsync("INNER", new { OS = "linux", Message = "A=B 'quoted'" });
       await project.ExecTargetAsync("inner", new { OS = "windows", Message = "second" });
-      """, "/// <option name=\"outerOnly\" default=\"not-forwarded\" />", async: true);
+      """, "// dotask: 1\n// options:\n//   - {\"name\": \"outerOnly\", \"default\": \"not-forwarded\"}\n// end-dotask\n", async: true);
     project.Target("inner", """
       var project = BuildContext.Current;
       Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new {
@@ -74,8 +74,11 @@ public sealed class IntegrationTests
         HasOuterOption = project.Parameters.Contains("outerOnly"), Cwd = Environment.CurrentDirectory
       }));
       """, """
-      /// <option name="OS" choices="windows,linux,macos" required="true" />
-      /// <option name="message" required="true" />
+      // dotask: 1
+      // options:
+      //   - {"name": "OS", "choices": ["windows", "linux", "macos"], "required": true}
+      //   - {"name": "message", "required": true}
+      // end-dotask
       """);
     var nested = Path.Combine(project.Root, "src", "nested");
     Directory.CreateDirectory(nested);
@@ -107,7 +110,7 @@ public sealed class IntegrationTests
     project.Target("dotnet run", """
       var project = BuildContext.Current;
       Console.WriteLine(project.TargetName + ":" + project.Parameters.Get<string>("configuration") + ":" + Path.GetFileName(project.TargetFile));
-      """, "/// <option name=\"configuration\" choices=\"Debug,Release\" default=\"Debug\" />");
+      """, "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\"}\n// end-dotask\n");
     var shortRun = await project.RunAsync("RUN");
     var fullRun = await project.RunAsync("DOTNET-RUN");
     Assert.True(shortRun.ExitCode == 0, shortRun.StandardError);
@@ -148,17 +151,22 @@ public sealed class IntegrationTests
     Assert.Contains("exit code 7", failure.StandardError);
   }
 
-  [Fact]
-  public async Task TargetCompilationIsolatesConsumerMsbuildButSupportsIncludedFiles()
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task TargetCompilationIsolatesConsumerMsbuildButSupportsIncludedFiles( bool native )
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = native };
     project.Write("Directory.Build.props", "<Project><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>");
     project.Write("Directory.Build.targets", "<Project><Target Name=\"Poison\" BeforeTargets=\"Build\"><Error Text=\"CONSUMER-BUILD-RAN\" /></Target></Project>");
     project.Write(".tasks/shared/Words.cs", "public static class Words { public static string Message => \"included\"; }");
     project.Write(".tasks/include.cs", """
+      // dotask: 1
+      // description: "Use a shared file."
+      // end-dotask
       #:include shared/Words.cs
       using DoTask;
-      /// <summary>Use a shared file.</summary>
+
       public static class Target
       {
         public static void Main() => Console.WriteLine(Words.Message + ":" + BuildContext.Current.TargetName);
@@ -178,7 +186,7 @@ public sealed class IntegrationTests
   public async Task ExplicitDirectoryOverrideIsHonoredByExecutionHelpAndCompletion()
   {
     using var project = new TestProject();
-    var file = project.Target("custom", "Console.WriteLine(BuildContext.Current.TargetName);", "/// <summary>Custom directory.</summary>");
+    var file = project.Target("custom", "Console.WriteLine(BuildContext.Current.TargetName);", "// dotask: 1\n// description: \"Custom directory.\"\n// end-dotask\n");
     var custom = Path.Combine(project.Root, ".abc");
     Directory.CreateDirectory(custom);
     File.Move(file, Path.Combine(custom, "custom.cs"));
@@ -200,9 +208,13 @@ public sealed class IntegrationTests
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", "invalid: [");
     project.Write(".tasks/run.cs", """
+      // dotask: 1
+      // description: "A completion-only test."
+      // options:
+      //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"]}
+      // end-dotask
       #:package This.Package.Must.Never.Be.Restored@1.0.0
-      /// <summary>A completion-only test.</summary>
-      /// <option name="configuration" alias="c" choices="Debug,Release" />
+
       public static class Target
       {
         public static void Main() { ThisDoesNotCompile(); }
@@ -219,8 +231,12 @@ public sealed class IntegrationTests
   {
     using var project = new TestProject();
     project.Target("guarded", "File.WriteAllText(\"marker\", \"bad\");", """
-      /// <option name="name" required="true" />
-      /// <requires setting="missing" />
+      // dotask: 1
+      // options:
+      //   - {"name": "name", "required": true}
+      // requires:
+      //   - {"kind": "setting", "value": "missing"}
+      // end-dotask
       """);
     var argument = await project.RunAsync("guarded");
     Assert.Contains("requires --name", argument.StandardError);
@@ -229,10 +245,12 @@ public sealed class IntegrationTests
     Assert.False(File.Exists(Path.Combine(project.Root, "marker")));
   }
 
-  [Fact]
-  public async Task NativeFileBasedPackageReferencesAreSupported()
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task NativeFileBasedPackageReferencesAreSupported( bool native )
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = native };
     project.Write(".tasks/package.cs", """
       #:package YamlDotNet@16.3.0
       Console.WriteLine(typeof(YamlDotNet.RepresentationModel.YamlStream).Name);
@@ -242,10 +260,12 @@ public sealed class IntegrationTests
     Assert.Contains("YamlStream", result.StandardOutput);
   }
 
-  [Fact]
-  public async Task NativeProjectReferencesKeepTheirOwnBuildProperties()
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task NativeProjectReferencesKeepTheirOwnBuildProperties( bool native )
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = native };
     project.WriteBuildProperties("shared/Directory.Build.props",
       "<TargetFramework>net10.0</TargetFramework><DefineConstants>LIBRARY_FLAG</DefineConstants>");
     project.Write("shared/Library.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />");

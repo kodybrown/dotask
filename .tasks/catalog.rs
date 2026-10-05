@@ -1,10 +1,10 @@
-//! ---
-//! description: Generate the shared-task catalog, or verify that it matches the sources.
-//! options:
-//!   - { name: verify, alias: v, type: bool, default: false, description: Check the existing catalog without writing files. }
-//!   - { name: root, type: path, default: shared-tasks, completion: directory, description: Directory containing the shared task groups. }
-//! examples: [dotask catalog, dotask catalog --verify]
-//! ---
+// dotask: 1
+// description: Generate the shared-task catalog, or verify that it matches the sources.
+// options:
+//   - { name: verify, alias: v, type: bool, default: false, description: Check the existing catalog without writing files. }
+//   - { name: root, type: path, default: shared-tasks, completion: directory, description: Directory containing the shared task groups. }
+// examples: [dotask catalog, dotask catalog --verify]
+// end-dotask
 use dotask_sdk::{
   bail, json, serde_json,
   sha2::{Digest, Sha256},
@@ -40,7 +40,11 @@ fn task(project: &BuildContext) -> Result<()> {
       reject_link(&source)?;
       let manifest = source.with_extension("task.json");
       if manifest.is_file() {
-        bail!("Move '{}' into XML <requires task=\"...\" /> / <requires file=\"...\" /> comments in '{}', then remove the .task.json file.", manifest.display(), source.display());
+        bail!(
+          "Move '{}' into task/file requirements in the YAML header in '{}', then remove the .task.json file.",
+          manifest.display(),
+          source.display()
+        );
       }
       sources.push(source);
     }

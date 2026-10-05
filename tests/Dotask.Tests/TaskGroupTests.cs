@@ -82,9 +82,12 @@ public sealed class TaskGroupTests
       var p = BuildContext.Current.Parameters;
       File.AppendAllText("order", $"{p.Get<string>("message")}|{p.Get<int>("count")}|{p.Get<bool>("enabled")};");
       """, """
-      /// <option name="message" />
-      /// <option name="count" type="int" />
-      /// <option name="enabled" type="bool" />
+      // dotask: 1
+      // options:
+      //   - {"name": "message"}
+      //   - {"name": "count", "type": "int"}
+      //   - {"name": "enabled", "type": "bool"}
+      // end-dotask
       """);
     project.Write(".tasks/check.task", """
       require_at_least_1_step: true

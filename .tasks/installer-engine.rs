@@ -1,11 +1,11 @@
-//! ---
-//! description: Build the host Rust installer, or run its tests and formatting checks.
-//! options:
-//!   - { name: verify, type: bool, default: false, description: 'Run Rust tests, formatting, and clippy.' }
-//! requires:
-//!   - { kind: tool, value: cargo }
-//!   - { kind: file, value: _support/RustBuild.rs }
-//! ---
+// dotask: 1
+// description: Build the host Rust installer, or run its tests and formatting checks.
+// options:
+//   - { name: verify, type: bool, default: false, description: 'Run Rust tests, formatting, and clippy.' }
+// requires:
+//   - { kind: tool, value: cargo }
+//   - { kind: file, value: _support/RustBuild.rs }
+// end-dotask
 #[path = "_support/RustBuild.rs"]
 mod rust_build;
 use dotask_sdk::{BuildContext, Result};

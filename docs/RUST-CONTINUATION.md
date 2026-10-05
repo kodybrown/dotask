@@ -9,18 +9,18 @@ contracts; [VERIFICATION.md](VERIFICATION.md) owns dated acceptance evidence.
 - The Rust CLI runs C# tasks, Rust `.rs` tasks, and YAML groups, including nested
   calls in both directions, immutable settings snapshots, failures, cancellation,
   and invocation-local installer results.
-- `src/dotask-sdk` supplies Rust task helpers. Metadata is leading `//!` YAML;
+- `src/dotask-sdk` supplies Rust task helpers. Metadata is leading ordinary-comment YAML;
   help and completion never compile or execute a task. Generated Cargo manifests,
   source/SDK snapshots, lockfiles, and outputs stay in an external per-user cache.
   See [Rust authoring](TARGETS.md#rust-tasks).
 - Repository orchestration is Rust: `installer-engine`, `rust-cli`,
   `create-installer`, `pack`, `verify`, `verify-docs`, `catalog`, and `shim`.
   Shared C# tasks and the C# authoring library remain maintained.
-- `build.cmd` and `build.sh` stage a native runner, `sdk/` sources, and `csharp/`
-  support into a fresh temporary directory. Repository operations remain tasks.
-- `create-installer.rs` builds native binaries and publishes the C# support host
+- `build.cmd` and `build.sh` stage a native runner, `sdk/` sources, and `Dotask.Library.dll`
+  helpers into a fresh temporary directory. Repository operations remain tasks.
+- `create-installer.rs` builds native binaries and publishes the C# helper DLL
   from evaluated `PublishDir`. A fresh payload contains native `dotask[.exe]`,
-  `sdk/`, and `csharp/` including the maintained C# library. The existing Rust
+  `sdk/`, and `Dotask.Library.dll`. The existing Rust
   installer creates packages and preserves immutable builds, receipts, and
   activation recovery. `pack.rs` uses the same creator.
 - The C# CLI remains the behavior reference. Explicit `dotnet/pack` packages
@@ -52,20 +52,10 @@ it. Use explicit fresh temporary install/bin roots; never use active defaults.
 
 Package acceptance must exercise first installation, identical-build reuse,
 changed-build activation, installed native arguments/streams, C# and Rust tasks,
-nested calls, launcher ownership, and uninstall. Verify C# metadata with the
-self-contained support host even when `dotnet` is absent from PATH. Rust execution
-still needs Cargo; C# execution still needs the selected .NET SDK. A self-contained
-metadata host does not replace either language compiler.
-
-The following direct command uses the configured Windows Cargo directory:
-
-```powershell
-& 'C:\tmp\_rust\dotask\target\release\dotask.exe' --use-dir .\examples\basic\.tasks hello --name Rust
-```
-
-If Cargo overrides its output path, query `cargo metadata` rather than guessing.
-Verify evaluated `BaseOutputPath`, `BaseIntermediateOutputPath`, and `PublishDir`
-for all four .NET projects after tooling changes. Keep output external.
+nested calls, launcher ownership, and uninstall. Verify help/completion for both languages with all toolchain paths absent.
+Rust execution needs Cargo/Rust and C# execution needs the selected .NET SDK.
+Neither toolchain is bundled. Query Cargo's output path rather than guessing.
+Verify evaluated .NET output paths for all three projects after tooling changes.
 
 ## Remaining work
 

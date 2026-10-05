@@ -1,15 +1,14 @@
-//! ---
-//! description: Create dotask's native CLI installer without installing it.
-//! options:
-//!   - { name: configuration, alias: c, choices: [Debug, Release], default: Release, description: C# support build configuration. }
-//!   - { name: self-contained, type: bool, default: true, description: Include the .NET runtime for C# metadata support. }
-//! requires:
-//!   - { kind: tool, value: dotnet }
-//!   - { kind: tool, value: cargo }
-//!   - { kind: setting, value: installer-output }
-//!   - { kind: file, value: _support/RustBuild.rs }
-//! examples: [dotask create-installer]
-//! ---
+// dotask: 1
+// description: Create dotask's native CLI installer without installing it.
+// options:
+//   - { name: configuration, alias: c, choices: [Debug, Release], default: Release, description: C# helper build configuration. }
+// requires:
+//   - { kind: tool, value: dotnet }
+//   - { kind: tool, value: cargo }
+//   - { kind: setting, value: installer-output }
+//   - { kind: file, value: _support/RustBuild.rs }
+// examples: [dotask create-installer]
+// end-dotask
 #[path = "_support/RustBuild.rs"]
 mod rust_build;
 use dotask_sdk::{json, serde_json, tempfile, BuildContext, Result};
@@ -21,23 +20,12 @@ fn task(project: &BuildContext) -> Result<()> {
   let output = project.setting_path("installer-output")?;
   project.exec_target("installer-engine", json!({}))?;
   project.exec_target("rust-cli", json!({}))?;
-  let rid = format!(
-    "{}-{}",
-    match project.os() {
-      "windows" => "win",
-      "macos" => "osx",
-      _ => "linux",
-    },
-    project.architecture()
-  );
-  let self_contained = project.boolean("self-contained")?;
-  let (published, version) = rust_build::publish_host(
+  let (published, version) = rust_build::publish_library(
     project,
     &[
       format!("-p:Configuration={}", project.string("configuration")?),
-      format!("-p:RuntimeIdentifier={rid}"),
-      format!("-p:SelfContained={self_contained}"),
-      format!("-p:UseAppHost={self_contained}"),
+      "-p:SelfContained=false".into(),
+      "-p:UseAppHost=false".into(),
     ],
   )?;
   let temporary = tempfile::Builder::new().prefix("dotask-native-package-").tempdir()?;
@@ -50,7 +38,7 @@ fn task(project: &BuildContext) -> Result<()> {
     "dotask"
   };
   fs::copy(cargo_output.join(executable), payload.join(executable))?;
-  rust_build::copy_tree(published.path(), &payload.join("csharp"))?;
+  fs::copy(published.path().join("Dotask.Library.dll"), payload.join("Dotask.Library.dll"))?;
   rust_build::stage_sdk(project, &payload.join("sdk"))?;
   let config = temporary.path().join("installer.yaml");
   // JSON is a YAML subset. The installer emits the final readable YAML and

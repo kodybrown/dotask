@@ -8,9 +8,10 @@ services and the other [deferred features](DESIGN.md#deferred) are not APIs.
 The [Rust CLI](../README.md#rust-cli-development-preview) runs C# and Rust tasks
 and YAML groups, including nested calls,
 project management, help, shell completion, and the interactive group wizard.
-Keep its staged `csharp/` support directory for C# metadata and the .NET SDK for
-C# execution. Rust tasks use the bundled `sdk/` sources and Rust 1.95+/Cargo;
-[Rust metadata and help](TARGETS.md#rust-tasks) need no toolchain. Native initialization
+Stage `Dotask.Library.dll` and the `sdk/` helper crate beside the native executable.
+C# execution uses the installed .NET SDK; Rust uses Rust 1.95+/Cargo. Metadata for
+both languages is an ordinary-comment YAML header and needs no toolchain.
+Native initialization
 and YAML-only projects need no .NET host. Shared Rust variants, `--lang`, group-only `--add`, and extension-qualified calls are
 [agreed future behavior](DESIGN.md#rust-cli-transition), not implemented commands.
 
@@ -119,11 +120,11 @@ example without an application dependency, use
    paths; exact names win and shortcuts must be unique. Old space-grouped files
    remain supported. Keep helper sources under `_support`, which discovery skips.
 2. Use `using DoTask;` and an explicit class containing `public static void Main()`
-   or `public static async Task Main()`. Put XML documentation directly on the class
-   or its static `Main`. Class docs win. Top-level-statement metadata is not read.
-3. Add a clear `<summary>`, declare every accepted parameter with `<option>`,
-   and add useful `<example>` and `<requires>` entries. XML names and attributes
-   are lowercase and case-sensitive. Metadata remains in C#, not YAML.
+   or `public static async Task Main()`. Put the YAML task header at the top of the file
+   before code or SDK directives. Top-level statements are also supported.
+3. Add a clear `description`, declare every accepted parameter under `options`,
+   and add useful `examples` and `requires` entries. Header keys
+   are lowercase and case-sensitive. Metadata is YAML inside ordinary C# comments.
 4. Get the context with `var project = BuildContext.Current;` and shared settings
    with `var config = project.Config;`. Read validated parameters through
    `project.Parameters.Get<T>("full-name")`.
@@ -138,9 +139,9 @@ example without an application dependency, use
    each intended parameter explicitly. Prefer source-qualified target paths in reusable
    orchestration files so other groups or project entry points cannot change
    their dependencies. Copy the dependency files along with the caller.
-   Shared tasks declare required companions in that same XML documentation:
-   `<requires task="dotnet/restore" />` uses a same-source `group/task` ID;
-   `<requires file="dotnet/_support/Helpers.cs" />` uses a source-root-relative
+   Shared tasks declare required companions in that same YAML header:
+   `{kind: task, value: dotnet/restore}` uses a same-source `group/task` ID;
+   `{kind: file, value: dotnet/_support/Helpers.cs}` uses a source-root-relative
    path. Add/sync copy these companions; the declarations do not execute them.
    Keep `#:include` paths relative to the task file. Do not create `.task.json`
    sidecars or declare optional target calls as required dependencies.
@@ -186,18 +187,18 @@ launcher to bypass conflicts.
 | Current task identity      | `project.TargetName` is the full name; `TargetFile` retains the actual source path                                                   |
 | Task directories           | `project.TaskDirectory` is the selected tasks root, including `--use-dir`; `TargetDirectory` contains the current target file       |
 | Host detection             | `project.OS`, `IsWindows`, `IsLinux`, `IsMacOS`; an `OS=linux` parameter does not change the host                                    |
-| Validation beyond XML      | Explicit checks in `Main` and actionable `TaskException` messages                                                                    |
+| Validation beyond metadata      | Explicit checks in `Main` and actionable `TaskException` messages                                                                    |
 
 - Option types are `string`, `bool`, `int`, `number`, and `path`; read `number`
   as `double`. Aliases are one ASCII letter. Choices use a comma-separated
   `choices="Debug,Release"` attribute. There is no option array/object type.
-- Explicit arguments override YAML target defaults, which override XML defaults.
+- Explicit arguments override YAML target defaults, which override header defaults.
   `settings` and task parameters are separate collections. YAML default keys use
   full option names. Identifiers match without case sensitivity; arbitrary string
   contents and filesystem case are preserved.
-- A default satisfies `required="true"`. `type="path"` normalizes a path without
+- A default satisfies `required: true`. `type: path` normalizes a path without
   checking existence. `completion="directory"` controls suggestions, not runtime
-  validation. `<requires setting="x" />` checks presence, not type or file existence.
+  validation. `{kind: setting, value: x}` checks presence, not type or file existence.
 - `RunAsync` takes an executable plus separate arguments. Do not prequote list
   entries, concatenate a shell command, or normalize every argument as a path.
   Pipes, redirects, shell built-ins, and `.cmd`/`.bat` launchers need an explicitly
@@ -292,20 +293,20 @@ verification commands. It does not replace the project's existing workflow.
   win; ambiguous shortcuts fail. Do not add `default-group` or an imports list.
 - Use `dotask` or `dotask help` for project details, shared settings, and targets.
   `dotask --help` shows only CLI usage and does not inspect this project.
-- Use `dotask help TARGET` to inspect its XML options and effective defaults.
+- Use `dotask help TARGET` to inspect its header options and effective defaults.
   Help never compiles, restores, or executes tasks. Exit 0 can include individual
   metadata/default errors and does not prove the target compiles.
-- Metadata belongs on an explicit entry-point class or static Main. Use
-  `<summary>`, `<option name="..." alias="c" ...>`, and `<requires ... />`.
-  Top-level-statement comments do not define task options in this preview.
-- Declare shared companions in XML: `<requires task="group/task" />` and
-  `<requires file="group/_support/Helper.cs" />`, relative to the same source.
+- Metadata belongs at the top of the task file, before code/directives. Use
+  `description`, `options`, and `requires` in a `// dotask: 1` header.
+  Top-level statements are supported; helper methods are not separate CLI tasks.
+- Declare shared companions in the YAML header: `{kind: task, value: group/task}` and
+  `{kind: file, value: group/_support/Helper.cs}`, relative to the same source.
   These control copying, not execution; no `.task.json` sidecar is used.
 - Use `BuildContext.Current`, `project.Config`, and `project.Parameters`.
   Read typed keys with `Get<T>`/`GetPath`; YAML does not generate C# properties.
 - Keep project-specific settings in YAML; no task registration is required.
   Top-level `name`/`description` are display metadata, outside `project.Config`.
-  Explicit parameters override YAML target defaults, which override XML defaults.
+  Explicit parameters override YAML target defaults, which override header defaults.
 - Call processes with `RunAsync(executable, arguments)` using separate unquoted
   arguments. Use `project.Path` for paths and `ExecTargetAsync` for other targets.
   Nested calls need explicit parameter forwarding and run every time.

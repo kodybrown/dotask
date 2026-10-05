@@ -46,8 +46,8 @@ public sealed class TestProject : IDisposable
 
   public string Target( string name, string body = "", string metadata = "", bool async = false )
     => Write($".tasks/{name}.cs", $$"""
-      using DoTask;
       {{metadata}}
+      using DoTask;
       public static class Target
       {
         public static {{(async ? "async Task" : "void")}} Main()

@@ -1,12 +1,16 @@
+// dotask: 1
+// description: "Format solution and task code, then run optional fixeol, or check formatting."
+// options:
+//   - {"name": "verify", "alias": "v", "type": "bool", "default": "false", "description": "Check code formatting without rewriting source or running fixeol."}
+//   - {"name": "dotnet", "default": "dotnet", "description": ".NET CLI executable name or path."}
+// requires:
+//   - {"kind": "tool", "value": "dotnet"}
+//   - {"kind": "setting", "value": "solution"}
+// examples: ["dotask format", "dotask format --verify"]
+// end-dotask
 using DoTask;
 
-/// <summary>Format solution and task code, then run optional fixeol, or check formatting.</summary>
-/// <option name="verify" alias="v" type="bool" default="false">Check code formatting without rewriting source or running fixeol.</option>
-/// <option name="dotnet" default="dotnet">.NET CLI executable name or path.</option>
-/// <requires tool="dotnet" />
-/// <requires setting="solution" />
-/// <example>dotask format</example>
-/// <example>dotask format --verify</example>
+
 public static class Target
 {
   public static async Task Main()

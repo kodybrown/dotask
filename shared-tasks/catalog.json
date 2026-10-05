@@ -9,7 +9,7 @@
       "files": [
         {
           "path": "dotask-installer/create-installer.cs",
-          "sha256": "68faf24d3f86f67dec885aed2d5738d0bc17ad3b96b196a21a9a2e157209bd21"
+          "sha256": "fc751aef6546e1477881a529e4e4b3741674efafdd72d173b3a3c5514e75a44c"
         }
       ],
       "requires": []
@@ -22,7 +22,7 @@
       "files": [
         {
           "path": "dotask-installer/install.cs",
-          "sha256": "fbf34f42c6f61a81b17ae24300dbabb9291c4c5738069684456e7cadf46eb88e"
+          "sha256": "ddbd0b85c8c07a3262b7f0e8382c5f3d3318d10ddda71151b5113ab3f09900d1"
         }
       ],
       "requires": []
@@ -35,7 +35,7 @@
       "files": [
         {
           "path": "dotask-installer/uninstall.cs",
-          "sha256": "4474317cb4c183d37a8f5df0e49218b258b7301aedd76ce03bd95a5637574cc2"
+          "sha256": "6f2d7133b91d4b93f352026f90ac6931db69e6e3f2e02bdb15ac042d46b67255"
         }
       ],
       "requires": []
@@ -48,7 +48,7 @@
       "files": [
         {
           "path": "dotnet/build.cs",
-          "sha256": "ff0d138f301ea8717a7b649b4ea210f960e7b61b12ebb43215d9cc16a121b8b7"
+          "sha256": "d35b521ca6edf3ed694befcf40b79418f868edcb5ad50e26dee5591db4cced2c"
         }
       ],
       "requires": [
@@ -63,7 +63,7 @@
       "files": [
         {
           "path": "dotnet/check.cs",
-          "sha256": "5271de609544ccd428cb01a710da20f670236c68185e8ad2bab987b93305521d"
+          "sha256": "b6f847ee98bd05792f4324c2f07f9d145595397ad2254c1b4ef985d6d6e557ea"
         }
       ],
       "requires": []
@@ -76,7 +76,7 @@
       "files": [
         {
           "path": "dotnet/clean.cs",
-          "sha256": "49c33b2bdb77c4675b01d62293ece03bd803cdf9b43326219e6fb51bef69aa64"
+          "sha256": "4b48b8f526170f8625964228fdef1da681167e03dd7f452f0b635146443e3ae7"
         }
       ],
       "requires": []
@@ -89,7 +89,7 @@
       "files": [
         {
           "path": "dotnet/format.cs",
-          "sha256": "afa96372cfefffe8c2ba829b0156f076159e80676ebc80caaefb963a61ab9500"
+          "sha256": "66bdc61917afbb0bd23b7fe2b3287ff7ae13a1730ae69e1d1726afc7cbe6fd4a"
         }
       ],
       "requires": []
@@ -102,7 +102,7 @@
       "files": [
         {
           "path": "dotnet/pack.cs",
-          "sha256": "9272f1880bf3a05237a513b3ba02f4e064ff062fcf6931749bbdfc6e4179caf8"
+          "sha256": "3a4bc1cb49db445719d067ecba04e86eeb3e485af63262346254af971cfc9aa6"
         }
       ],
       "requires": []
@@ -115,7 +115,7 @@
       "files": [
         {
           "path": "dotnet/publish.cs",
-          "sha256": "471803f7615b4dc443a2cae67a0b8cf108a00af5e83a767145d3d6d3f8fd21af"
+          "sha256": "12c29f926991090869d19c91b1c63090f020f7a01c04ee21aba5e95a64e9d8ce"
         }
       ],
       "requires": []
@@ -128,7 +128,7 @@
       "files": [
         {
           "path": "dotnet/restore.cs",
-          "sha256": "c9b9e9603ba82820482cdf4ce4452a811a143193cbe84d5faeea6413e13c3b01"
+          "sha256": "9d91ab07132184228571fc1b79d274392f2f2134478fd951f19c55ef344cfc4e"
         }
       ],
       "requires": []
@@ -141,7 +141,7 @@
       "files": [
         {
           "path": "dotnet/run.cs",
-          "sha256": "648ffdf0e97ce1267f9c7ec5aff5fdf0e02ddef919bb4cbadb34e1596202f716"
+          "sha256": "2124db02f0edbc992a529c5c66f7845afa4d3646d6e1c9825e6e9e92b1d64cc6"
         }
       ],
       "requires": []
@@ -154,7 +154,7 @@
       "files": [
         {
           "path": "dotnet/test.cs",
-          "sha256": "57cfa1d1f229d3d8b0b5443c4191ecab39e748746ae74c2dfec42b48389fef09"
+          "sha256": "d18d951e0ce829437b6dacf05cd43012f1970aaf487b0a4205a9e03683fcef55"
         }
       ],
       "requires": []
@@ -167,7 +167,7 @@
       "files": [
         {
           "path": "dotnet/verify.cs",
-          "sha256": "2f18e13096df82fa9668352f67a20dbba035ead6d2aebc94f45e966b63cdd424"
+          "sha256": "a995b2700422655e146bd13e937591df51587f4de2d11efb59e6c8a7d8d2af8a"
         }
       ],
       "requires": []
@@ -180,7 +180,7 @@
       "files": [
         {
           "path": "git/check.cs",
-          "sha256": "eae0a3cab76d0b16406bb8748a89ba7734f83df0cbe48e5c0d6e31d93f52014a"
+          "sha256": "4ebafe62dfca12d472776c990e7fbe5afc75fb2fff47be08fddeb16cf7ec4b75"
         }
       ],
       "requires": []
@@ -193,7 +193,7 @@
       "files": [
         {
           "path": "text/fixeol.cs",
-          "sha256": "436be36f0a59d8a9c0ae0d2a12b37c4df8a6b402c6fc0488a7f6e657cb62c922"
+          "sha256": "d20ad4061241d2791393f6c492b2be664c5dba1812c02300da4a8ac039d63a8f"
         }
       ],
       "requires": []

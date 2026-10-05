@@ -16,7 +16,7 @@ public sealed class VerboseTests
   {
     using var project = new TestProject();
     project.Write(".dotasks.yaml", "name: Project identity\ndescription: Project description\nsettings: {message: hello}");
-    project.Target("run", "DoesNotCompile();", "/// <summary>Run things.</summary>\n/// <option name=\"mode\" default=\"Debug\" />");
+    project.Target("run", "DoesNotCompile();", "// dotask: 1\n// description: \"Run things.\"\n// options:\n//   - {\"name\": \"mode\", \"default\": \"Debug\"}\n// end-dotask\n");
     using var output = new StringWriter();
     using var error = new StringWriter();
     Assert.Equal(0, await CliApplication.RunAsync(command.Split(' ', StringSplitOptions.RemoveEmptyEntries), project.Root, output, error));

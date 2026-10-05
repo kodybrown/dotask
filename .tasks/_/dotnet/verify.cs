@@ -1,8 +1,12 @@
+// dotask: 1
+// description: "Run available dependency, test, and formatting checks."
+// remarks: "Runs _/dotnet/check, _/dotnet/test, and _/dotnet/format in order. Missing targets are skipped; failures stop verification."
+// options:
+//   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Release", "description": "Build configuration."}
+// end-dotask
 using DoTask;
 
-/// <summary>Run available dependency, test, and formatting checks.</summary>
-/// <option name="configuration" alias="c" choices="Debug,Release" default="Release">Build configuration.</option>
-/// <remarks>Runs _/dotnet/check, _/dotnet/test, and _/dotnet/format in order. Missing targets are skipped; failures stop verification.</remarks>
+
 public static class Target
 {
   public static async Task Main()

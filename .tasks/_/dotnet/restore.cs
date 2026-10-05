@@ -1,10 +1,15 @@
+// dotask: 1
+// description: "Restore NuGet packages for the configured solution."
+// options:
+//   - {"name": "dotnet", "default": "dotnet", "description": ".NET CLI executable name or path."}
+// requires:
+//   - {"kind": "tool", "value": "dotnet"}
+//   - {"kind": "setting", "value": "solution"}
+// examples: ["dotask restore"]
+// end-dotask
 using DoTask;
 
-/// <summary>Restore NuGet packages for the configured solution.</summary>
-/// <option name="dotnet" default="dotnet">.NET CLI executable name or path.</option>
-/// <requires tool="dotnet" />
-/// <requires setting="solution" />
-/// <example>dotask restore</example>
+
 public static class Target
 {
   public static async Task Main()

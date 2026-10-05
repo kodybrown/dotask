@@ -12,7 +12,7 @@ try {
   $dotaskCargoJson = (& cargo metadata --manifest-path Cargo.toml --locked --format-version 1 --no-deps | Out-String)
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   $dotaskCargo = $dotaskCargoJson | ConvertFrom-Json
-  $dotaskHostProject = Join-Path (Get-Location) 'src/Dotask.CSharpHost/Dotask.CSharpHost.csproj'
+  $dotaskHostProject = Join-Path (Get-Location) 'src/Dotask/Dotask.csproj'
   $dotaskPublishText = (& dotnet publish $dotaskHostProject -c Release --self-contained=false -p:UseAppHost=false --nologo --verbosity quiet -getProperty:PublishDir,Version -getItem:ResolvedFileToPublish | Out-String)
   if ($LASTEXITCODE -ne 0) { Write-Output $dotaskPublishText; exit $LASTEXITCODE }
   $dotaskJsonStart = $dotaskPublishText.IndexOf('{')
@@ -21,13 +21,9 @@ try {
   $dotaskPublish = $dotaskPublishText.Substring($dotaskJsonStart) | ConvertFrom-Json
   if ([IO.Path]::IsPathRooted($dotaskPublish.Properties.PublishDir)) { $dotaskPublished = $dotaskPublish.Properties.PublishDir }
   else { $dotaskPublished = [IO.Path]::GetFullPath((Join-Path (Split-Path $dotaskHostProject) $dotaskPublish.Properties.PublishDir)) }
-  New-Item -ItemType Directory -Path (Join-Path $Destination 'csharp'), (Join-Path $Destination 'sdk/src') -Force | Out-Null
+  New-Item -ItemType Directory -Path (Join-Path $Destination 'sdk/src') -Force | Out-Null
   Copy-Item -LiteralPath (Join-Path $dotaskCargo.target_directory 'release/dotask.exe') -Destination $Destination
-  foreach ($dotaskFile in $dotaskPublish.Items.ResolvedFileToPublish) {
-    $dotaskHostDestination = Join-Path (Join-Path $Destination 'csharp') $dotaskFile.RelativePath
-    New-Item -ItemType Directory -Path (Split-Path $dotaskHostDestination) -Force | Out-Null
-    Copy-Item -LiteralPath (Join-Path $dotaskPublished $dotaskFile.RelativePath) -Destination $dotaskHostDestination
-  }
+  Copy-Item -LiteralPath (Join-Path $dotaskPublished 'Dotask.Library.dll') -Destination $Destination
   Copy-Item -LiteralPath 'src/dotask-sdk/Cargo.toml' -Destination (Join-Path $Destination 'sdk')
   Copy-Item -LiteralPath 'src/dotask-sdk/src/lib.rs' -Destination (Join-Path $Destination 'sdk/src')
 } catch {

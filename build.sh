@@ -20,7 +20,7 @@ trap 'exit 143' TERM
 # Bootstrap only builds/stages the runner. All repository operations are tasks.
 cargo build --manifest-path Cargo.toml --package dotask-cli --locked --release
 dotask_cargo_json="$(cargo metadata --manifest-path Cargo.toml --locked --format-version 1 --no-deps)"
-dotask_publish_json="$(dotnet publish src/Dotask.CSharpHost/Dotask.CSharpHost.csproj -c Release \
+dotask_publish_json="$(dotnet publish src/Dotask/Dotask.csproj -c Release \
   --self-contained=false -p:UseAppHost=false --nologo --verbosity quiet -getProperty:PublishDir,Version -getItem:ResolvedFileToPublish)"
 # Use the SDK already required for C# support to read tool metadata; no Python,
 # jq, installed dotask, or task execution is part of the bootstrap.
@@ -31,12 +31,8 @@ var text = File.ReadAllText(args[0]);
 using var json = JsonDocument.Parse(text[text.IndexOf('{')..]);
 if (args[1] == "publish") {
   var root = json.RootElement.GetProperty("Properties").GetProperty("PublishDir").GetString()!;
-  foreach (var file in json.RootElement.GetProperty("Items").GetProperty("ResolvedFileToPublish").EnumerateArray()) {
-    var relative = file.GetProperty("RelativePath").GetString()!;
-    var destination = Path.Combine(args[2], relative);
-    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-    File.Copy(Path.Combine(root, relative), destination);
-  }
+  Directory.CreateDirectory(args[2]);
+  File.Copy(Path.Combine(root, "Dotask.Library.dll"), Path.Combine(args[2], "Dotask.Library.dll"));
 }
 Console.WriteLine(args[1] == "cargo" ? json.RootElement.GetProperty("target_directory").GetString()
   : json.RootElement.GetProperty("Properties").GetProperty("PublishDir").GetString());
@@ -44,8 +40,8 @@ CS
 printf '%s' "$dotask_cargo_json" > "$dotask_bootstrap_dir/cargo.json"
 printf '%s' "$dotask_publish_json" > "$dotask_bootstrap_dir/publish.json"
 dotask_cargo_output="$(dotnet run --file "$dotask_metadata_reader" -- "$dotask_bootstrap_dir/cargo.json" cargo)"
-dotask_publish_output="$(dotnet run --file "$dotask_metadata_reader" -- "$dotask_bootstrap_dir/publish.json" publish "$dotask_bootstrap_dir/csharp")"
-mkdir -p "$dotask_bootstrap_dir/csharp" "$dotask_bootstrap_dir/sdk/src"
+dotask_publish_output="$(dotnet run --file "$dotask_metadata_reader" -- "$dotask_bootstrap_dir/publish.json" publish "$dotask_bootstrap_dir")"
+mkdir -p "$dotask_bootstrap_dir/sdk/src"
 cp "$dotask_cargo_output/release/dotask" "$dotask_bootstrap_dir/dotask"
 cp src/dotask-sdk/Cargo.toml "$dotask_bootstrap_dir/sdk/"
 cp src/dotask-sdk/src/lib.rs "$dotask_bootstrap_dir/sdk/src/"

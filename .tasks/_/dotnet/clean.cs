@@ -1,12 +1,16 @@
+// dotask: 1
+// description: "Clean the configured solution's build outputs for one configuration."
+// options:
+//   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build configuration to clean."}
+//   - {"name": "dotnet", "default": "dotnet", "description": ".NET CLI executable name or path."}
+// requires:
+//   - {"kind": "tool", "value": "dotnet"}
+//   - {"kind": "setting", "value": "solution"}
+// examples: ["dotask clean", "dotask clean -c Release"]
+// end-dotask
 using DoTask;
 
-/// <summary>Clean the configured solution's build outputs for one configuration.</summary>
-/// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build configuration to clean.</option>
-/// <option name="dotnet" default="dotnet">.NET CLI executable name or path.</option>
-/// <requires tool="dotnet" />
-/// <requires setting="solution" />
-/// <example>dotask clean</example>
-/// <example>dotask clean -c Release</example>
+
 public static class Target
 {
   public static async Task Main()

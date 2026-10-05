@@ -4,9 +4,9 @@ This is the authoring contract for the current preview. See [usage](USAGE.md) fo
 CLI behavior and [AI assistant guidance](AI-ASSISTANTS.md) for a task-writing
 workflow. A target is a C# file-based application, a Rust `.rs` entry file using
 the bundled `dotask-sdk`, or a declarative YAML `.task` group. The native CLI
-supports calls in both directions between C# and Rust. C# metadata and compilation
-use the bundled support host and maintained authoring library. See
-[Rust tasks](#rust-tasks) for the Rust source and SDK contract.
+supports calls in both directions between C# and Rust. The native CLI reads
+metadata directly; C# compilation uses the installed SDK and maintained authoring
+library. See [Rust tasks](#rust-tasks) for the Rust source and SDK contract.
 
 Jump to [a complete target](#a-complete-target), [reuse](#reuse-a-target),
 [options](#option-metadata), [YAML](#yaml-configuration),
@@ -18,12 +18,12 @@ Jump to [a complete target](#a-complete-target), [reuse](#reuse-a-target),
 Save this as `.tasks/hello.rs`, then run `dotask hello --name Rust`:
 
 ```rust
-//! ---
-//! description: Print a greeting from a Rust task.
-//! options:
-//!   - { name: name, alias: n, default: Developer, description: Name to greet. }
-//! examples: [dotask hello --name Rust]
-//! ---
+// dotask: 1
+// description: Print a greeting from a Rust task.
+// options:
+//   - { name: name, alias: n, default: Developer, description: Name to greet. }
+// examples: [dotask hello --name Rust]
+// end-dotask
 use dotask_sdk::{BuildContext, Result};
 
 fn main() { dotask_sdk::run(task); }
@@ -33,15 +33,28 @@ fn task(project: &BuildContext) -> Result<()> {
 }
 ```
 
-The optional metadata block starts at the first nonblank line and ends at the
-second `//! ---`. Its YAML keys are `description`, `remarks`, `examples`,
-`capabilities`, `options`, and `requires`. Option keys are `name`, `alias`, `type`,
-`description`, `default`, `required`, `choices`, and `completion`. Types are
-`string`, `path`, `bool`, `int`, and `number`; completion is `file`, `directory`,
-or `none`. Defaults are scalar values. Requirements use `{ kind: tool|setting|task|file|os,
-value: ... }`. Quote commas inside flow-mapping descriptions. Unknown keys,
-duplicate/reserved options, invalid defaults, and escaping support paths fail
-before compilation. Metadata needs no Cargo or .NET host.
+The same optional YAML header is used by C# and Rust tasks. It starts with
+`// dotask: 1` at the first nonblank line (a BOM or executable shebang is allowed)
+and ends with `// end-dotask`. Every intervening line is an ordinary `//` comment.
+Leading header indentation is preserved after stripping the comment prefix.
+Empty headers are allowed. A header belongs to the file's one callable task;
+ordinary documentation on classes/methods is independent of task metadata.
+
+Keys are `description`, `remarks`, `examples`, `capabilities`, `options`, and
+`requires`. Option keys are `name`, `alias`, `type`, `description`, `default`,
+`required`, `choices`, and `completion`. Types are `string`, `path`, `bool`, `int`,
+and `number`; completion is `file`, `directory`, or `none`. Choices are a sequence
+of strings and defaults are scalar values. Requirements use `{kind: tool|setting|task|file|os,
+value: ...}`. Unknown keys, duplicate/reserved options, unsupported versions,
+invalid defaults and escaping support paths fail before compilation.
+
+Task names come from paths and languages from supported extensions. Both C# and
+Rust help/completion work without toolchains; missing executables leave tasks
+visible with an unavailable notice in help. C# execution requires .NET SDK
+10.0.300+ in the .NET 10 family, selected from the task directory; Rust execution
+requires Rust 1.95+ and Cargo. Nothing installs dependencies automatically.
+The header convention can extend to `#` comments for Python later; Python and
+other additional execution handlers remain unimplemented.
 
 Execution uses Rust 1.95+/Cargo and the bundled `sdk/` sources. Generated manifests,
 task/SDK snapshots, lockfiles, and build outputs are in a per-user external
@@ -89,7 +102,7 @@ The reserved official source directory `_` is allowed at the task root.
 | `dotnet run.cs`                   | `dotnet-run`                   | Legacy `run`, when unique                                       |
 
 Exact names take precedence. Ambiguous shortcuts fail and suggest fully qualified
-names. Namespaces come from directories, not XML or C# class names. There is no
+names. Namespaces come from directories, not header fields or C# class names. There is no
 `default-group`. A top-level `.tasks/build.cs` can coordinate several ecosystems.
 Old `<group> <target>.cs` names with exactly one space remain supported; plain
 hyphenated filenames retain their original exact identities. Duplicate full names
@@ -150,7 +163,7 @@ and may be empty (`steps: []`). Each step requires a nonempty string `run`.
 - `with` is an optional mapping of child parameter names to scalar strings,
   booleans, or numbers. Quoted strings stay strings, including values such as
   `'007'`. Child option binding validates/converts values using the child's
-  declared types; explicit values override that child's YAML and XML defaults.
+  declared types; explicit values override that child's YAML and header defaults.
   Null, sequence, and mapping parameter values are rejected.
 
 Parameters are passed through the normal named-argument binding; values are not
@@ -166,14 +179,18 @@ tasks; `.task` groups are project-authored files.
 Create `.tasks/` in your project's root and save the following as `.tasks/dotnet/run.cs`:
 
 ```csharp
+// dotask: 1
+// description: "Run the application."
+// options:
+//   - {"name": "configuration", "alias": "c", "type": "string", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build configuration."}
+// requires:
+//   - {"kind": "tool", "value": "dotnet"}
+//   - {"kind": "setting", "value": "application"}
+// examples: ["dotask run -c Release"]
+// end-dotask
 using DoTask;
 
-/// <summary>Run the application.</summary>
-/// <option name="configuration" alias="c" type="string"
-///         choices="Debug,Release" default="Debug">Build configuration.</option>
-/// <requires tool="dotnet" />
-/// <requires setting="application" />
-/// <example>dotask run -c Release</example>
+
 public static class Target
 {
   public static async Task Main()
@@ -206,13 +223,11 @@ container, or library package directive is needed. Both files can be created in
 any editor. [The basic example](../examples/basic/README.md) is runnable without
 creating an application first.
 
-The class name is arbitrary. Attach XML documentation to the entry-point class,
-or to its static `Main` method. Class documentation takes precedence. Standard
-`<summary>`, `<remarks>`, and `<example>` text is displayed in help. XML entities
-and inline tags such as `<c>` are supported. Write XML tag and attribute names
-exactly as shown, in lowercase; CLI case-insensitivity does not change XML rules.
-Escape XML-special characters in text and attribute values, such as `&amp;` and
-`&lt;`. These are custom XML tags, not C# attributes or Swagger annotations.
+The class name is arbitrary. Put the common YAML header before code and SDK
+directives. The header describes the file's one task, including top-level
+statements; helper methods are not independently callable targets. Ordinary
+C# XML documentation can still describe code, but is not task metadata.
+
 
 Use one explicit entry-point class with a static `Main` per target. Standard
 synchronous or asynchronous entry points are supported, including `Task<int>`
@@ -248,7 +263,7 @@ directly does not supply the library and ambient context.
 ## Reuse a target
 
 Copy the target file into another project's `.tasks`, then supply the settings
-it declares with `<requires setting="..." />`. Copy any explicit includes or
+it declares with `{kind: setting, value: ...}`. Copy any explicit includes or
 task-local assets it uses as well. Run its help and verify an appropriate call
 in the new project. The target file can remain identical between projects while
 each project owns its configuration.
@@ -342,20 +357,20 @@ and [formatter version queries](https://learn.microsoft.com/en-us/dotnet/core/to
 
 ## Option metadata
 
-| Attribute    | Meaning                                                 |
+| Field        | Meaning                                                 |
 | ------------ | ------------------------------------------------------- |
 | `name`       | Required full CLI name                                  |
 | `alias`      | Optional single ASCII letter                            |
 | `type`       | `string` (default), `bool`, `int`, `number`, or `path`  |
 | `default`    | Default value, validated like command-line input        |
 | `required`   | `true` requires a resolved value; default is `false`    |
-| `choices`    | Comma-separated allowed values; matching ignores case   |
-| `completion` | `file` or `directory`; paths default to file completion |
+| `choices`    | YAML sequence of allowed strings; matching ignores case   |
+| `completion` | `file`, `directory`, or `none`; paths default to file completion |
 
-`completion` changes suggestions only. Even `type="path"` does not require that
+`completion` changes suggestions only. Even `type: path` does not require that
 the file/directory exists; validate existence in the target if needed. A
 `type="string" completion="directory"` value remains a string without automatic
-path normalization. `required="true"` requires a resolved value, not necessarily
+path normalization. `required: true` requires a resolved value, not necessarily
 an explicitly supplied argument or a nonempty string. A default satisfies it.
 
 Option element text is its description. Allowed syntax includes:
@@ -547,7 +562,7 @@ await project.ExecTargetAsync("_/dotnet/publish",
     new Dictionary<string, object> { ["output-dir"] = "artifacts/release" });
 ```
 
-That example requires `_/dotnet/publish.cs` to declare `output-dir`. Child XML/YAML defaults
+That example requires `_/dotnet/publish.cs` to declare `output-dir`. Child header/project defaults
 still apply to parameters you omit. An orchestration task must explicitly pass
 its resolved configuration to each child; a caller's options are not inherited.
 
@@ -703,42 +718,31 @@ specific generated-output path intended by the task.
 
 ## Requirements and scope
 
-Use a separate `<requires>` element for each requirement, with exactly one of
-these attributes:
+Declare requirements in the file header, one `{kind, value}` mapping per item:
 
-| Declaration                          | Check before compilation/execution of a selected target                                  |
-| ------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `<requires tool="dotnet" />`         | Tool available via PATH, or the specified executable path; no version check              |
-| `<requires setting="application" />` | Shared setting exists and is non-null; no type, nonempty-string, or file-existence check |
-| `<requires os="windows,linux" />`    | Host belongs to the comma-separated list; names are `windows`, `linux`, `macos`          |
-
-Multiple requirement elements must all pass. Nested setting names work, for
-example `<requires setting="deployment.retries" />`. Requirements are reported
-in help but are not checked during help/completion. More specific validation is
-ordinary C# in `Main`: use `project.Files.FileExists(...)`, typed accessors, and
-`throw new TaskException("Actionable message")` as appropriate. There is no
-automatic `ValidateAsync` lifecycle hook in this preview.
-
-For [shared tasks](SHARED-TASKS.md), two more `<requires>` forms declare companions
-that add/sync must copy:
-
-```csharp
-/// <requires task="dotnet/restore" />
-/// <requires file="dotnet/_support/Helpers.cs" />
+```yaml
+requires:
+  - {kind: tool, value: git}
+  - {kind: setting, value: application}
+  - {kind: os, value: 'windows,linux'}
+  - {kind: task, value: dotnet/restore}
+  - {kind: file, value: dotnet/_support/Helpers.cs}
+capabilities: [network]
 ```
 
-Task IDs are `group/task` within the same source; files are relative to that
-source's root. Use one element per companion in the same class/Main documentation
-as the summary and options. These declarations appear in help but do not run
-pre-execution checks or schedule tasks. Keep execution explicit with
-`await project.ExecTargetAsync("_/dotnet/restore")`, and use a
-task-file-relative `#:include _support/Helpers.cs` directive to compile helper
-sources. No `.task.json` sidecar is needed.
+Tool, setting, and OS requirements are checked before executing a selected task.
+Tool declarations check availability, not versions. Settings check presence and
+nonnull values, not their types or paths. Dotted setting names are supported.
+Help reports metadata but does not execute requirement checks.
 
-`<capability name="network" />` adds informational help text. It neither enables
-functionality nor grants permission. Unknown custom tags do not create APIs or
-new validation behavior. XML never causes target entry points to execute during
-discovery.
+Task/file requirements declare companions for shared distribution. IDs are
+same-source `group/task`; files use portable paths relative to that source's
+root. They do not execute targets or schedule tasks. Keep nested calls explicit
+with `await project.ExecTargetAsync("_/dotnet/restore")`. C# helper compilation
+uses task-file-relative `#:include _support/Helpers.cs`; Rust support sources
+must also be declared so they enter the immutable compile snapshot.
+Capabilities are informational and grant no permissions. No `.task.json`
+sidecar or automatic validation lifecycle is supported.
 
 Targets are trusted code with the same privileges as their caller. Running a
 target can execute referenced MSBuild/package logic during SDK restore/build.

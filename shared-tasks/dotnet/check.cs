@@ -1,10 +1,14 @@
+// dotask: 1
+// description: "Check the solution, .NET SDK, MSBuild, and formatter prerequisites."
+// remarks: "Reports installed tool versions using the project's SDK selection."
+// requires:
+//   - {"kind": "tool", "value": "dotnet"}
+//   - {"kind": "setting", "value": "solution"}
+// examples: ["dotask dotnet-check"]
+// end-dotask
 using DoTask;
 
-/// <summary>Check the solution, .NET SDK, MSBuild, and formatter prerequisites.</summary>
-/// <requires tool="dotnet" />
-/// <requires setting="solution" />
-/// <remarks>Reports installed tool versions using the project's SDK selection.</remarks>
-/// <example>dotask dotnet-check</example>
+
 public static class Target
 {
   public static async Task Main()

@@ -388,3 +388,28 @@ acceptance, installation, and publication.
   external and the Bash launcher passed syntax checking. Linux/macOS acceptance
   remains deferred. No active installation changed; nothing was published or
   pushed.
+
+### 2026-10-05 Use common task headers and ship only application helpers
+
+- Read versioned ordinary-comment YAML headers for C# and Rust tasks directly
+  in the native CLI, including help/completion and private catalogs without
+  language toolchains. Convert repository, canonical shared, example, and test
+  task headers; preserve code documentation and existing task/helper APIs.
+- Delegate C# compilation directly to the installed .NET SDK, retaining isolated
+  external caches, locking, invocation snapshots, SDK directives, nested calls,
+  and cancellation. Remove the separate managed support host and Roslyn package
+  dependency; keep the C# CLI as the behavior reference.
+- Ship only the native command, C# helper DLL, and Rust helper source crate.
+  Remove self-contained packaging and its project default. Preserve installer
+  ownership, receipts, immutable builds, update recovery, and retained uninstall.
+  Keep original shared tracking baselines and private user tasks unchanged.
+- Verification: `build.cmd` passed 419 .NET Release tests and 31 Rust tests on
+  Windows x64, plus formatting/clippy/docs/catalog/shim/whitespace gates.
+  `build.cmd pack` and relocated temporary install/reuse/update/uninstall
+  acceptance passed, including Unicode, mixed-language calls, toolchain-free C#
+  help, and unowned-file preservation. The exact four-file application payload
+  totals 3.56 MiB; a fresh single-build installation including management files
+  measured 6.09 MiB. Both LLVM-rebuilt shims were byte-identical; evaluated output
+  paths, 100 relative links/anchors, Bash syntax, and `git diff --check` passed.
+  Linux/macOS acceptance remains deferred. No active installation changed;
+  nothing was published or pushed.

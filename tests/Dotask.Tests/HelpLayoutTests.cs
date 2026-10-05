@@ -66,10 +66,14 @@ public sealed class HelpLayoutTests
         solution: My Application.slnx
       """);
     project.Target("dotnet build", "ThisDoesNotCompile();", """
-      /// <summary>Build all of the projects in the configured solution using the selected SDK and build configuration.</summary>
-      /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build configuration for all projects selected by the solution and the current platform.</option>
-      /// <requires setting="solution" />
-      /// <example>dotask build --configuration Release</example>
+      // dotask: 1
+      // description: "Build all of the projects in the configured solution using the selected SDK and build configuration."
+      // options:
+      //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build configuration for all projects selected by the solution and the current platform."}
+      // requires:
+      //   - {"kind": "setting", "value": "solution"}
+      // examples: ["dotask build --configuration Release"]
+      // end-dotask
       """);
     foreach (var command in new[] { "", "help", "--verbose", "help --verbose", "build --help", "--help" }) {
       var output = new StringWriter();
@@ -100,8 +104,11 @@ public sealed class HelpLayoutTests
             configuration: Release
       """);
     const string options = """
-      /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build configuration.</option>
-      /// <option name="verify" type="bool" default="false">Verify formatting.</option>
+      // dotask: 1
+      // options:
+      //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build configuration."}
+      //   - {"name": "verify", "type": "bool", "default": "false", "description": "Verify formatting."}
+      // end-dotask
       """;
     project.Target("build", metadata: options);
     project.Target("test", metadata: options);

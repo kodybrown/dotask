@@ -56,10 +56,13 @@ public sealed class RustCliTests
       }));
       Console.Error.WriteLine("task stderr");
       """, """
-      /// <option name="count" type="int" default="2" />
-      /// <option name="text" required="true" />
-      /// <option name="empty" />
-      /// <option name="path" type="path" />
+      // dotask: 1
+      // options:
+      //   - {"name": "count", "type": "int", "default": "2"}
+      //   - {"name": "text", "required": true}
+      //   - {"name": "empty"}
+      //   - {"name": "path", "type": "path"}
+      // end-dotask
       """);
     var subdirectory = Directory.CreateDirectory(Path.Combine(project.Root, "nested 日本語")).FullName;
     const string text = "spaces 日本語 \"quotes\" \\literal\\ $dollar; pipe| & *";
@@ -91,8 +94,11 @@ public sealed class RustCliTests
   {
     using var project = new TestProject();
     project.Target("broken", "DoesNotCompile(); File.WriteAllText(\"ran\", \"bad\");", """
-      /// <summary>Visible metadata.</summary>
-      /// <option name="message" required="true" />
+      // dotask: 1
+      // description: "Visible metadata."
+      // options:
+      //   - {"name": "message", "required": true}
+      // end-dotask
       """);
     foreach (var args in new[] { Array.Empty<string>(), new[] { "help" }, new[] { "broken", "--help" } }) {
       var result = await Run(project, args);
@@ -138,7 +144,7 @@ public sealed class RustCliTests
     using var project = new TestProject();
     project.Write(".dotasks.yaml", "settings: { label: original }\ntargets: { child: { defaults: { message: inherited } } }");
     project.Target("child", "Console.WriteLine(BuildContext.Current.Config.Get<string>(\"label\") + \":\" + BuildContext.Current.Parameters.Get<string>(\"message\"));",
-      "/// <option name=\"message\" required=\"true\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"message\", \"required\": true}\n// end-dotask\n");
     project.Target("failure", "Environment.Exit(27);");
     project.Target("broken", "DoesNotCompile();");
     project.Target("one/check");
@@ -174,7 +180,7 @@ public sealed class RustCliTests
   public async Task NativeGroupsStopAtFailureSkipOnlyAbsenceAndDetectCycles()
   {
     using var project = new TestProject();
-    project.Target("first", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"text\"));", "/// <option name=\"text\" />");
+    project.Target("first", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"text\"));", "// dotask: 1\n// options:\n//   - {\"name\": \"text\"}\n// end-dotask\n");
     project.Target("fail", "Environment.Exit(23);");
     project.Write(".tasks/group.task", """
       steps:
@@ -199,9 +205,9 @@ public sealed class RustCliTests
   public async Task NativeExecutionReportsValidationCompilationAndTaskFailures()
   {
     using var project = new TestProject();
-    project.Target("required", metadata: "/// <option name=\"input\" required=\"true\" />");
-    project.Target("requirements", metadata: "/// <requires setting=\"missing\" />");
-    project.Target("metadata", metadata: "/// <summary>Invalid XML");
+    project.Target("required", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"input\", \"required\": true}\n// end-dotask\n");
+    project.Target("requirements", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"setting\", \"value\": \"missing\"}\n// end-dotask\n");
+    project.Target("metadata", metadata: "// dotask: 1\n// [invalid\n// end-dotask\n");
     project.Target("compile", "DoesNotCompile();");
     project.Target("exception", "throw new TaskException(\"task failure\");");
     foreach (var (name, expected) in new[] { ("required", "requires --input"), ("requirements", "requires setting"),
@@ -335,11 +341,15 @@ public sealed class RustCliTests
     }
     project.Target("nested", "await BuildContext.Current.ExecTargetAsync(\"wait\");", async: true);
     project.Write(".tasks/control-driver.cs", """
+      // dotask: 1
+      // options:
+      //   - {"name": "executable", "type": "path", "required": true}
+      //   - {"name": "target", "required": true}
+      // end-dotask
       using System.Diagnostics;
       using System.Runtime.InteropServices;
       using DoTask;
-      /// <option name="executable" type="path" required="true" />
-      /// <option name="target" required="true" />
+
       public static class Target {
         public static int Main() {
           if (OperatingSystem.IsWindows()) {

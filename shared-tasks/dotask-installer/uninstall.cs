@@ -1,10 +1,14 @@
+// dotask: 1
+// description: "Run the retained installer to uninstall an application without rebuilding it."
+// options:
+//   - {"name": "install-dir", "type": "path", "required": true, "completion": "directory", "description": "Application installation root."}
+//   - {"name": "interactive", "type": "bool", "default": "false", "description": "Enable confirmation and settings prompts."}
+//   - {"name": "remove-settings", "type": "bool", "default": "false", "description": "Remove declared application settings; otherwise preserve them."}
+// examples: ["dotask uninstall --install-dir C:/Temp/example"]
+// end-dotask
 using DoTask;
 
-/// <summary>Run the retained installer to uninstall an application without rebuilding it.</summary>
-/// <option name="install-dir" type="path" required="true" completion="directory">Application installation root.</option>
-/// <option name="interactive" type="bool" default="false">Enable confirmation and settings prompts.</option>
-/// <option name="remove-settings" type="bool" default="false">Remove declared application settings; otherwise preserve them.</option>
-/// <example>dotask uninstall --install-dir C:/Temp/example</example>
+
 public static class Target
 {
   public static async Task Main()

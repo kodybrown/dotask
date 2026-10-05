@@ -1,10 +1,13 @@
+// dotask: 1
+// description: "Create and run the project's installer for this OS and architecture."
+// remarks: "Invokes create-installer through the project catalog. Custom creators must return one InstallerArtifact and must not install."
+// options:
+//   - {"name": "installer-args", "type": "string", "description": "JSON array of installer argument tokens; replaces the installer's defaults."}
+// examples: ["dotask install", "dotask install --installer-args '[\"--interactive\"]'"]
+// end-dotask
 using DoTask;
 
-/// <summary>Create and run the project's installer for this OS and architecture.</summary>
-/// <option name="installer-args" type="string">JSON array of installer argument tokens; replaces the installer's defaults.</option>
-/// <remarks>Invokes create-installer through the project catalog. Custom creators must return one InstallerArtifact and must not install.</remarks>
-/// <example>dotask install</example>
-/// <example>dotask install --installer-args '["--interactive"]'</example>
+
 public static class Target
 {
   public static async Task Main()

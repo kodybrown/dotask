@@ -21,11 +21,16 @@ public sealed class HelpAndShellTests
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", "targets: { run: { defaults: { configuration: Release } } }");
     project.Write(".tasks/run.cs", """
+      // dotask: 1
+      // description: "Describe this target without building it."
+      // options:
+      //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build mode."}
+      //   - {"name": "input", "required": true}
+      // requires:
+      //   - {"kind": "setting", "value": "missing"}
+      // end-dotask
       #:package This.Package.Must.Never.Be.Restored@1.0.0
-      /// <summary>Describe this target without building it.</summary>
-      /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build mode.</option>
-      /// <option name="input" required="true" />
-      /// <requires setting="missing" />
+
       public static class Target
       {
         public static void Main()
@@ -72,7 +77,7 @@ public sealed class HelpAndShellTests
   {
     using var project = new TestProject();
     project.Write(".tasks/config.yaml", "invalid: [");
-    project.Target("project-only-target", metadata: "/// <summary>Project-only description.</summary>");
+    project.Target("project-only-target", metadata: "// dotask: 1\n// description: \"Project-only description.\"\n// end-dotask\n");
     var expected = new StringWriter();
     HelpWriter.Usage(new HelpText(expected));
     foreach (var args in new[]
@@ -117,8 +122,11 @@ public sealed class HelpAndShellTests
             configuration: Release
       """);
     project.Target("run", metadata: """
-      /// <summary>Run the project.</summary>
-      /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build mode.</option>
+      // dotask: 1
+      // description: "Run the project."
+      // options:
+      //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build mode."}
+      // end-dotask
       """);
     var result = await project.RunAsync([.. command.Split(' ', StringSplitOptions.RemoveEmptyEntries), "--verbose"]);
     Assert.Equal(0, result.ExitCode);
@@ -183,9 +191,9 @@ public sealed class HelpAndShellTests
   public async Task HelpReportsMetadataAndDefaultErrorsWithoutHidingOtherTargets()
   {
     using var project = new TestProject();
-    project.Target("badmetadata", metadata: "/// <option name=\"help\" />");
-    project.Target("baddefault", metadata: "/// <option name=\"configuration\" choices=\"Debug,Release\" />");
-    project.Target("good", metadata: "/// <summary>A valid description.</summary>");
+    project.Target("badmetadata", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"help\"}\n// end-dotask\n");
+    project.Target("baddefault", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
+    project.Target("good", metadata: "// dotask: 1\n// description: \"A valid description.\"\n// end-dotask\n");
     project.Write(".tasks/config.yaml", "targets: { baddefault: { defaults: { configuration: Unknown } } }");
     var listing = await project.RunAsync("help");
     Assert.Equal(0, listing.ExitCode);
@@ -201,11 +209,11 @@ public sealed class HelpAndShellTests
   public void CombinedHelpMergesDescriptionsAndDefaultsForCompatibleOptions()
   {
     using var project = new TestProject();
-    var build = MetadataReader.Read(project.Target("build", metadata: "/// <option name=\"configuration\" alias=\"c\" choices=\"Debug,Release\" default=\"Debug\">Mode.</option>"));
-    var test = MetadataReader.Read(project.Target("test", metadata: "/// <option name=\"CONFIGURATION\" alias=\"C\" choices=\"Debug,Release\" default=\"Debug\">Mode.</option>"));
-    var publish = MetadataReader.Read(project.Target("publish", metadata: "/// <option name=\"configuration\" alias=\"c\" choices=\"Debug,Release\" default=\"Debug\">Mode.</option>"));
-    var clean = MetadataReader.Read(project.Target("clean", metadata: "/// <option name=\"configuration\" alias=\"c\" choices=\"release,debug\" default=\"debug\">Mode to clean.</option>"));
-    var custom = MetadataReader.Read(project.Target("custom", metadata: "/// <option name=\"configuration\" alias=\"c\" choices=\"Debug,Release\" />"));
+    var build = MetadataReader.Read(project.Target("build", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n"));
+    var test = MetadataReader.Read(project.Target("test", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"CONFIGURATION\", \"alias\": \"C\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n"));
+    var publish = MetadataReader.Read(project.Target("publish", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n"));
+    var clean = MetadataReader.Read(project.Target("clean", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"release\", \"debug\"], \"default\": \"debug\", \"description\": \"Mode to clean.\"}\n// end-dotask\n"));
+    var custom = MetadataReader.Read(project.Target("custom", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n"));
     project.Write(".tasks/config.yaml", "targets: { publish: { defaults: { configuration: Release } } }");
     var output = new StringWriter();
     var config = ProjectConfiguration.Load(project.Tasks);
@@ -225,9 +233,9 @@ public sealed class HelpAndShellTests
   public void CombinedHelpKeepsIncompatibleOptionContractsSeparate()
   {
     using var project = new TestProject();
-    var variants = new[] { "", "alias=\"m\"", "type=\"int\"", "required=\"true\"", "choices=\"one,two\"", "completion=\"file\"" };
+    var variants = new[] { "", ", alias: m", ", type: int", ", required: true", ", choices: [one, two]", ", completion: file" };
     var targets = variants.Select(( attributes, i ) => MetadataReader.Read(project.Target($"task{i}",
-      metadata: $"/// <option name=\"mode\" {attributes}>Mode.</option>"))).ToArray();
+      metadata: $"// dotask: 1\n// options: [{{name: mode, description: Mode{attributes}}}]\n// end-dotask"))).ToArray();
     var output = new StringWriter();
     HelpWriter.CombinedOptions(new HelpText(output), targets, ProjectConfiguration.Load(project.Tasks));
     var text = output.ToString().Replace("\r\n", "\n");
@@ -245,8 +253,11 @@ public sealed class HelpAndShellTests
   {
     using var project = new TestProject();
     project.Target("dotnet run", metadata: """
-      /// <summary>Run the app.</summary>
-      /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug" />
+      // dotask: 1
+      // description: "Run the app."
+      // options:
+      //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug"}
+      // end-dotask
       """);
     project.Write(".tasks/config.yaml", "targets: { dotnet-run: { defaults: { configuration: Release } } }");
     var listing = await project.RunAsync("--verbose");
@@ -263,7 +274,7 @@ public sealed class HelpAndShellTests
     Assert.Contains(Environment.NewLine + "                  Source: './.tasks/dotnet run.cs'", shortHelp.StandardOutput);
     Assert.DoesNotContain("run (dotnet-run)", shortHelp.StandardOutput);
     Assert.Equal(shortHelp.StandardOutput, fullHelp.StandardOutput);
-    project.Target("rust run", metadata: "/// <summary>Run Rust.</summary>");
+    project.Target("rust run", metadata: "// dotask: 1\n// description: \"Run Rust.\"\n// end-dotask\n");
     var ambiguous = await project.RunAsync("help", "run");
     Assert.Equal(1, ambiguous.ExitCode);
     Assert.Contains("dotask dotnet-run", ambiguous.StandardError);
@@ -295,7 +306,7 @@ public sealed class HelpAndShellTests
       return;
     }
     using var project = new TestProject();
-    project.Target("run", metadata: "/// <option name=\"configuration\" alias=\"c\" choices=\"Debug,Release\" />");
+    project.Target("run", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     var script = new StringWriter();
     CompletionCommand.PrintScript("bash", script);
     project.Write("completion.bash", script.ToString());
@@ -332,7 +343,7 @@ public sealed class HelpAndShellTests
   public void CursorAwareCompletionUsesOnlyTextBeforeCursorIncludingUnicode()
   {
     using var project = new TestProject();
-    project.Target("run", metadata: "/// <option name=\"name\" /><option name=\"configuration\" alias=\"c\" choices=\"Debug,Release\" />");
+    project.Target("run", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"name\"}\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     const string prefix = "dotask run name=日本語 -c r";
     var output = new StringWriter();
     CompletionCommand.Query(["--shell", "bash", "--line", prefix + " unrelated", "--position", System.Text.Encoding.UTF8.GetByteCount(prefix).ToString()], project.Root, output);

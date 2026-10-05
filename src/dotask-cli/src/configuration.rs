@@ -253,7 +253,7 @@ fn requirements(target: &Target, config: &Value, root: &Path) -> Result<()> {
   }
   Ok(())
 }
-fn tool_exists(tool: &str, root: &Path) -> bool {
+pub(crate) fn tool_exists(tool: &str, root: &Path) -> bool {
   let mut names = vec![tool.to_owned()];
   if cfg!(windows) && Path::new(tool).extension().is_none() {
     names.extend(

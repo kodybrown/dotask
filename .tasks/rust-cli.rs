@@ -1,12 +1,12 @@
-//! ---
-//! description: Build the native CLI with its bundled Rust SDK and C# support host.
-//! options:
-//!   - { name: verify, type: bool, default: false, description: 'Run Rust tests, formatting, and clippy.' }
-//! requires:
-//!   - { kind: tool, value: cargo }
-//!   - { kind: tool, value: dotnet }
-//!   - { kind: file, value: _support/RustBuild.rs }
-//! ---
+// dotask: 1
+// description: Build the native CLI with its Rust task crate and C# helper DLL.
+// options:
+//   - { name: verify, type: bool, default: false, description: 'Run Rust tests, formatting, and clippy.' }
+// requires:
+//   - { kind: tool, value: cargo }
+//   - { kind: tool, value: dotnet }
+//   - { kind: file, value: _support/RustBuild.rs }
+// end-dotask
 #[path = "_support/RustBuild.rs"]
 mod rust_build;
 use dotask_sdk::{BuildContext, Result};
@@ -14,7 +14,7 @@ fn main() {
   dotask_sdk::run(task);
 }
 fn task(project: &BuildContext) -> Result<()> {
-  let (published, _) = rust_build::publish_host(
+  let (published, _) = rust_build::publish_library(
     project,
     &[
       "-p:Configuration=Release".into(),
@@ -25,7 +25,7 @@ fn task(project: &BuildContext) -> Result<()> {
   let output = rust_build::target_directory(project)?.join("release");
   // Build and stage from physical copies. The running bootstrap is independent
   // of this output and remains usable while repository tasks rebuild it.
-  rust_build::copy_tree(published.path(), &output.join("csharp"))?;
+  std::fs::copy(published.path().join("Dotask.Library.dll"), output.join("Dotask.Library.dll"))?;
   rust_build::stage_sdk(project, &output.join("sdk"))?;
   if project.boolean("verify")? {
     let mut format = project.command("rustfmt");

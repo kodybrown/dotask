@@ -7,12 +7,15 @@ namespace DoTask.Tests;
 public sealed class ConfigurationAndBindingTests
 {
   private const string Metadata = """
-    /// <summary>Test parameters.</summary>
-    /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug" />
-    /// <option name="name" alias="n" />
-    /// <option name="count" type="int" />
-    /// <option name="detailed" alias="v" type="bool" />
-    /// <option name="output" type="path" />
+    // dotask: 1
+    // description: "Test parameters."
+    // options:
+    //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug"}
+    //   - {"name": "name", "alias": "n"}
+    //   - {"name": "count", "type": "int"}
+    //   - {"name": "detailed", "alias": "v", "type": "bool"}
+    //   - {"name": "output", "type": "path"}
+    // end-dotask
     """;
 
   [Fact]
@@ -152,7 +155,7 @@ public sealed class ConfigurationAndBindingTests
     using var project = new TestProject();
     var target = MetadataReader.Read(project.Target("run", metadata: Metadata));
     Assert.Throws<TaskException>(() => OptionBinder.Bind(target, ProjectConfiguration.Empty, ["-c", "Debug", "configuration=Release"], project.Root));
-    var required = MetadataReader.Read(project.Target("required", metadata: "/// <option name=\"name\" required=\"true\" />"));
+    var required = MetadataReader.Read(project.Target("required", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"name\", \"required\": true}\n// end-dotask\n"));
     Assert.Throws<TaskException>(() => OptionBinder.Bind(required, ProjectConfiguration.Empty, [], project.Root));
     OptionBinder.Bind(required, ProjectConfiguration.Empty, [], project.Root, requireValues: false);
   }

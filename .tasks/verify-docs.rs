@@ -1,9 +1,9 @@
-//! ---
-//! description: Check required documentation and Git whitespace errors.
-//! requires:
-//!   - { kind: task, value: git/check }
-//! remarks: Checks required files, then calls _/git/check --whitespace; does not validate links or execute documentation examples.
-//! ---
+// dotask: 1
+// description: Check required documentation and Git whitespace errors.
+// requires:
+//   - { kind: task, value: git/check }
+// remarks: Checks required files, then calls _/git/check --whitespace; does not validate links or execute documentation examples.
+// end-dotask
 use dotask_sdk::{bail, json, BuildContext, Result};
 fn main() {
   dotask_sdk::run(task);

@@ -11,16 +11,16 @@ public sealed class RustTaskTests
     project.Write(".dotasks.yaml", "settings: { nested: { message: '日本語 café' } }\ntargets: { run: { defaults: { label: 'two words' } } }\n");
     project.Write(".tasks/_support/message.rs", "pub fn message() -> &'static str { \"support\" }\n");
     project.Write(".tasks/run.rs", """
-      //! ---
-      //! description: A Rust task.
-      //! options:
-      //!   - { name: label, alias: l, default: fallback }
-      //!   - { name: count, type: int, default: 3 }
-      //!   - { name: flag, type: bool, default: true }
-      //!   - { name: output, type: path, default: result.json }
-      //! requires:
-      //!   - { kind: file, value: _support/message.rs }
-      //! ---
+      // dotask: 1
+      // description: A Rust task.
+      // options:
+      //   - { name: label, alias: l, default: fallback }
+      //   - { name: count, type: int, default: 3 }
+      //   - { name: flag, type: bool, default: true }
+      //   - { name: output, type: path, default: result.json }
+      // requires:
+      //   - { kind: file, value: _support/message.rs }
+      // end-dotask
       #[path = "_support/message.rs"] mod helper;
       use dotask_sdk::{BuildContext, Result, json, serde_json};
       fn main() { dotask_sdk::run(task); }
@@ -73,9 +73,9 @@ public sealed class RustTaskTests
       """);
     project.Target("managed", "await BuildContext.Current.ExecTargetAsync(\"native\", new { label = \"nested words\" });", async: true);
     project.Write(".tasks/native.rs", """
-      //! ---
-      //! options: [{ name: label, required: true }]
-      //! ---
+      // dotask: 1
+      // options: [{ name: label, required: true }]
+      // end-dotask
       use dotask_sdk::{BuildContext, Result};
       fn main() { dotask_sdk::run(task); }
       fn task(p: &BuildContext) -> Result<()> {
@@ -130,7 +130,7 @@ public sealed class RustTaskTests
   public async Task InvalidRustMetadataFailsBeforeCompilationOrExecution( string metadata, string diagnostic )
   {
     using var project = new TestProject();
-    project.Write(".tasks/run.rs", "//! ---\n//! " + metadata + "\n//! ---\nfn main() { panic!(\"must not execute\"); }\n");
+    project.Write(".tasks/run.rs", "// dotask: 1\n// " + metadata + "\n// end-dotask\nfn main() { panic!(\"must not execute\"); }\n");
     var result = await RustArtifacts.Run(project.Root, ["run"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Contains(diagnostic, result.StandardError);

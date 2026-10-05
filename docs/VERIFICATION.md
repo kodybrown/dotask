@@ -1,5 +1,53 @@
 # Verification
 
+## Common task headers and minimal native distribution (2026-10-05)
+
+On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, `build.cmd` passed
+419 .NET Release tests and 31 Rust tests: 17 installer cases, 10 CLI integration
+cases, 2 header-parser cases, and 2 wizard cases. Rust workspace/task formatting,
+clippy, C# formatting, documentation, shared catalog freshness, bundled shim
+hashes, and whitespace checks passed. Native C# SDK tests now also exercise
+package/include/project directives, consumer-hook isolation, and preservation
+of explicitly referenced projects' output policy. UTF-8 source and fixtures were
+checked after header conversion; Unicode arguments and settings passed.
+
+The shared and example C# sources and local Rust tasks use the same versioned
+ordinary-comment YAML header. Help/completion and private catalog operations
+read C# metadata with all toolchain paths absent, without compiling or executing
+invalid source. Missing executables leave tasks visible with toolchain guidance;
+execution checks the selected C# SDK and reports incompatible or missing tools.
+Header tests cover BOM/CRLF, shebangs, both comment prefixes, reserved/duplicate
+options, scalar defaults, unsupported versions, and malformed declarations.
+Additional language execution handlers remain future work.
+
+`build.cmd pack` passed after removing the obsolete self-contained default from
+the repository configuration. The complete package was relocated outside the
+checkout and tested with explicit temporary install/bin roots. First install,
+byte-identical receipt reuse, changed-build activation with both builds retained,
+native command arguments, Rust-to-C# calls, Unicode settings, toolchain-free C#
+help, ownership-safe retained uninstall, and preservation of an unowned file
+passed. The active user installation was not changed.
+
+The payload inventory is exactly `dotask.exe` (3,659,776 bytes),
+`Dotask.Library.dll` (58,368 bytes), `sdk/Cargo.toml` (262 bytes), and
+`sdk/src/lib.rs` (9,689 bytes): 3,728,095 bytes, or 3.56 MiB. No managed CLI,
+support host, Roslyn/YamlDotNet assemblies, runtime, SDK, symbols, or runtime
+configuration files are shipped. A separate fresh single-build installation
+measured 6,387,330 bytes (6.09 MiB), including the retained installer and receipts,
+then uninstalled successfully. Installer packaging/management files are separate
+from the application payload.
+
+Catalog hashes were regenerated after final formatting and canonical copies were
+verified. Existing tracking retains its original ownership baselines; header
+conversion does not silently adopt new originals or rewrite private user tasks.
+LLVM rebuilt both Windows shim binaries byte-identically and updated the Rust
+task hash. All three maintained .NET projects' evaluated output paths remain
+under `C:\tmp\_dotnet`; Cargo evaluates to `C:/tmp/_rust/dotask/target`.
+All 100 relative links/anchors in changed guidance resolved, and `bash -n build.sh`
+passed as syntax checking only. Stable rustfmt's nightly-option warnings are
+expected. Linux/macOS acceptance remains deferred. Nothing was installed into
+active roots, published, or pushed.
+
 ## Rust tasks, native bootstrap, and installer packaging (2026-10-05)
 
 On Windows x64 with Rust 1.95.0 and .NET SDK 10.0.400, the native `build.cmd`

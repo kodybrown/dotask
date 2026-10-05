@@ -156,16 +156,19 @@ overwrites, removes, or cleans up private originals. Private task snapshots are
 retained separately in the disposable local cache for comparison.
 
 Declare required support files and other tasks **within the same source** in the
-entry-point class's XML documentation (or on its static `Main`, if the class has
-no XML documentation):
+file's common YAML comment header:
 
 ```csharp
+// dotask: 1
+// description: "Run my reusable task."
+// requires:
+//   - {"kind": "task", "value": "my-tasks/check"}
+//   - {"kind": "file", "value": "my-tasks/_support/Helpers.cs"}
+// end-dotask
 #:include _support/Helpers.cs
 using DoTask;
 
-/// <summary>Run my reusable task.</summary>
-/// <requires task="my-tasks/check" />
-/// <requires file="my-tasks/_support/Helpers.cs" />
+
 public static class Target
 {
   public static async Task Main()
@@ -175,10 +178,10 @@ public static class Target
 }
 ```
 
-Use one `<requires>` element per task or file. Task IDs are `group/task` without
+Use one `{kind, value}` requirement mapping per task or file. Task IDs are `group/task` without
 the source name or `.cs`; file paths are relative to the shared source root.
 For example, `_/dotnet/build.cs` declares
-`<requires task="dotnet/restore" />`, while its C# code calls the fully qualified
+`{kind: task, value: dotnet/restore}`, while its C# code calls the fully qualified
 `_/dotnet/restore`. These declarations tell add/sync which companions
 to copy. They appear in help but do not execute tasks, check for companions at
 runtime, or download anything during help or execution. Calls and their order
@@ -187,7 +190,7 @@ remain explicit in `Main`; do not declare optional task calls as required depend
 The entry-point `.cs` file is always included. Put support C# inside an
 underscore-prefixed directory such as
 `_support` so discovery does not turn it into another target. Include it with a
-task-file-relative `#:include` directive in the entry point; the XML declaration
+task-file-relative `#:include` directive in the entry point; the header declaration
 controls copying, while `#:include` controls compilation. Ordinary assets must
 also be explicitly declared. Absolute paths, traversal, symlinks/reparse points,
 case collisions, conflicting file definitions, and filenames outside the supported portable subset are
@@ -197,8 +200,8 @@ Windows device names. Required dependencies are explicit metadata;
 DoTask does not infer them by analyzing arbitrary C# calls.
 
 Separate `.task.json` files are no longer used. For existing private tasks, move
-each `requires` entry to `<requires task="..." />` and each `files` entry to
-`<requires file="..." />`, preserving their source-relative paths, then remove
+each `requires` entry to `{kind: task, value: ...}` and each `files` entry to
+`{kind: file, value: ...}`, preserving their source-relative paths, then remove
 the sidecar. Catalog generation and private-task management report an actionable
 error if a sidecar remains, rather than silently ignoring its dependencies.
 DoTask does not rewrite private originals for you. Existing committed project
@@ -349,9 +352,9 @@ CI check catalog freshness; they do not silently regenerate it. Repeating
 generation with unchanged inputs produces identical output.
 
 Descriptions, support files, and required same-source task IDs come from the
-task's XML documentation, using the same parser as help and private tasks.
+task's YAML header, using the same parser as help and private tasks.
 Catalog generation lives in `.tasks/catalog.rs`. It requests batch metadata
-through the native CLI, which uses the C# support host's maintained Roslyn parser;
+through the native CLI's toolchain-free YAML header parser;
 it never compiles or executes the tasks being indexed.
 The generated `catalog.json` remains the downloadable index, not a file authors
 maintain per task. It contains portable IDs, `runtime: csharp`, entry points,

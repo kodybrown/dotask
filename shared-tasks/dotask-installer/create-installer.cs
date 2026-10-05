@@ -1,11 +1,15 @@
+// dotask: 1
+// description: "Package an application payload and YAML with the standalone Rust installer."
+// remarks: "Build the application first. Payload paths in YAML are relative to that YAML. No application language toolchain is invoked."
+// options:
+//   - {"name": "config", "type": "path", "completion": "file", "description": "Installer YAML; otherwise settings.installer-config."}
+//   - {"name": "engine", "type": "path", "completion": "file", "description": "Host Rust installer binary; otherwise settings.installer-engine."}
+//   - {"name": "output", "type": "path", "completion": "directory", "description": "Package parent directory; otherwise settings.installer-output."}
+// examples: ["dotask create-installer --config packaging/installer.yaml --engine tools/installer.exe --output artifacts/installers"]
+// end-dotask
 using DoTask;
 
-/// <summary>Package an application payload and YAML with the standalone Rust installer.</summary>
-/// <option name="config" type="path" completion="file">Installer YAML; otherwise settings.installer-config.</option>
-/// <option name="engine" type="path" completion="file">Host Rust installer binary; otherwise settings.installer-engine.</option>
-/// <option name="output" type="path" completion="directory">Package parent directory; otherwise settings.installer-output.</option>
-/// <remarks>Build the application first. Payload paths in YAML are relative to that YAML. No application language toolchain is invoked.</remarks>
-/// <example>dotask create-installer --config packaging/installer.yaml --engine tools/installer.exe --output artifacts/installers</example>
+
 public static class Target
 {
   public static async Task Main()

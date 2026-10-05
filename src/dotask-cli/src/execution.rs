@@ -1,4 +1,5 @@
-use crate::host::{write_json, Host};
+use crate::csharp_tasks::Host;
+use crate::host::write_json;
 use crate::process::{self, Cancelled};
 use crate::project::{arguments, Catalog, Directory, Target};
 use anyhow::{bail, Result};
@@ -58,9 +59,7 @@ impl Executor {
   pub fn execute(&self, target: &Target, args: &[String], chain: &[String], session: &Path) -> Result<i32> {
     process::check_cancelled()?;
     if self.directory.task_directory.join(".dotask/transaction/journal.json").is_file() {
-      bail!(
-                "A shared-task update is incomplete. Run the C# CLI's dotask --sync to recover it before executing project tasks."
-            );
+      bail!("A shared-task update is incomplete. Run dotask --sync to recover it before executing project tasks.");
     }
     if let Some(error) = &target.error {
       bail!("{error}");
@@ -110,17 +109,7 @@ impl Executor {
       )?)
     } else {
       let host = host.as_ref().unwrap();
-      let compiled: Value = host.request(
-        session,
-        json!({
-            "Operation": "compile", "TaskDirectory": self.directory.task_directory,
-            "RootDirectory": self.directory.root_directory, "Target": target,
-            "SnapshotDirectory": snapshot.path(),
-        }),
-      )?;
-      let assembly = compiled["AssemblyPath"]
-        .as_str()
-        .ok_or_else(|| anyhow::anyhow!("Missing compiler output path."))?;
+      let assembly = host.compile(target, snapshot.path())?;
       let mut command = Command::new(&host.dotnet);
       command.arg(assembly);
       command

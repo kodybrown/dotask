@@ -2,7 +2,7 @@
 
 Portable project tasks written as individual C# or Rust files, with YAML `.task` groups
 for composing existing tasks. Use `dotask --create-task` for interactive group creation. Put targets in `.tasks/`,
-describe C# tasks with XML documentation and Rust tasks with leading YAML documentation, and keep project-specific settings in
+describe both languages with a common YAML comment header, and keep project-specific settings in
 `.dotasks.yaml`. Copy the same target file between projects without a
 registration step.
 
@@ -81,8 +81,8 @@ From this checkout after the build succeeds:
 ```
 
 The task executes the project's `create-installer`, then runs the resulting
-standalone installer. Dotask's installer contains a self-contained Release
-application for your host and installs it without administrator access. Each version/build gets a separate
+standalone installer. Dotask's payload contains only the native Release command,
+`Dotask.Library.dll`, and the Rust helper source crate and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and
 `.shim` file; Linux/macOS get a symlink. No shim compiler is needed.
 
@@ -279,7 +279,7 @@ settings:
 If `name` is omitted, the project directory's name is used. These top-level
 identity fields are separate from shared `settings` accessed through `project.Config`.
 
-Project summaries and target help read XML documentation and YAML settings without compiling,
+Project summaries and target help read YAML task headers and project settings without compiling,
 restoring packages, or running target code. Metadata and default-value errors
 appear beside affected targets; compiler errors are reported when you run a
 target. Completion only reads metadata and paths. See the [usage guide](docs/USAGE.md)
@@ -369,7 +369,7 @@ Both launchers select the checkout containing the script even when called from
 another directory; relative task paths and `--use-dir` start at that checkout.
 
 The bootstrap builds the native runner in Release with Cargo and publishes the
-C# support host. A task's `-c Debug` selects its C# configuration independently.
+C# helper DLL. A task's `-c Debug` selects its C# configuration independently.
 The native executable, SDK sources, and evaluated C# publish output are copied
 into a unique OS temporary directory, allowing tasks to rebuild or clean the
 original outputs on Windows. Bootstrapping alone does not install anything;
@@ -385,7 +385,7 @@ support files, run `./build.sh catalog` **after your final edits/formatting and
 before committing**. Commit the regenerated `shared-tasks/catalog.json` with the
 sources. Run `./build.sh` afterward; its catalog verification fails if the index
 is stale and never rewrites it. `catalog.rs` uses the CLI's compiler-free metadata
-transport; Roslyn still reads C# documentation in the support host.
+transport. All metadata is read natively from ordinary-comment YAML headers.
 
 `verify-docs` checks required files, then calls its declared `git/check` dependency
 with `--whitespace` to check staged and unstaged Git diffs. Plain `git/check` only
@@ -442,8 +442,9 @@ The preview runs `.cs` and `.rs` tasks and `.task` groups, including parameters,
 YAML defaults, nested calls, structured installer results, exit codes, and Ctrl+C.
 Bare invocation and `help` list project tasks; `help TARGET` and `TARGET --help`
 read metadata without compilation. CLI-only `--help`/`-h` and `--version` need
-no language host. C# metadata and compilation use the staged .NET 10 support host
-under `release/csharp/`; keep that directory beside the executable.
+no language host. Keep `Dotask.Library.dll` and `sdk/` beside the executable.
+Metadata for both languages needs no toolchain; C# compilation delegates to
+the selected installed .NET SDK. No SDK, runtime, Roslyn or managed host is bundled.
 
 The native CLI also implements `--init`, shared-task listing/save/add/sync/remove,
 shell completion, full project/target help, and `--create-task`. Configuration,

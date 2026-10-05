@@ -1,10 +1,14 @@
+// dotask: 1
+// description: "Check that Git is available, optionally checking repository whitespace."
+// options:
+//   - {"name": "whitespace", "type": "bool", "default": "false", "description": "Check staged and unstaged diffs for whitespace errors."}
+// requires:
+//   - {"kind": "tool", "value": "git"}
+// examples: ["dotask git-check", "dotask git/check --whitespace"]
+// end-dotask
 using DoTask;
 
-/// <summary>Check that Git is available, optionally checking repository whitespace.</summary>
-/// <option name="whitespace" type="bool" default="false">Check staged and unstaged diffs for whitespace errors.</option>
-/// <requires tool="git" />
-/// <example>dotask git-check</example>
-/// <example>dotask git/check --whitespace</example>
+
 public static class Target
 {
   public static async Task Main()

@@ -111,7 +111,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   calls, or downloads. Preserve existing configuration/tasks/tracking; refuse
   legacy/invalid configuration, path-type conflicts, and symlink destinations.
   Custom task directories must stay beneath that root; the override is not saved.
-- One C# file per executable target; XML documentation owns C# target metadata.
+- One entry file per callable task; common ordinary-comment YAML headers own
+  C# and Rust task metadata.
   Declarative `.task` YAML groups compose existing targets without registration.
 - Discovery accepts `.cs` and `.rs` targets and `.task` YAML groups; ordinary documents,
   `.yaml` files, and MSBuild `.targets` files are not tasks. Windows native bootstrap
@@ -156,7 +157,7 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - The launchers accept dotask arguments, resolve their own checkout, and preserve
   failures. No installed dotask, Make, or Python is required. CI uses the same launchers.
 - Keep bootstrap logic limited to building and staging the native runner, SDK,
-  and support host from the evaluated `PublishDir`. All build/test/format/docs/catalog/package operations
+  and C# helper DLL from the evaluated `PublishDir`. All build/test/format/docs/catalog/package operations
   belong in `.tasks`. Never run repository rebuilds from the live build output.
 - `verify` requires every stage. The reusable `dotnet/verify` task's optional
   checks are not the repository verification gate.
@@ -175,15 +176,13 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   share its `Cargo.lock` and release profile. `installer-engine` builds the host
   installer; `rust-cli` builds the native CLI preview. Each accepts `--verify`
   for tests, formatting, and clippy. Keep Rust outputs external too.
-- The Rust CLI runs Rust tasks, C# tasks, and YAML groups using the separately staged
-  `Dotask.CSharpHost`, with Rust-owned discovery, selection, execution, and nested
-  calls, YAML configuration/groups, binding, requirements, help, initialization,
-  shared-task management, completion, and the task-group wizard. The support
-  host only reads C# metadata and compiles C# tasks. Rust tasks use the bundled
-  `src/dotask-sdk` through external manifests/source snapshots. Local orchestration
-  tasks, bootstrap, and installer packaging use Rust. Retain the C# CLI as the
-  behavior reference and preserve `src/Dotask` as the
-  maintained C# task library. See `docs/DESIGN.md` for the agreed transition.
+- The Rust CLI reads common YAML headers without language toolchains and runs
+  Rust tasks, C# tasks and YAML groups. C# compilation invokes the installed
+  .NET SDK directly with isolated MSBuild hooks and the maintained helper DLL.
+  Rust tasks use `src/dotask-sdk` through external source snapshots. Ship only
+  the native command, `Dotask.Library.dll` and the Rust helper source crate;
+  never bundle language runtimes, SDKs, Roslyn or a managed support host.
+  Keep the C# CLI as the behavior reference. See `docs/DESIGN.md`.
 - Cargo output is configured in `.cargo/config.toml`; build tasks, staging,
   packaging, and native tests query `cargo metadata` for its evaluated target
   directory. Preserve the user's Cargo and rustfmt settings.

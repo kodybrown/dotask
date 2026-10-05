@@ -31,7 +31,7 @@ targets, and target options. `dotask help --verbose` shows the same summary when
 `examples/basic`.
 `dotask --help` shows CLI usage only, without those project details.
 `hello`'s help should show
-the effective name default `Developer` from YAML, overriding `World` in its XML.
+the effective name default `Developer` from YAML, overriding `World` in its task header.
 Running `hello` with no arguments prints:
 
 ```text

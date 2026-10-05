@@ -33,4 +33,4 @@ Selections: dotnet/build, "dotnet/{build,run,format}", "dotnet/*", private-tasks
 Official tasks (_) are the default when the source is omitted. Commit .dotasks.yaml, .dotasks-lock.yaml, and .tasks/.
 
 Runs installed C# tasks using .NET 10, Rust tasks using Cargo/Rust 1.95+, and YAML groups.
-Rust metadata is compiler-free. Shared Rust language variants are not yet available.
+C# and Rust metadata is toolchain-free. Shared Rust language variants are not yet available.

@@ -1,15 +1,18 @@
+// dotask: 1
+// description: "Build and run the configured project, optionally passing an input file."
+// options:
+//   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build configuration."}
+//   - {"name": "file", "alias": "f", "type": "path", "description": "Input file passed to the application; relative paths start at the repository root."}
+//   - {"name": "args", "default": "[]", "description": "Application arguments as a JSON array of strings, passed before the optional file."}
+// requires:
+//   - {"kind": "tool", "value": "dotnet"}
+//   - {"kind": "setting", "value": "project"}
+// examples: ["dotask run", "dotask run -c Release", "dotask run args='[\"--help\"]'"]
+// end-dotask
 using System.Text.Json;
 using DoTask;
 
-/// <summary>Build and run the configured project, optionally passing an input file.</summary>
-/// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build configuration.</option>
-/// <option name="file" alias="f" type="path">Input file passed to the application; relative paths start at the repository root.</option>
-/// <option name="args" default="[]">Application arguments as a JSON array of strings, passed before the optional file.</option>
-/// <requires tool="dotnet" />
-/// <requires setting="project" />
-/// <example>dotask run</example>
-/// <example>dotask run -c Release</example>
-/// <example>dotask run args='["--help"]'</example>
+
 public static class Target
 {
   public static async Task Main()

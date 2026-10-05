@@ -1,9 +1,9 @@
-//! ---
-//! description: Build the bundled Windows shims with LLVM, or verify their recorded hashes.
-//! options:
-//!   - { name: verify, type: bool, default: false, description: Check source and binary hashes without requiring LLVM. }
-//! examples: [dotask shim --verify]
-//! ---
+// dotask: 1
+// description: Build the bundled Windows shims with LLVM, or verify their recorded hashes.
+// options:
+//   - { name: verify, type: bool, default: false, description: Check source and binary hashes without requiring LLVM. }
+// examples: [dotask shim --verify]
+// end-dotask
 use dotask_sdk::{
   bail, json, serde_json,
   sha2::{Digest, Sha256},

@@ -66,7 +66,7 @@ fn in_project(root: &std::path::Path, args: &[&str]) -> Output {
 fn rust_help_and_completion_read_metadata_without_any_toolchain() {
   let project = tempfile::tempdir().unwrap();
   std::fs::create_dir(project.path().join(".tasks")).unwrap();
-  std::fs::write(project.path().join(".tasks/run.rs"), "//! ---\n//! description: Native task\n//! options: [{name: label, choices: [first, second], default: first}]\n//! ---\nnot valid Rust;\n").unwrap();
+  std::fs::write(project.path().join(".tasks/run.rs"), "// dotask: 1\n// description: Native task\n// options: [{name: label, choices: [first, second], default: first}]\n// end-dotask\nnot valid Rust;\n").unwrap();
   let help = in_project(project.path(), &["help", "run"]);
   assert!(help.status.success(), "{help:?}");
   assert!(String::from_utf8_lossy(&help.stdout).contains("Native task"));
@@ -82,6 +82,69 @@ fn rust_help_and_completion_read_metadata_without_any_toolchain() {
   );
   assert!(completion.status.success(), "{completion:?}");
   assert!(String::from_utf8_lossy(&completion.stdout).contains("second"));
+}
+
+#[test]
+fn csharp_headers_help_completion_and_private_catalog_need_no_sdk() {
+  let project = tempfile::tempdir().unwrap();
+  std::fs::create_dir(project.path().join(".tasks")).unwrap();
+  std::fs::write(project.path().join(".tasks/build.cs"), "\u{feff}\r\n// dotask: 1\r\n// description: C# metadata without execution\r\n// options: [{name: mode, choices: [fast, full], default: fast}]\r\n// end-dotask\r\nnot valid C#;\r\n").unwrap();
+  let output = in_project(project.path(), &["help", "build"]);
+  assert!(output.status.success(), "{output:?}");
+  let text = String::from_utf8(output.stdout).unwrap();
+  assert!(
+    text.contains("C# metadata without execution")
+      && text.contains("--mode")
+      && text.contains("Unavailable: requires .NET SDK"),
+    "{text}"
+  );
+  assert!(output.stderr.is_empty());
+  let output = in_project(project.path(), &["__complete", "--line", "dotask build --mode f"]);
+  assert!(output.status.success(), "{output:?}");
+  assert!(String::from_utf8_lossy(&output.stdout).contains("full"));
+  let output = in_project(project.path(), &["build"]);
+  assert!(!output.status.success());
+  assert!(String::from_utf8_lossy(&output.stderr).contains(".NET SDK"), "{output:?}");
+  let private = project.path().join("private/tools");
+  std::fs::create_dir_all(&private).unwrap();
+  std::fs::write(
+    private.join("check.cs"),
+    "// dotask: 1\n// description: Private metadata\n// end-dotask\ninvalid source",
+  )
+  .unwrap();
+  let output = Command::new(env!("CARGO_BIN_EXE_dotask"))
+    .current_dir(project.path())
+    .args(["--list", "private-tasks/tools/*"])
+    .env("PATH", "")
+    .env_remove("DOTNET_HOST_PATH")
+    .env_remove("DOTNET_ROOT")
+    .env("DOTASK_PRIVATE_TASKS", project.path().join("private"))
+    .env("DOTASK_CACHE_HOME", project.path().join("cache"))
+    .output()
+    .unwrap();
+  assert!(output.status.success(), "{output:?}");
+  assert!(String::from_utf8_lossy(&output.stdout).contains("Private metadata"));
+}
+
+#[test]
+fn unavailable_rust_tasks_remain_visible_and_fail_with_toolchain_guidance() {
+  let project = tempfile::tempdir().unwrap();
+  std::fs::create_dir(project.path().join(".tasks")).unwrap();
+  std::fs::write(
+    project.path().join(".tasks/check.rs"),
+    "// dotask: 1\n// description: Visible Rust task\n// end-dotask\nfn main() {}\n",
+  )
+  .unwrap();
+  let output = in_project(project.path(), &["help"]);
+  assert!(output.status.success());
+  let text = String::from_utf8_lossy(&output.stdout);
+  assert!(
+    text.contains("Visible Rust task") && text.contains("requires Rust 1.95+ and Cargo"),
+    "{text}"
+  );
+  let output = in_project(project.path(), &["check"]);
+  assert!(!output.status.success());
+  assert!(String::from_utf8_lossy(&output.stderr).contains("Rust 1.95+ and Cargo"));
 }
 
 #[test]

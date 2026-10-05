@@ -9,10 +9,10 @@ public sealed class TargetCallTests
     var context = project.Context();
     Assert.False(await context.TargetExistsAsync("run"));
     var file = project.Target("dotnet run", "File.WriteAllText(\"ran\", \"bad\"); DoesNotCompile();",
-      "/// <requires setting=\"missing\" /><option name=\"input\" required=\"true\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"input\", \"required\": true}\n// requires:\n//   - {\"kind\": \"setting\", \"value\": \"missing\"}\n// end-dotask\n");
     Assert.True(await context.TargetExistsAsync("RUN"));
     Assert.True(await context.TargetExistsAsync("DOTNET-RUN"));
-    project.Target("broken", metadata: "/// <summary>Invalid XML");
+    project.Target("broken", metadata: "// dotask: 1\n// [invalid\n// end-dotask\n");
     Assert.True(await context.TargetExistsAsync("broken"));
     Assert.False(File.Exists(Path.Combine(project.Root, "ran")));
     File.Delete(file);
@@ -54,14 +54,14 @@ public sealed class TargetCallTests
     project.Target("dotnet run", """
       var project = BuildContext.Current;
       project.Files.WriteText("result", project.TargetName + ":" + project.Parameters.Get<string>("message"));
-      """, "/// <option name=\"message\" required=\"true\" />");
+      """, "// dotask: 1\n// options:\n//   - {\"name\": \"message\", \"required\": true}\n// end-dotask\n");
     var success = await context.ExecTargetIfExistsAsync("RUN", new { Message = "hello" });
     Assert.Equal(TargetExecutionStatus.Succeeded, success.Status);
     Assert.Equal(0, success.ExitCode);
     Assert.Null(success.Error);
     Assert.Equal("dotnet-run:hello", File.ReadAllText(Path.Combine(project.Root, "result")));
     project.Target("fail", "Environment.Exit(BuildContext.Current.Parameters.Get<int>(\"code\"));",
-      "/// <option name=\"code\" type=\"int\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"code\", \"type\": \"int\"}\n// end-dotask\n");
     foreach (var code in new[] { 1, 7 }) {
       var failure = await context.ExecTargetIfExistsAsync("fail", new { Code = code });
       Assert.Equal(TargetExecutionStatus.Failed, failure.Status);
@@ -76,10 +76,10 @@ public sealed class TargetCallTests
   {
     using var project = new TestProject();
     var context = project.Context();
-    project.Target("metadata", metadata: "/// <summary>Invalid XML");
+    project.Target("metadata", metadata: "// dotask: 1\n// [invalid\n// end-dotask\n");
     project.Target("compile", "DoesNotCompile();");
-    project.Target("required", metadata: "/// <option name=\"input\" required=\"true\" />");
-    project.Target("requirements", metadata: "/// <requires setting=\"missing\" />");
+    project.Target("required", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"input\", \"required\": true}\n// end-dotask\n");
+    project.Target("requirements", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"setting\", \"value\": \"missing\"}\n// end-dotask\n");
     foreach (var (name, diagnostic) in new[]
     {
       ("metadata", "Metadata error"), ("compile", "CS0103"),
@@ -100,8 +100,12 @@ public sealed class TargetCallTests
     project.Target("dotnet child", "throw new Exception(\"Wrong directory\");");
     project.Write(".abc/config.yaml", "settings: { message: shared }\ntargets: { dotnet-child: { defaults: { name: default } } }");
     project.Write(".abc/dotnet child.cs", """
+      // dotask: 1
+      // options:
+      //   - {"name": "name"}
+      // end-dotask
       using DoTask;
-      /// <option name="name" />
+
       public static class Target
       {
         public static void Main()
@@ -186,14 +190,14 @@ public sealed class TargetCallTests
     await CopyVerifyAsync(project);
     project.Target("_/dotnet/check", "File.AppendAllText(\"order\", \"check;\");");
     project.Target("_/dotnet/test", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
-      "/// <option name=\"configuration\" choices=\"Debug,Release\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     project.Target("_/dotnet/format", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\").ToString());",
-      "/// <option name=\"verify\" type=\"bool\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     var result = await project.RunAsync("verify", "-c", "Debug");
     Assert.True(result.ExitCode == 0, result.StandardError);
     Assert.Equal("check;Debug;True", File.ReadAllText(Path.Combine(project.Root, "order")));
     File.Delete(Path.Combine(project.Root, "order"));
-    project.Target("_/dotnet/test", "Environment.Exit(7);", "/// <option name=\"configuration\" />");
+    project.Target("_/dotnet/test", "Environment.Exit(7);", "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\"}\n// end-dotask\n");
     result = await project.RunAsync("verify");
     Assert.Equal(7, result.ExitCode);
     Assert.Equal("check;", File.ReadAllText(Path.Combine(project.Root, "order")));
@@ -208,7 +212,7 @@ public sealed class TargetCallTests
     Assert.Equal(1, empty.ExitCode);
     Assert.Contains("No verification targets found", empty.StandardError);
     project.Target("_/dotnet/format", "Console.WriteLine(BuildContext.Current.Parameters.Get<bool>(\"verify\"));",
-      "/// <option name=\"verify\" type=\"bool\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     var one = await project.RunAsync("dotnet-verify");
     Assert.True(one.ExitCode == 0, one.StandardError);
     Assert.Contains("Skipping _/dotnet/check: target not found.", one.StandardOutput);

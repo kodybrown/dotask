@@ -1,9 +1,12 @@
+// dotask: 1
+// description: "Normalize text-file encoding and line endings using fixeol."
+// options:
+//   - {"name": "eol", "choices": ["lf", "crlf"], "default": "lf", "description": "Line endings for text files; batch files always use CRLF."}
+// examples: ["dotask fixeol", "dotask fixeol --eol crlf"]
+// end-dotask
 using DoTask;
 
-/// <summary>Normalize text-file encoding and line endings using fixeol.</summary>
-/// <option name="eol" choices="lf,crlf" default="lf">Line endings for text files; batch files always use CRLF.</option>
-/// <example>dotask fixeol</example>
-/// <example>dotask fixeol --eol crlf</example>
+
 public static class Target
 {
   public static async Task Main()

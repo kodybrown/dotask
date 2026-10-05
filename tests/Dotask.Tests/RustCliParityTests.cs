@@ -139,15 +139,19 @@ public sealed class RustCliParityTests
   {
     var project = new TestProject();
     project.Target("tools/run", "File.WriteAllText(\"executed\", \"wrong\");", """
-      /// <summary>Run a useful task.</summary>
-      /// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build configuration.</option>
-      /// <option name="input" type="path" completion="file">Input file.</option>
-      /// <option name="flag" type="bool">Boolean flag.</option>
-      /// <option name="label" choices="Été,Hiver" default="Été">Label.</option>
-      /// <requires tool="missing-tool-must-not-be-called" />
-      /// <capability name="process" />
-      /// <remarks>Metadata only.</remarks>
-      /// <example>dotask run -c Release</example>
+      // dotask: 1
+      // description: "Run a useful task."
+      // remarks: "Metadata only."
+      // options:
+      //   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build configuration."}
+      //   - {"name": "input", "type": "path", "completion": "file", "description": "Input file."}
+      //   - {"name": "flag", "type": "bool", "description": "Boolean flag."}
+      //   - {"name": "label", "choices": ["Été", "Hiver"], "default": "Été", "description": "Label."}
+      // requires:
+      //   - {"kind": "tool", "value": "missing-tool-must-not-be-called"}
+      // capabilities: ["process"]
+      // examples: ["dotask run -c Release"]
+      // end-dotask
       """);
     project.Write(".tasks/group.task", "description: Group description\nsteps:\n  - run: tools/run\n    optional: true\n    with: { flag: true }\n");
     return project;

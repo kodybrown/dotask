@@ -28,10 +28,12 @@ public sealed class RepositoryTaskTests
   {
     using var project = CatalogProject();
     var source = """
-      /// <summary>Café &amp; tools
-      /// with <c>XML</c>.</summary>
-      /// <requires task="a/help" />
-      /// <requires file="z/_support/helper.cs" />
+      // dotask: 1
+      // description: "Café & tools with XML."
+      // requires:
+      //   - {"kind": "task", "value": "a/help"}
+      //   - {"kind": "file", "value": "z/_support/helper.cs"}
+      // end-dotask
       public static class Target { public static void Main() { throw new Exception(); } }
       """.ReplaceLineEndings("\r\n");
     project.Write("shared/z/run.cs", source);
@@ -65,7 +67,10 @@ public sealed class RepositoryTaskTests
   {
     using var project = CatalogProject();
     project.Write("shared/group/run.cs", $$"""
-      /// <requires file="{{path}}" />
+      // dotask: 1
+      // requires:
+      //   - {"kind": "file", "value": '{{path}}'}
+      // end-dotask
       public static class Target { public static void Main() { } }
       """);
     var result = await RustArtifacts.Run(project.Root, ["catalog", "--root", "shared"]);
@@ -75,15 +80,15 @@ public sealed class RepositoryTaskTests
   }
 
   [Theory]
-  [InlineData("<requires unknown=\"x\" />", "Metadata error:")]
-  [InlineData("<requires file=\"\" />", "Metadata error:")]
-  [InlineData("<requires file=\"group/a.txt\" task=\"group/run\" />", "Metadata error:")]
-  [InlineData("<requires task=\"group/missing\" />", "requires missing task:")]
-  [InlineData("<requires task=\"group/missing\">", "Metadata error:")]
+  [InlineData("requires: [{kind: unknown, value: x}]", "Metadata error")]
+  [InlineData("requires: [{kind: file, value: ''}]", "Metadata error")]
+  [InlineData("requires: [{kind: file, value: group/a.txt, extra: x}]", "Metadata error")]
+  [InlineData("requires: [{kind: task, value: group/missing}]", "requires missing task:")]
+  [InlineData("requires: [", "Metadata error")]
   public async Task CatalogRejectsInvalidMetadataAndMissingDependencies( string metadata, string error )
   {
     using var project = CatalogProject();
-    project.Write("shared/group/run.cs", $"/// {metadata}\npublic static class Target {{ public static void Main() {{ }} }}");
+    project.Write("shared/group/run.cs", $"// dotask: 1\n// {metadata}\n// end-dotask\npublic static class Target {{ public static void Main() {{ }} }}");
     var result = await RustArtifacts.Run(project.Root, ["catalog", "--root", "shared"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Contains(error, result.StandardError);
@@ -98,18 +103,21 @@ public sealed class RepositoryTaskTests
     var manifest = project.Write("shared/group/run.task.json", "{\"requires\":[\"group/check\"]}");
     var result = await RustArtifacts.Run(project.Root, ["catalog", "--root", "shared"]);
     Assert.Equal(1, result.ExitCode);
-    Assert.Contains("XML <requires task=", result.StandardError);
+    Assert.Contains("task/file requirements in the YAML header", result.StandardError);
     Assert.Contains(manifest, result.StandardError);
     Assert.True(File.Exists(manifest));
   }
 
   [Fact]
-  public async Task CatalogUsesEntryPointDocumentationInsteadOfUnrelatedComments()
+  public async Task CatalogUsesFileHeaderInsteadOfUnrelatedCodeDocumentation()
   {
     using var project = CatalogProject();
     project.Write("shared/group/run.cs", """
-      /// <summary>Ignored</summary>
-      /// <requires task="group/missing" />
+      // dotask: 1
+      // description: "Selected file header"
+      // requires:
+      //   - {"kind": "task", "value": "group/check"}
+      // end-dotask
       public class Helper { }
       public static class Target
       {
@@ -123,7 +131,7 @@ public sealed class RepositoryTaskTests
     project.Write("shared/group/check.cs", "// task");
     using var json = JsonDocument.Parse(await GenerateCatalogAsync(project));
     var task = json.RootElement.GetProperty("tasks")[1];
-    Assert.Equal("Selected entry point", task.GetProperty("description").GetString());
+    Assert.Equal("Selected file header", task.GetProperty("description").GetString());
     Assert.Equal("group/check", task.GetProperty("requires")[0].GetString());
   }
 
@@ -131,13 +139,13 @@ public sealed class RepositoryTaskTests
   public async Task CatalogVerifyDetectsDriftWithoutOverwritingIt()
   {
     using var project = CatalogProject();
-    project.Write("shared-tasks/group/run.cs", "/// <summary>Original</summary>\npublic static class Target { public static void Main() { } }");
+    project.Write("shared-tasks/group/run.cs", "// dotask: 1\n// description: \"Original\"\n// end-dotask\npublic static class Target { public static void Main() { } }");
     var generated = await RustArtifacts.Run(project.Root, ["catalog"]);
     Assert.True(generated.ExitCode == 0, generated.StandardError);
     var destination = Path.Combine(project.Root, "shared-tasks/catalog.json");
     var baseline = File.ReadAllBytes(destination);
     Assert.Equal(0, (await RustArtifacts.Run(project.Root, ["catalog", "--verify"])).ExitCode);
-    project.Write("shared-tasks/group/run.cs", "/// <summary>Changed</summary>\npublic static class Target { public static void Main() { } }");
+    project.Write("shared-tasks/group/run.cs", "// dotask: 1\n// description: \"Changed\"\n// end-dotask\npublic static class Target { public static void Main() { } }");
     var stale = await RustArtifacts.Run(project.Root, ["catalog", "--verify"]);
     Assert.Equal(1, stale.ExitCode);
     Assert.Contains("catalog.json is stale", stale.StandardError);
@@ -151,21 +159,21 @@ public sealed class RepositoryTaskTests
     Copy(project, "verify.rs");
     project.Target("check", "File.AppendAllText(\"order\", \"check;\");");
     project.Target("_/dotnet/test", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
-      "/// <option name=\"configuration\" choices=\"Debug,Release\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     project.Target("_/dotnet/format", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
-      "/// <option name=\"verify\" type=\"bool\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     // Exact project-local names must not intercept calls to official tasks.
     project.Target("dotnet/test", "Environment.Exit(91);");
     project.Target("dotnet/format", "Environment.Exit(92);");
     project.Target("verify-docs", "File.AppendAllText(\"order\", \"docs;\");");
     project.Target("catalog", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\").ToString());",
-      "/// <option name=\"verify\" type=\"bool\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     project.Target("shim", "File.AppendAllText(\"order\", \";shim:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\"));",
-      "/// <option name=\"verify\" type=\"bool\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     project.Target("installer-engine", "File.AppendAllText(\"order\", \"rust:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
-      "/// <option name=\"verify\" type=\"bool\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     project.Target("rust-cli", "File.AppendAllText(\"order\", \"cli:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
-      "/// <option name=\"verify\" type=\"bool\" />");
+      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     var result = await RustArtifacts.Run(project.Root, ["verify", "-c", "Debug"]);
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
@@ -176,11 +184,11 @@ public sealed class RepositoryTaskTests
     Assert.Equal(1, result.ExitCode);
     Assert.Equal("check;rust:True;cli:True;Release;True;", File.ReadAllText(order));
     File.Delete(order);
-    project.Target("_/dotnet/format", "Environment.Exit(23);", "/// <option name=\"verify\" type=\"bool\" />");
+    project.Target("_/dotnet/format", "Environment.Exit(23);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
     Assert.Equal("check;rust:True;cli:True;Release;", File.ReadAllText(order));
     File.Delete(order);
-    project.Target("rust-cli", "Environment.Exit(24);", "/// <option name=\"verify\" type=\"bool\" />");
+    project.Target("rust-cli", "Environment.Exit(24);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     Assert.Equal(24, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
     Assert.Equal("check;rust:True;", File.ReadAllText(order));
     File.Delete(order);
@@ -209,7 +217,7 @@ public sealed class RepositoryTaskTests
       var project = BuildContext.Current;
       project.Files.WriteText("git-check-called", project.Parameters.Get<bool>("whitespace").ToString());
       Environment.Exit({{exitCode}});
-      """, "/// <option name=\"whitespace\" type=\"bool\" default=\"false\" />");
+      """, "// dotask: 1\n// options:\n//   - {\"name\": \"whitespace\", \"type\": \"bool\", \"default\": \"false\"}\n// end-dotask\n");
     var metadata = await RustArtifacts.Run(project.Root, ["help", "verify-docs"]);
     project.Target("git/check", "Environment.Exit(93);");
     Assert.Contains("task: git/check", metadata.StandardOutput);

@@ -1,10 +1,15 @@
+// dotask: 1
+// description: "Print a configurable greeting and host information."
+// options:
+//   - {"name": "name", "alias": "n", "type": "string", "default": "World", "description": "Who to greet."}
+//   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build configuration."}
+// requires:
+//   - {"kind": "setting", "value": "message"}
+// examples: ["dotask hello -n \"Ada Lovelace\" configuration=release"]
+// end-dotask
 using DoTask;
 
-/// <summary>Print a configurable greeting and host information.</summary>
-/// <option name="name" alias="n" type="string" default="World">Who to greet.</option>
-/// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build configuration.</option>
-/// <requires setting="message" />
-/// <example>dotask hello -n "Ada Lovelace" configuration=release</example>
+
 public static class Target
 {
   public static void Main()

@@ -78,7 +78,7 @@ internal sealed class SharedTaskStore( SharedTaskOptions options, HttpClient? cl
       var manifestPath = Path.ChangeExtension(file, ".task.json");
       SharedTaskFiles.CheckLink(manifestPath);
       if (File.Exists(manifestPath)) {
-        throw new TaskException($"Move '{manifestPath}' into XML <requires task=\"...\" /> / <requires file=\"...\" /> comments in '{file}', then remove the .task.json file.");
+        throw new TaskException($"Move '{manifestPath}' into task/file requirements in the YAML header in '{file}', then remove the .task.json file.");
       }
       var metadata = MetadataReader.Read(file, options.PrivateDirectory);
       if (metadata.Error is not null) {

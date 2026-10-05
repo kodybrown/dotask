@@ -56,18 +56,18 @@ public sealed class BootstrapTests
       }
       // Preserve the user output policy while exercising a custom publish path.
       Project.WriteBuildProperties();
-      Project.Write("src/Dotask.CSharpHost/Dotask.CSharpHost.csproj", """
+      Project.Write("src/Dotask/Dotask.csproj", """
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
             <TargetFramework>net10.0</TargetFramework>
-            <OutputType>Exe</OutputType>
-            <AssemblyName>Dotask.CSharpHost</AssemblyName>
+            <OutputType>Library</OutputType>
+            <AssemblyName>Dotask.Library</AssemblyName>
             <ImplicitUsings>enable</ImplicitUsings>
             <PublishDir>$(FixtureOutputRoot)/custom publish output/</PublishDir>
           </PropertyGroup>
         </Project>
         """);
-      Project.Write("src/Dotask.CSharpHost/Program.cs", "return 0;");
+      Project.Write("src/Dotask/Helpers.cs", "public static class Helpers { }");
       Project.Write("Cargo.toml", """
         [package]
         name = "dotask-cli"
@@ -87,7 +87,7 @@ public sealed class BootstrapTests
           let args: Vec<_> = std::env::args().skip(1).collect();
           println!("REPORT:{}", serde_json::json!({
             "args":args, "cwd":std::env::current_dir().unwrap(), "assembly":std::env::current_exe().unwrap(),
-            "supportFiles":std::fs::read_dir(std::env::current_exe().unwrap().parent().unwrap().join("csharp")).unwrap()
+            "supportFiles":std::fs::read_dir(std::env::current_exe().unwrap().parent().unwrap()).unwrap()
               .map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect::<Vec<_>>()
           }));
           if args.first().is_some_and(|s| s == "rebuild") {
@@ -119,11 +119,11 @@ public sealed class BootstrapTests
         }, timeout.Token);
         var properties = await ProcessRunner.RunAsync(new ProcessDefinition {
           Executable = "dotnet",
-          Arguments = ["msbuild", "src/Dotask.CSharpHost/Dotask.CSharpHost.csproj", "-p:Configuration=Release", "-getProperty:PublishDir"],
+          Arguments = ["msbuild", "src/Dotask/Dotask.csproj", "-p:Configuration=Release", "-getProperty:PublishDir"],
           WorkingDirectory = Project.Root,
           CaptureOutput = true
         }, timeout.Token);
-        var publish = Path.GetFullPath(properties.StandardOutput.Trim(), Path.Combine(Project.Root, "src/Dotask.CSharpHost"));
+        var publish = Path.GetFullPath(properties.StandardOutput.Trim(), Path.Combine(Project.Root, "src/Dotask"));
         Directory.CreateDirectory(publish);
         File.WriteAllText(Path.Combine(publish, "stale-publish-file.txt"), "Must not enter the runner or a payload.");
       }

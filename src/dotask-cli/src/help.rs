@@ -124,10 +124,12 @@ pub(crate) fn project(catalog: &Catalog, directory: &Directory, verbose: bool) {
     let diagnostic = configuration::bind(target, config, &[], &directory.root_directory, true)
       .err()
       .map(|e| e.to_string());
-    out.row(
-      &format!("  {:18} ", catalog.display_name(target)),
-      diagnostic.as_deref().unwrap_or(&target.description),
-    );
+    let description = diagnostic.as_deref().unwrap_or(&target.description);
+    let unavailable = unavailable(target, directory);
+    let description = unavailable
+      .map(|reason| format!("{description} [unavailable: {reason}]"))
+      .unwrap_or_else(|| description.into());
+    out.row(&format!("  {:18} ", catalog.display_name(target)), &description);
   }
   if catalog.targets.is_empty() {
     out.line("  (no targets)", 0);
@@ -156,6 +158,9 @@ pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) 
       source
     },
   );
+  if let Some(reason) = unavailable(target, directory) {
+    out.row("  Unavailable: ", reason);
+  }
   if let Some(remarks) = target.metadata.get("Remarks").and_then(Value::as_str) {
     out.line("", 0);
     out.row("  ", remarks);
@@ -372,4 +377,17 @@ fn relative(root: &Path, file: &Path) -> String {
     "./{}",
     file.strip_prefix(root).unwrap_or(file).to_string_lossy().replace('\\', "/")
   )
+}
+
+fn unavailable(target: &Target, directory: &Directory) -> Option<&'static str> {
+  match target.file_path.extension().and_then(|e| e.to_str()) {
+    Some("cs") => crate::csharp_tasks::Host::unavailable(&directory.root_directory),
+    Some("rs")
+      if !crate::configuration::tool_exists("cargo", &directory.root_directory)
+        || !crate::configuration::tool_exists("rustc", &directory.root_directory) =>
+    {
+      Some("requires Rust 1.95+ and Cargo")
+    }
+    _ => None,
+  }
 }

@@ -267,15 +267,7 @@ impl Store {
     }
     files::check_link(&self.private)?;
     let paths = crate::catalog::sources(&self.private, false, false)?;
-    let session = tempfile::tempdir()?;
-    let targets: Vec<crate::project::Target> = if paths.is_empty() {
-      vec![]
-    } else {
-      crate::host::Host::locate()?.request(
-        session.path(),
-        json!({"Operation":"metadata", "TaskDirectory":self.private, "Files":paths}),
-      )?
-    };
+    let targets: Vec<_> = paths.iter().map(|p| crate::task_metadata::metadata(p, &self.private)).collect();
     let mut tasks = vec![];
     for target in targets {
       let relative = target
@@ -288,7 +280,11 @@ impl Store {
       let manifest = target.file_path.with_extension("task.json");
       files::check_link(&manifest)?;
       if manifest.is_file() {
-        bail!("Move '{}' into XML <requires task=\"...\" /> / <requires file=\"...\" /> comments in '{}', then remove the .task.json file.", manifest.display(), target.file_path.display());
+        bail!(
+          "Move '{}' into task/file requirements in the YAML header in '{}', then remove the .task.json file.",
+          manifest.display(),
+          target.file_path.display()
+        );
       }
       if let Some(error) = target.error {
         bail!("{relative}: {error}");
@@ -341,11 +337,7 @@ impl Store {
     // Private completion reads only metadata; it never hashes/copies support files.
     let paths = crate::catalog::sources(&self.private, false, false)?;
     if !paths.is_empty() {
-      let session = tempfile::tempdir()?;
-      let targets: Vec<crate::project::Target> = crate::host::Host::locate()?.request(
-        session.path(),
-        json!({"Operation":"metadata","TaskDirectory":self.private,"Files":paths}),
-      )?;
+      let targets: Vec<_> = paths.iter().map(|p| crate::task_metadata::metadata(p, &self.private)).collect();
       for t in targets {
         let id = t
           .file_path

@@ -51,7 +51,7 @@ public class SharedTaskTests
   public async Task ListingDetectsPrivateSupportChangesAndUntrackedCopies()
   {
     using var fixture = new Fixture(NativeRunner);
-    fixture.Private("tools/one", metadata: "/// <requires file=\"tools/data.txt\" />");
+    fixture.Private("tools/one", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"file\", \"value\": \"tools/data.txt\"}\n// end-dotask\n");
     var support = Path.Combine(fixture.Options.PrivateDirectory, "tools/data.txt");
     File.WriteAllText(support, "original");
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/one")).Code);
@@ -157,8 +157,8 @@ public class SharedTaskTests
   public async Task PrivateSupportFilesAreTrackedAndSharedOwnershipPreventsPrematureRemoval()
   {
     using var fixture = new Fixture(NativeRunner);
-    fixture.Private("tools/one", metadata: "/// <requires file=\"tools/_support/Helper.cs\" />");
-    fixture.Private("tools/two", metadata: "/// <requires file=\"tools/_support/Helper.cs\" />");
+    fixture.Private("tools/one", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"file\", \"value\": \"tools/_support/Helper.cs\"}\n// end-dotask\n");
+    fixture.Private("tools/two", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"file\", \"value\": \"tools/_support/Helper.cs\"}\n// end-dotask\n");
     var support = Path.Combine(fixture.Options.PrivateDirectory, "tools/_support/Helper.cs");
     Directory.CreateDirectory(Path.GetDirectoryName(support)!);
     File.WriteAllText(support, "public static class Helper { }");
@@ -178,10 +178,10 @@ public class SharedTaskTests
   }
 
   [Fact]
-  public async Task XmlTaskDependenciesAreCopiedAndShownInHelpButNeverAutomaticallyExecuted()
+  public async Task YamlTaskDependenciesAreCopiedAndShownInHelpButNeverAutomaticallyExecuted()
   {
     using var fixture = new Fixture(NativeRunner);
-    fixture.Private("tools/run", metadata: "/// <requires task=\"tools/help\" />");
+    fixture.Private("tools/run", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"task\", \"value\": \"tools/help\"}\n// end-dotask\n");
     fixture.Private("tools/help", "throw new TaskException(\"Do not automatically execute me\");");
     var added = await fixture.Run("--add", "private-tasks/tools/run");
     Assert.True(added.Code == 0, added.Error + added.Output);
@@ -197,11 +197,11 @@ public class SharedTaskTests
   }
 
   [Theory]
-  [InlineData("/// <requires task=\"tools/missing\" />")]
-  [InlineData("/// <requires file=\"../outside.txt\" />")]
-  [InlineData("/// <requires file=\"tools/missing.txt\" />")]
-  [InlineData("/// <requires file=\"tools/a.txt\" task=\"tools/check\" />")]
-  public async Task InvalidPrivateXmlDependenciesFailBeforeProjectMutation( string metadata )
+  [InlineData("// dotask: 1\n// requires:\n//   - {\"kind\": \"task\", \"value\": \"tools/missing\"}\n// end-dotask\n")]
+  [InlineData("// dotask: 1\n// requires:\n//   - {\"kind\": \"file\", \"value\": \"../outside.txt\"}\n// end-dotask\n")]
+  [InlineData("// dotask: 1\n// requires:\n//   - {\"kind\": \"file\", \"value\": \"tools/missing.txt\"}\n// end-dotask\n")]
+  [InlineData("// dotask: 1\n// requires:\n//   - {\"kind\": \"invalid\", \"value\": \"invalid\"}\n// end-dotask\n")]
+  public async Task InvalidPrivateYamlDependenciesFailBeforeProjectMutation( string metadata )
   {
     using var fixture = new Fixture(NativeRunner);
     var original = fixture.Private("tools/run", metadata: metadata);
@@ -222,7 +222,7 @@ public class SharedTaskTests
     File.WriteAllText(manifest, contents);
     var result = await fixture.Run("--add", "private-tasks/tools/run");
     Assert.Equal(1, result.Code);
-    Assert.Contains("XML <requires task=", result.Error);
+    Assert.Contains("task/file requirements in the YAML header", result.Error);
     Assert.Contains(manifest, result.Error);
     Assert.Equal(contents, File.ReadAllText(manifest));
     Assert.Empty(Directory.GetFileSystemEntries(fixture.Project.Tasks));
@@ -311,7 +311,7 @@ public class SharedTaskTests
     Assert.Equal(project.Root, directory.RootDirectory);
     Assert.Empty(new TargetCatalog(directory.DirectoryPath).Targets);
     Assert.Equal("Root project", ProjectConfiguration.Load(directory.DirectoryPath).Name);
-    project.Target("_/dotnet/build", metadata: "/// <summary>Build.</summary>");
+    project.Target("_/dotnet/build", metadata: "// dotask: 1\n// description: \"Build.\"\n// end-dotask\n");
     var catalog = new TargetCatalog(project.Tasks);
     Assert.Equal("_/dotnet/build", catalog.Get("build").Name);
     Assert.Same(catalog.Get("build"), catalog.Get("dotnet/build"));
@@ -684,9 +684,9 @@ public class SharedTaskTests
       var path = Path.GetFullPath(Path.Combine(root, id + ".cs"));
       Directory.CreateDirectory(Path.GetDirectoryName(path)!);
       File.WriteAllText(path, $$"""
+        {{(string.IsNullOrEmpty(metadata) ? "// dotask: 1\n// description: Example task.\n// end-dotask" : metadata)}}
         using DoTask;
-        /// <summary>Example task.</summary>
-        {{metadata}}
+
         public static class Target
         {
           public static {{(async ? "async Task" : "void")}} Main()

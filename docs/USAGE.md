@@ -200,7 +200,7 @@ Each target appears once in `Targets:`, using only its short name (for example,
 is listed. Detailed help uses the same target label and identifies the actual
 task file on a `Source:` line below its description.
 
-Project summaries and target help read XML documentation from C# source and load
+Project summaries and target help read common YAML comment headers and load
 the YAML configuration. All help forms avoid invoking the SDK, restoring packages,
 compiling targets, or running their entry points, including on the first invocation.
 CLI-only `--help`/`-h` also skips discovery, metadata, and YAML loading, so it works
@@ -346,7 +346,7 @@ For each parameter, the precedence from highest to lowest is:
 
 1. Explicit command-line argument or explicit `ExecTargetAsync` argument.
 2. `targets.<full-target-name>.defaults.<full-option-name>` in `.dotasks.yaml`.
-3. The `<option default="...">` value in the target source.
+3. The option's `default` value in its YAML comment header.
 
 You do not register targets in YAML. Add a `targets` entry only to override that
 target's defaults. Setting `settings.configuration` does not automatically set
@@ -365,7 +365,7 @@ arrays, nested keys, and how defaults are validated.
 ## Shell completion
 
 Load the appropriate [shell integration](../README.md#shell-completion) in each
-shell session. The same task XML powers help, argument validation, and completion;
+shell session. The same task header powers help, argument validation, and completion;
 no separate completion registration is needed for new targets or options.
 
 Using the included basic example from the checkout root, type these lines and
@@ -430,13 +430,13 @@ responsibility.
 | SDK/file-based-app build failure                      | Run `dotnet --version` from the task directory; check the consuming project's `global.json` selects .NET 10.0.300 or later in the .NET 10 family.                                                                   |
 | Restore fails while running a target                  | `#:package`/`#:project` may need package feeds; inspect NuGet configuration, feed access, and compiler diagnostics. Help does not restore.                                                                          |
 | Help pauses for every target                          | Check that you rebuilt/reinstalled the current preview. Older previews compiled each target during help. For measurements, use the installed command or built CLI directly; `dotnet run` adds SDK startup overhead. |
-| `(no description)` or declared options are missing    | Put XML directly on the explicit entry-point class or static `Main`; top-level statements do not expose this metadata. Use exact lowercase XML names.                                                               |
-| Unknown option / duplicate option                     | Check `help TARGET`, XML spelling, single-letter aliases, and whether you passed the full name and its alias together.                                                                                              |
+| `(no description)` or declared options are missing    | Put `// dotask: 1` metadata at the top of the task file, ending with `// end-dotask`. Use exact lowercase header keys.                                                               |
+| Unknown option / duplicate option                     | Check `help TARGET`, header spelling, single-letter aliases, and whether you passed the full name and its alias together.                                                                                              |
 | Setting/default fails to load                         | Check `settings` versus `targets.<name>.defaults`, scalar types, duplicate keys, and full option names; aliases are not YAML default keys.                                                                          |
 | `No dotask context is available`                      | Run the task through dotask; direct `dotnet run task.cs` does not supply the context or injected library.                                                                                                           |
 | `Cannot start` a command                              | Check its installation, working directory, execute permission, and PATH. Shell built-ins and Windows `.cmd`/`.bat` launchers need an explicit shell.                                                                |
 | Path resolves to the wrong place                      | Settings/parameter/helper paths are project-relative, not relative to the task file or invocation directory. Use the appropriate context directory explicitly.                                                      |
-| Tab gives no task suggestions                         | Confirm `dotask --version` works, load the integration in this session, check XML, and confirm the selected tasks directory. Zsh needs `compinit`.                                                                  |
+| Tab gives no task suggestions                         | Confirm `dotask --version` works, load the integration in this session, check the header, and confirm the selected tasks directory. Zsh needs `compinit`.                                                                  |
 | New source changes do not appear in the installed CLI | Repack and reinstall the local preview as described in the README; a source build does not replace an installed tool.                                                                                               |
 
 Services, generated configuration properties, remote execution, and task graph

@@ -1,7 +1,11 @@
+// dotask: 1
+// description: "Check the example's required configuration."
+// requires:
+//   - {"kind": "setting", "value": "message"}
+// end-dotask
 using DoTask;
 
-/// <summary>Check the example's required configuration.</summary>
-/// <requires setting="message" />
+
 public static class Target
 {
   public static void Main()

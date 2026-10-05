@@ -1,13 +1,17 @@
+// dotask: 1
+// description: "Build the configured .NET project and create local NuGet packages."
+// options:
+//   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Release", "description": "Build configuration."}
+//   - {"name": "output", "alias": "o", "type": "path", "default": "artifacts/packages", "completion": "directory", "description": "Package directory, relative to the project root."}
+//   - {"name": "dotnet", "default": "dotnet", "description": ".NET CLI executable name or path."}
+// requires:
+//   - {"kind": "tool", "value": "dotnet"}
+//   - {"kind": "setting", "value": "project"}
+// examples: ["dotask pack", "dotask pack -c Debug --output ./artifacts/packages"]
+// end-dotask
 using DoTask;
 
-/// <summary>Build the configured .NET project and create local NuGet packages.</summary>
-/// <option name="configuration" alias="c" choices="Debug,Release" default="Release">Build configuration.</option>
-/// <option name="output" alias="o" type="path" default="artifacts/packages" completion="directory">Package directory, relative to the project root.</option>
-/// <option name="dotnet" default="dotnet">.NET CLI executable name or path.</option>
-/// <requires tool="dotnet" />
-/// <requires setting="project" />
-/// <example>dotask pack</example>
-/// <example>dotask pack -c Debug --output ./artifacts/packages</example>
+
 public static class Target
 {
   public static async Task Main()

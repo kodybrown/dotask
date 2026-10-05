@@ -1,7 +1,4 @@
-use crate::{
-  host::Host,
-  project::{Catalog, Group, Step, Target},
-};
+use crate::project::{Catalog, Group, Step, Target};
 use anyhow::{bail, Result};
 use serde_json::{json, Value};
 use std::{
@@ -37,32 +34,18 @@ pub(crate) fn sources(root: &Path, task_root: bool, groups: bool) -> Result<Vec<
   }
   Ok(result)
 }
-pub(crate) fn load(root: &Path, session: &Path) -> Result<Catalog> {
+pub(crate) fn load(root: &Path, _session: &Path) -> Result<Catalog> {
   let files = sources(root, true, true)?;
-  let csharp: Vec<_> = files
+  let mut targets: Vec<_> = files
     .iter()
-    .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("cs")))
+    .map(|p| {
+      if p.extension().is_some_and(|e| e.eq_ignore_ascii_case("task")) {
+        group(p, root)
+      } else {
+        crate::task_metadata::metadata(p, root)
+      }
+    })
     .collect();
-  let mut targets: Vec<Target> = if csharp.is_empty() {
-    vec![]
-  } else {
-    Host::locate()?.request(
-      session,
-      json!({"Operation": "metadata", "TaskDirectory": root, "Files": csharp}),
-    )?
-  };
-  targets.extend(
-    files
-      .iter()
-      .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("task")))
-      .map(|p| group(p, root)),
-  );
-  targets.extend(
-    files
-      .iter()
-      .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("rs")))
-      .map(|p| crate::rust_tasks::metadata(p, root)),
-  );
   targets.sort_by(|a, b| {
     a.name
       .to_lowercase()

@@ -7,9 +7,9 @@ context, typed values, safe argument passing, portable paths, filesystem helpers
 and target-call transport.
 It has no third-party runtime dependencies or DI container.
 
-`src/Dotask.Cli` retains the C# behavior reference. Discovery, XML metadata, YAML loading,
+`src/Dotask.Cli` retains the C# behavior reference. Discovery, comment-header metadata, YAML loading,
 binding, help, completion, SDK compilation, and execution are separate components.
-Roslyn reads actual C# documentation trivia, and YamlDotNet parses configuration.
+YamlDotNet parses declarative headers/configuration for the reference CLI.
 `Program.cs` only wires cancellation and invokes the application.
 
 ## Rust CLI transition
@@ -30,15 +30,22 @@ runner and packaged application; `src/dotask-sdk` is its maintained Rust task
 helper crate. See the
 [preview commands](../README.md#rust-cli-development-preview).
 
-`src/Dotask.CSharpHost` is a separate .NET support executable with a private,
-versioned JSON file protocol for batches of C# source metadata and SDK compilation.
-It links the corresponding maintained C# source files, keeping Roslyn metadata
-and compiler isolation consistent. Protocol version 2 removes catalog discovery,
-configuration, and binding from the support host. It has
-no reference to the managed CLI executable, command dispatcher, or task executor.
-The native runner resolves catalog entries itself and directly launches compiled
-tasks. The support host is staged from evaluated `PublishDir` into `release/csharp`
-by `rust-cli`; metadata-only requests never compile or run a target.
+The installed application contains the native executable, `Dotask.Library.dll`,
+and the Rust helper source crate under `sdk/`. No language runtime, compiler,
+Roslyn assembly, managed CLI or separate support host is shipped. Both task
+languages use an ordinary-comment YAML header beginning `// dotask: 1` and
+ending `// end-dotask`; native metadata discovery needs no language toolchain.
+The extension selects the handler and a file exposes one task. Unknown header
+versions/fields fail explicitly. Legacy XML and Rust doc-block task metadata are
+not interpreted; ordinary code documentation remains untouched.
+
+C# compilation is native orchestration of the user's selected .NET SDK. It
+injects the helper DLL and initialization into an isolated file-based build,
+preserves SDK/package/include/project directives, locks its external cache,
+and copies compiled output into an invocation snapshot. Only implicit hooks of
+the task's synthetic project are isolated; explicit project references retain
+normal output policy. Rust compilation uses the installed Cargo/Rust toolchain.
+Missing tools leave headers/help available and cause actionable execution errors.
 
 Nested context carries a CLI executable and argument prefix: native dotask with
 an empty prefix, or the .NET host with the C# CLI assembly. Both use the same
@@ -83,7 +90,7 @@ that are not yet available consumer APIs:
    nested calls, and identify implementations distinctly for cycle detection.
    Mixed-language projects need only the toolchains required by executed tasks.
 
-Roslyn metadata parsing remains in the support host. Native shared management
+Common YAML metadata parsing is owned by Rust. Native shared management
 preserves the existing SHA-256 revision serialization, lock schema, transaction
 ownership marker, and recovery journal. It never adopts untracked files or
 overwrites local changes. Completion remains local and skips project configuration;
@@ -94,7 +101,7 @@ keys regardless of case, and bounds nesting and alias expansion.
 The Windows scope now combines Rust task authoring with bootstrap and packaging
 cutover. Repository orchestration tasks are `.rs` files, including `pack` and
 `create-installer`; shared C# tasks and their authoring library remain maintained.
-Rust tasks declare leading `//!` YAML metadata and compile through isolated,
+Rust tasks declare leading ordinary-comment YAML metadata and compile through isolated,
 content-addressed manifests/source snapshots outside the project. SDK dependencies
 are pinned; Cargo retains a lockfile per snapshot and checks compiler fingerprints.
 Support modules must be declared as task-root-relative file requirements. Help
@@ -125,7 +132,7 @@ shortcuts must be unique. Legacy space-grouped filenames retain their identities
 There is no default group or imports registration. Help, completion, execution,
 nested calls, defaults, and cycle detection share canonical identities.
 
-XML documentation on the entry-point type, or its static Main method,
+A common YAML comment header at the top of each task file
 supplies the description, options, requirements, examples, and capabilities.
 Invalid metadata is isolated to its target. Project YAML configures values and optional defaults, not target registration.
 Separate `.task` YAML files declare ordered groups of existing targets; their
@@ -144,7 +151,7 @@ CLI-only `dotask --help`/`-h` returns usage before any project discovery or read
 Project summaries and selected-target help read the source metadata, load YAML,
 validate effective defaults, and render the project's details. Help does not instantiate a
 compiler, create a compilation cache, restore packages, or launch child processes.
-C# uses Roslyn/XML metadata parsing; groups use strict YAML parsing. Both run
+C# and Rust use the common header parser; groups use strict YAML parsing. Both run
 on every invocation without a metadata cache. Metadata/default errors remain visible, but help does not determine whether
 a target compiles. Required arguments and execution requirements are not enforced
 during help. Target completion skips project configuration entirely.
@@ -209,9 +216,9 @@ command substitution, and arbitrary environment interpolation are not performed.
 
 `SharedTasks` separates source catalogs/snapshots from project file management.
 The online cache is a static JSON catalog plus selected C# source/support files.
-Catalog generation and private-task indexing read the entry-point XML comments
-with the same Roslyn metadata parser as help. `<requires task="group/task" />`
-declares a same-source dependency; `<requires file="group/_support/Helper.cs" />`
+Catalog generation and private-task indexing read common YAML headers with the
+same native parser as help. `{kind: task, value: group/task}` declares a
+same-source dependency; `{kind: file, value: group/_support/Helper.cs}`
 declares a file relative to the source root. No per-task JSON manifest is needed;
 old sidecars produce migration errors instead of silently losing companions.
 Downloads are hashed before installation; immutable original blobs are retained

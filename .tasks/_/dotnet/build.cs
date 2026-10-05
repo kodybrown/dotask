@@ -1,13 +1,17 @@
+// dotask: 1
+// description: "Restore packages and build the configured solution."
+// options:
+//   - {"name": "configuration", "alias": "c", "choices": ["Debug", "Release"], "default": "Debug", "description": "Build configuration."}
+//   - {"name": "dotnet", "default": "dotnet", "description": ".NET CLI executable name or path."}
+// requires:
+//   - {"kind": "tool", "value": "dotnet"}
+//   - {"kind": "setting", "value": "solution"}
+//   - {"kind": "task", "value": "dotnet/restore"}
+// examples: ["dotask build", "dotask build -c Release"]
+// end-dotask
 using DoTask;
 
-/// <summary>Restore packages and build the configured solution.</summary>
-/// <option name="configuration" alias="c" choices="Debug,Release" default="Debug">Build configuration.</option>
-/// <option name="dotnet" default="dotnet">.NET CLI executable name or path.</option>
-/// <requires tool="dotnet" />
-/// <requires setting="solution" />
-/// <requires task="dotnet/restore" />
-/// <example>dotask build</example>
-/// <example>dotask build -c Release</example>
+
 public static class Target
 {
   public static async Task Main()

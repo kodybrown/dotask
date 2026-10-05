@@ -1,10 +1,8 @@
-//! Rust task metadata is a leading YAML block in crate documentation. Reading
-//! it never invokes Cargo, rustc, or task code; compilation uses private external
-//! manifests and snapshots, isolated from a consumer's Cargo workspace.
-use crate::{catalog, host::write_json, process, project::Target};
+//! Rust task compilation uses private external manifests and snapshots,
+//! isolated from consumer workspaces. Common headers live in task_metadata.
+use crate::{host::write_json, process, project::Target};
 use anyhow::{bail, Context, Result};
-use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
   fs,
@@ -12,148 +10,7 @@ use std::{
   process::Command,
 };
 
-#[derive(Default, Deserialize)]
-#[serde(default, deny_unknown_fields)]
-struct Metadata {
-  description: String,
-  remarks: Option<String>,
-  examples: Vec<String>,
-  capabilities: Vec<String>,
-  options: Vec<OptionMetadata>,
-  requires: Vec<Requirement>,
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Requirement {
-  kind: String,
-  value: String,
-}
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct OptionMetadata {
-  name: String,
-  #[serde(default)]
-  alias: Option<String>,
-  #[serde(default = "string_type", rename = "type")]
-  kind: String,
-  #[serde(default)]
-  description: String,
-  #[serde(default)]
-  default: Option<Value>,
-  #[serde(default)]
-  required: bool,
-  #[serde(default)]
-  choices: Vec<String>,
-  #[serde(default)]
-  completion: Option<String>,
-}
-fn string_type() -> String {
-  "string".into()
-}
-
-pub(crate) fn metadata(file: &Path, root: &Path) -> Target {
-  let mut target = Target {
-    name: file.file_stem().unwrap().to_string_lossy().into_owned(),
-    file_path: file.into(),
-    description: "(no description)".into(),
-    short_name: None,
-    error: None,
-    group: None,
-    options: vec![],
-    metadata: serde_json::Map::new(),
-  };
-  let parsed = (|| -> Result<()> {
-    (target.name, target.short_name) = catalog::read_name(file, root)?;
-    let source = fs::read_to_string(file)?;
-    let mut lines = source
-      .trim_start_matches('\u{feff}')
-      .lines()
-      .skip_while(|l| l.trim().is_empty());
-    let metadata = if lines.next().is_some_and(|l| l.trim() == "//! ---") {
-      let mut yaml = String::new();
-      let mut ended = false;
-      for line in lines {
-        let doc = line
-          .strip_prefix("//!")
-          .context("Rust task metadata must remain inside leading //! documentation")?;
-        if doc.trim() == "---" {
-          ended = true;
-          break;
-        }
-        yaml.push_str(doc.strip_prefix(' ').unwrap_or(doc));
-        yaml.push('\n');
-      }
-      if !ended {
-        bail!("Unterminated Rust task metadata block.");
-      }
-      serde_json::from_value::<Metadata>(crate::yaml::parse(&yaml, &file.display().to_string())?)?
-    } else {
-      Metadata::default()
-    };
-    if !metadata.description.is_empty() {
-      target.description = metadata.description;
-    }
-    let mut names = std::collections::BTreeSet::new();
-    for option in metadata.options {
-      for name in std::iter::once(&option.name).chain(option.alias.iter()) {
-        if !catalog::identifier(name)
-          || !names.insert(name.to_lowercase())
-          || ["help", "h", "verbose", "version", "use-dir"].contains(&name.to_ascii_lowercase().as_str())
-        {
-          bail!("Invalid, reserved, or duplicate option '{name}'.");
-        }
-      }
-      if !["string", "path", "bool", "int", "number"].contains(&option.kind.as_str()) {
-        bail!("Unknown option type '{}'.", option.kind);
-      }
-      if option
-        .completion
-        .as_deref()
-        .is_some_and(|c| !["file", "directory", "none"].contains(&c))
-      {
-        bail!("Invalid completion kind.");
-      }
-      let default = option
-        .default
-        .map(|v| match v {
-          Value::String(s) => Ok(s),
-          Value::Bool(_) | Value::Number(_) => Ok(v.to_string()),
-          _ => Err(anyhow::anyhow!("Option defaults must be scalars.")),
-        })
-        .transpose()?;
-      let value = json!({"Name":option.name,"Alias":option.alias,"Type":option.kind,"Description":option.description,"Default":default,"Required":option.required,"Choices":option.choices,"Completion":option.completion});
-      if let Some(value_text) = value["Default"].as_str() {
-        crate::configuration::convert(&value, value_text, root)?;
-      }
-      target.options.push(value);
-    }
-    let mut requirements = vec![];
-    for requirement in metadata.requires {
-      if !["tool", "setting", "task", "file", "os"].contains(&requirement.kind.as_str())
-        || requirement.value.trim().is_empty()
-      {
-        bail!("Invalid task requirement.");
-      }
-      if requirement.kind == "file" {
-        support(root, &requirement.value)?;
-      }
-      requirements.push(json!({"Kind":requirement.kind,"Value":requirement.value}));
-    }
-    target.metadata.extend([
-      ("Requirements".into(), json!(requirements)),
-      ("Remarks".into(), json!(metadata.remarks)),
-      ("Examples".into(), json!(metadata.examples)),
-      ("Capabilities".into(), json!(metadata.capabilities)),
-    ]);
-    Ok(())
-  })();
-  if let Err(error) = parsed {
-    target.error = Some(format!("Metadata error in {}: {error:#}", file.display()));
-  }
-  target
-}
-
-fn support(root: &Path, name: &str) -> Result<PathBuf> {
+pub(crate) fn support(root: &Path, name: &str) -> Result<PathBuf> {
   if name.contains(['\\', ':']) || name.split('/').any(|p| matches!(p, "" | "." | "..")) {
     bail!("Support files must use a portable relative path inside the task directory: {name}");
   }
@@ -168,6 +25,9 @@ fn support(root: &Path, name: &str) -> Result<PathBuf> {
 }
 
 pub(crate) fn compile(target: &Target, root: &Path, snapshot: &Path) -> Result<PathBuf> {
+  if !crate::configuration::tool_exists("cargo", root) || !crate::configuration::tool_exists("rustc", root) {
+    bail!("Rust tasks require Rust 1.95+ and Cargo. Install/select the toolchain and retry.");
+  }
   let exe = std::env::current_exe()?;
   let sdk = exe.parent().context("CLI has no parent directory")?.join("sdk");
   if !sdk.join("Cargo.toml").is_file() {
@@ -283,23 +143,6 @@ pub(crate) fn batch(request: &Path, response: &Path) -> Result<()> {
     .iter()
     .map(|v| v.as_str().map(PathBuf::from).context("Invalid metadata filename"))
     .collect::<Result<Vec<_>>>()?;
-  let csharp: Vec<_> = files
-    .iter()
-    .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("cs")))
-    .collect();
-  let mut targets: Vec<Target> = if csharp.is_empty() {
-    vec![]
-  } else {
-    crate::host::Host::locate()?.request(
-      request.parent().unwrap(),
-      json!({"Operation":"metadata","TaskDirectory":root,"Files":csharp}),
-    )?
-  };
-  targets.extend(
-    files
-      .iter()
-      .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("rs")))
-      .map(|p| metadata(p, root)),
-  );
+  let targets: Vec<_> = files.iter().map(|p| crate::task_metadata::metadata(p, root)).collect();
   write_json(response, &targets)
 }

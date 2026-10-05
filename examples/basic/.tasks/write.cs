@@ -1,7 +1,11 @@
+// dotask: 1
+// description: "Run another target, then write a project-relative output file."
+// requires:
+//   - {"kind": "setting", "value": "output"}
+// end-dotask
 using DoTask;
 
-/// <summary>Run another target, then write a project-relative output file.</summary>
-/// <requires setting="output" />
+
 public static class Target
 {
   public static async Task Main()
