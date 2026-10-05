@@ -413,3 +413,25 @@ acceptance, installation, and publication.
   paths, 100 relative links/anchors, Bash syntax, and `git diff --check` passed.
   Linux/macOS acceptance remains deferred. No active installation changed;
   nothing was published or pushed.
+
+### 2026-10-05 Measure Windows C# Native AOT and Rust CLI sizes
+
+- Record an isolated Windows x64 Release experiment from committed baseline
+  `1df4d14`, preserving executable byte counts, MB/MiB, ratios, deployment
+  companions, debug-symbol sizes, artifact hashes/paths, and reproduction commands.
+- The strict C# AOT publish fails JSON trimming/dynamic-code diagnostics; the
+  warning-preserving measurement publish emits 17,403,392 bytes but crashes on
+  sample discovery/execution. Record the additional managed-library location
+  incompatibility without changing source or claiming AOT support.
+- The working full-extraction self-contained C# executable is 90,726,248 bytes;
+  the static-CRT Rust executable is 3,717,632 bytes. With installed toolchains,
+  retained non-debug payloads are 17,306,045 bytes for framework-dependent C# and
+  20,417,652 bytes for Rust with this baseline's C# support and bundled Rust SDK.
+- Verification: help/version/discovery/greeting smoke tests pass for all three
+  working variants; AOT help/version pass and its two crashes are recorded.
+  `build.cmd verify-docs`, changed relative links, evaluated external .NET output
+  paths, native import inspection, and `git diff --check` passed. Documentation
+  only; original measurements remain attributed to `1df4d14`, before the
+  common-header/minimal-helper packaging in `7b28895`. Accepted local integration
+  preserves the report and external artifacts; no install, publish, push, or
+  changes to the other task's implementation.

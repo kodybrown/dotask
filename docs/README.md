@@ -21,6 +21,7 @@ run your first example. The preview is not yet published to a public package fee
 | Understand implementation decisions                   | [Design and execution contracts](DESIGN.md)                      |
 | Develop the native CLI with the C# behavior reference | [Preview commands](../README.md#rust-cli-development-preview) and [transition design](DESIGN.md#rust-cli-transition) |
 | Continue Rust acceptance, packaging, and task authoring | [Rust continuation runbook](RUST-CONTINUATION.md) |
+| Compare measured Windows CLI deployment sizes | [Baseline AOT and Rust size experiment](scratch/2026-10-05-windows-cli-size-experiment.md) |
 | Review reusable Rust installer design and rollback boundaries | [Standalone installer design](DESIGN.md#standalone-installer-design) |
 | Check tested hosts, shells, and remaining limitations | [Verification status](VERIFICATION.md)                           |
 | Develop dotask itself                                 | [Repository agent instructions](../AGENTS.md)                    |
