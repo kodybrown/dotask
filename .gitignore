@@ -6,7 +6,7 @@
 **/*.user
 **/artifacts/
 **/bin/
-**/notes.mdx
+**/*[Nn]otes.mdx
 **/obj/
 **/target/
 **/TestResults/
