@@ -1,10 +1,14 @@
 # dotask
 
-Portable project tasks written as individual C# or Rust files, with YAML `.task` groups
-for composing existing tasks. Use `dotask --create-task` for interactive group creation. Put targets in `.tasks/`,
-describe both languages with a common YAML comment header, and keep project-specific settings in
-`.dotasks.yaml`. Copy the same target file between projects without a
-registration step.
+"Portable project tasks, in the language of your choice, for any platform."
+
+Portable project tasks written as individual task files, with YAML `.task`
+groups for composing existing tasks.
+
+Use `dotask --create-task` for interactive group creation. Put targets in
+`.tasks/`, describe the tasks using a common YAML comment header, and keep
+project-specific settings in `.dotasks.yaml`. Copy the same target file between
+projects without a registration step.
 
 ```text
 .dotasks.yaml
@@ -18,11 +22,12 @@ registration step.
 
 This is a **0.1 local preview**, with no public package release yet. Windows,
 Linux, and macOS are intended hosts. Current native CLI/task work is verified on
-Windows x64; Linux/macOS acceptance for this cutover is deferred. See [verification status](docs/VERIFICATION.md).
+Windows x64; Linux/macOS acceptance for this cutover is deferred. See
+[verification status](docs/VERIFICATION.md).
 
 Use **.NET SDK 10.0.300 or later in the .NET 10 family** for C# execution, and
-**Rust 1.95+/Cargo** for Rust execution. The .NET SDK compiles C# targets;
-a runtime-only installation is insufficient. Run `dotnet --version` from the
+**Rust 1.95+/Cargo** for Rust execution. The .NET SDK compiles C# targets; a
+runtime-only installation is insufficient. Run `dotnet --version` from the
 project directory to check the selected SDK. The project's `global.json` can
 select an older SDK even if a suitable one is installed.
 
@@ -68,16 +73,16 @@ to PATH. If you only want to try the example, you can
 To use `dotask` from any project, install it for your current user account.
 From this checkout after the build succeeds:
 
-**Linux/macOS (Bash or Zsh):**
-
-```sh
-./build.sh install
-```
-
 **Windows (PowerShell):**
 
 ```powershell
 .\build.cmd install
+```
+
+**Linux/macOS (Bash or Zsh):**
+
+```sh
+./build.sh install
 ```
 
 The task executes the project's `create-installer`, then runs the resulting
@@ -87,12 +92,16 @@ and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and
 `.shim` file; Linux/macOS get a symlink. No shim compiler is needed.
 
-The console installer prompts by default; use `--non-interactive` for automation.
+The console installer prompts by default; use `--non-interactive` for
+automation.
+
 A stable command always lives in the chosen application directory. It offers an
 additional command (default No), suggesting that directory's parent. `--bin-dir`
 selects and enables an additional location; `BIN` is not consulted. On Windows,
 the installer offers to add the selected command directory to your user PATH,
-skipping that question when it is already present. Reopen your terminal afterward.
+skipping that question when it is already present. Reopen your terminal
+afterward.
+
 On Linux/macOS, add the selected directory to your shell's PATH yourself:
 
 - **Bash:** add `export PATH="$HOME/.local/lib/dotask:$PATH"` to `~/.bashrc`.
@@ -101,17 +110,19 @@ On Linux/macOS, add the selected directory to your shell's PATH yourself:
 
 Pass installer options through `--installer-args` as a JSON array; see the
 [installer examples](docs/INSTALLATION.md#build-and-install-dotask-itself).
+
 For a custom command directory, substitute its path. The installer prints the
-selected installation location; it never edits shell profiles.
-Then run `dotask --version`; the Rust application reports
-`dotask major.minor.yyMM.ddhh (build YYDDD-HHMM[, commit git7])` using its embedded
-UTC build information. Git builds with local changes include a `-dirty` marker.
+selected installation location; it never edits shell profiles. Then run `dotask
+--version`; the Rust application reports `dotask major.minor.yyMM.ddhh (build
+YYDDD-HHMM[, commit git7])` using its embedded UTC build information. Git builds
+with local changes include a `-dirty` marker.
 
 The installation is independent of this source checkout. To check which command
-your shell resolves, use `command -v dotask` on Bash/Zsh or `Get-Command dotask -All`
-on PowerShell. An existing global tool or `dt` shortcut is not changed. See
-[installation](docs/INSTALLATION.md) for directories, overrides,
-safe updates, and moving from the earlier NuGet global-tool installation.
+your shell resolves, use `command -v dotask` on Bash/Zsh or `Get-Command dotask
+-All` on PowerShell. An existing global tool or `dt` shortcut is not changed.
+
+See [installation](docs/INSTALLATION.md) for directories, overrides, safe
+updates, and moving from the earlier NuGet global-tool installation.
 
 ### Try the installed command
 
