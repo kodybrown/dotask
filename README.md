@@ -82,7 +82,8 @@ From this checkout after the build succeeds:
 
 The task executes the project's `create-installer`, then runs the resulting
 standalone installer. Dotask's payload contains only the native Release command,
-`Dotask.dotnet.dll`, and the Rust helper source crate and installs it without administrator access. Each version/build gets a separate
+`sdk/dotnet/Dotask.dotnet.dll`, and the Rust helper source crate in `sdk/rust/`
+and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and
 `.shim` file; Linux/macOS get a symlink. No shim compiler is needed.
 
@@ -446,7 +447,8 @@ The preview runs `.cs` and `.rs` tasks and `.task` groups, including parameters,
 YAML defaults, nested calls, structured installer results, exit codes, and Ctrl+C.
 Bare invocation and `help` list project tasks; `help TARGET` and `TARGET --help`
 read metadata without compilation. CLI-only `--help`/`-h` and `--version` need
-no language host. Keep `Dotask.dotnet.dll` and `sdk/` beside the executable.
+no language host. Keep `sdk/dotnet/Dotask.dotnet.dll` and `sdk/rust/` beneath the
+executable's directory.
 Metadata for both languages needs no toolchain; C# compilation delegates to
 the selected installed .NET SDK. No SDK, runtime, Roslyn or managed host is bundled.
 
@@ -454,7 +456,7 @@ The native CLI also implements `--init`, shared-task listing/save/add/sync/remov
 shell completion, full project/target help, and `--create-task`. Configuration,
 binding, requirements, and YAML groups run in Rust. Initialization and YAML-only
 projects need no .NET host. Existing shared-task ownership, local-edit protection,
-and recovery journals are preserved. Rust tasks use the bundled `sdk/` sources;
+and recovery journals are preserved. Rust tasks use the bundled `sdk/rust/` sources;
 see [Rust authoring](docs/TARGETS.md#rust-tasks). Shared Rust language variants and
 language selection remain pending. These build commands do not install or replace an active CLI.
 

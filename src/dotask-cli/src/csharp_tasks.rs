@@ -33,7 +33,7 @@ impl Host {
     let assembly = std::env::current_exe()?
       .parent()
       .context("CLI has no parent")?
-      .join("Dotask.dotnet.dll");
+      .join("sdk/dotnet/Dotask.dotnet.dll");
     if !assembly.is_file() {
       bail!(
         "C# task helpers are missing at {}. Stage the complete dotask application.",

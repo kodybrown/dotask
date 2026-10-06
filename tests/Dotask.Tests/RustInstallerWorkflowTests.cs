@@ -82,10 +82,8 @@ public sealed class RustInstallerWorkflowTests
     }));
     project.Write(".dotasks.yaml", JsonSerializer.Serialize(new {
       version = 1,
-      settings = new Dictionary<string, string> {
-        ["installer-config"] = config,
-        ["installer-engine"] = engine,
-        ["installer-output"] = Path.Combine(project.Root, "packages")
+      settings = new Dictionary<string, object> {
+        ["installer"] = new { config, engine, output = Path.Combine(project.Root, "packages") }
       }
     }));
     var installation = await project.RunAsync("install");

@@ -534,3 +534,24 @@ acceptance, installation, and publication.
   and relocated mixed-language install/reuse/update/uninstall acceptance passed.
   Output paths remain external and Bash syntax passes. No active installation or
   user PATH changed; nothing was published or pushed. Linux/macOS remains deferred.
+
+### 2026-10-06 Configure installer creation and organize helpers by language
+
+- Put dotask-specific installer metadata, prompts, and defaults in
+  `.tasks/installer.yaml`, wired through nested `settings.installer`. Keep the
+  local Rust creator responsible for app builds and staging; delegate packaging
+  to the maintained shared creator and forward its structured artifact.
+- Read partial source YAML through the installer engine without prompting or
+  installing, then fill dynamic metadata in a temporary configuration. Update
+  shared creator settings and regenerate its catalog without changing ownership
+  tracking baselines.
+- Ship the helper DLL at `sdk/dotnet/Dotask.dotnet.dll` and Rust source crate
+  under `sdk/rust/`. Update native language handlers, bootstrap staging, build
+  tasks, authoring guidance, and package documentation together.
+- Verification: `build.cmd` passed 419 .NET and 53 Rust tests plus all required
+  gates. Packaging via the local Rust/shared C# chain and temporary named
+  install/reuse/update/uninstall acceptance passed, including exact four-file
+  payloads and installed Rust-to-C# calls using the new helper locations.
+  Evaluated outputs remain external; Bash syntax and document links passed.
+  No active installation or user PATH changed; nothing was published or pushed.
+  Linux/macOS acceptance remains deferred.

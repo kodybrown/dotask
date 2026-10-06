@@ -29,7 +29,7 @@ pub(crate) fn compile(target: &Target, root: &Path, snapshot: &Path) -> Result<P
     bail!("Rust tasks require Rust 1.95+ and Cargo. Install/select the toolchain and retry.");
   }
   let exe = std::env::current_exe()?;
-  let sdk = exe.parent().context("CLI has no parent directory")?.join("sdk");
+  let sdk = exe.parent().context("CLI has no parent directory")?.join("sdk/rust");
   if !sdk.join("Cargo.toml").is_file() {
     bail!("Bundled Rust SDK is missing. Build/stage the complete dotask CLI.");
   }

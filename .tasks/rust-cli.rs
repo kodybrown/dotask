@@ -27,8 +27,12 @@ fn task(project: &BuildContext) -> Result<()> {
   let output = rust_build::target_directory(project)?.join("release");
   // Build and stage from physical copies. The running bootstrap is independent
   // of this output and remains usable while repository tasks rebuild it.
-  std::fs::copy(published.path().join("Dotask.dotnet.dll"), output.join("Dotask.dotnet.dll"))?;
-  rust_build::stage_sdk(project, &output.join("sdk"))?;
+  std::fs::create_dir_all(output.join("sdk/dotnet"))?;
+  std::fs::copy(
+    published.path().join("Dotask.dotnet.dll"),
+    output.join("sdk/dotnet/Dotask.dotnet.dll"),
+  )?;
+  rust_build::stage_sdk(project, &output.join("sdk/rust"))?;
   if project.boolean("verify")? {
     let mut format = project.command("rustfmt");
     format.args(["--check", "--edition", "2024"]);

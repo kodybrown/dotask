@@ -1,5 +1,34 @@
 # Verification
 
+## Installer source configuration and language-specific SDK layout (2026-10-06)
+
+`build.cmd` passed 419 .NET Release tests and 53 Rust tests on Windows x64:
+11 installer units, 28 installer workflows, and 14 CLI cases. All required
+formatting/clippy/docs/catalog/shim/whitespace gates passed. Bootstrap regressions
+check both language-specific helper paths and the absence of a root helper DLL.
+The installer transport reads partial YAML without prompting or installing and
+rejects non-mapping configuration. The shared consumer workflow uses nested
+`settings.installer` configuration.
+
+Dotask's local Rust creator reads `.tasks/installer.yaml`, fills dynamic build
+fields in a temporary configuration, and delegates packaging to the maintained
+shared creator. A generated package contains exactly four application files:
+`dotask.exe`, `sdk/dotnet/Dotask.dotnet.dll`, `sdk/rust/Cargo.toml`, and
+`sdk/rust/src/lib.rs`. Source banner, prompts, and interaction settings survive
+the configuration transport; no language runtime or compiler is included.
+
+Temporary upgrade acceptance from the previous named package passed, including
+unchanged receipts on identical reuse, retained builds, Unicode relocation,
+metadata with an empty toolchain PATH, installed Rust-to-C# calls using the new
+helper locations, and self-uninstall preserving an unowned file. Evidence is in
+`C:\tmp\dotask-installer-config-gate.log`,
+`C:\tmp\dotask-installer-config-package.log`, and
+`C:\tmp\dotask-installer-config-acceptance.log`. Evaluated .NET output paths and
+Cargo target directory remain external. Bash syntax and 58 relative document
+links/anchors passed. Acceptance uses temporary roots with PATH changes disabled;
+no active installation or user PATH changed. Linux/macOS acceptance remains
+deferred; nothing was published or pushed.
+
 ## App build metadata and matching directory names (2026-10-06)
 
 `build.cmd` passed 419 .NET Release tests and 52 Rust tests on Windows x64:

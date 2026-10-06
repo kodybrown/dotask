@@ -30,8 +30,10 @@ runner and packaged application; `src/dotask-sdk` is its maintained Rust task
 helper crate. See the
 [preview commands](../README.md#rust-cli-development-preview).
 
-The installed application contains the native executable, `Dotask.dotnet.dll`,
-and the Rust helper source crate under `sdk/`. No language runtime, compiler,
+The installed application contains the native executable,
+`sdk/dotnet/Dotask.dotnet.dll`, and the Rust helper source crate under `sdk/rust/`.
+Language-specific helper directories leave room for future supported languages.
+No language runtime, compiler,
 Roslyn assembly, managed CLI or separate support host is shipped. Both task
 languages use an ordinary-comment YAML header beginning `// dotask: 1` and
 ending `// end-dotask`; native metadata discovery needs no language toolchain.
@@ -251,7 +253,7 @@ installer UI/elevation requirements, shortcuts, and application lifecycle.
 
 Dotask's creator publishes its application and packages the Rust engine, YAML,
 and payload using the shared creator. It respects evaluated output paths and
-copies the package beneath `settings.installer-output`. Only the current YAML
+copies the package beneath `settings.installer.output`. Only the current YAML
 format is supported: no legacy engine, compatibility API, or import path is kept.
 Existing unrecognized directories and unowned launchers remain conflicts.
 
@@ -313,6 +315,13 @@ use consistent indentation and separators sized to the visible console width
 minus one column; unattended output stays plain. Shortcut declarations grant
 location permissions, while defaults set initial answers. The additional command
 is always available today; its false default is a preference, not a permission.
+
+Use nested installer settings (`installer.config`, `installer.engine`, and
+`installer.output`) shared across creation/packaging/installation. Stable
+dotask-specific options live in `.tasks/installer.yaml`. The local Rust creator
+owns its native executable/helper DLL/SDK build, creates a complete temporary
+configuration from that template, and delegates packaging to the generic shared
+creator. The shared creator never assumes an application's build pipeline.
 
 Launcher preferences may change during an update. Ownership comes from the
 receipt's actual launcher inventory, not a required match against old preference

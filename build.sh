@@ -31,8 +31,8 @@ var text = File.ReadAllText(args[0]);
 using var json = JsonDocument.Parse(text[text.IndexOf('{')..]);
 if (args[1] == "publish") {
   var root = json.RootElement.GetProperty("Properties").GetProperty("PublishDir").GetString()!;
-  Directory.CreateDirectory(args[2]);
-  File.Copy(Path.Combine(root, "Dotask.dotnet.dll"), Path.Combine(args[2], "Dotask.dotnet.dll"));
+  Directory.CreateDirectory(Path.Combine(args[2], "sdk", "dotnet"));
+  File.Copy(Path.Combine(root, "Dotask.dotnet.dll"), Path.Combine(args[2], "sdk", "dotnet", "Dotask.dotnet.dll"));
 }
 Console.WriteLine(args[1] == "cargo" ? json.RootElement.GetProperty("target_directory").GetString()
   : json.RootElement.GetProperty("Properties").GetProperty("PublishDir").GetString());
@@ -41,10 +41,10 @@ printf '%s' "$dotask_cargo_json" > "$dotask_bootstrap_dir/cargo.json"
 printf '%s' "$dotask_publish_json" > "$dotask_bootstrap_dir/publish.json"
 dotask_cargo_output="$(dotnet run --file "$dotask_metadata_reader" -- "$dotask_bootstrap_dir/cargo.json" cargo)"
 dotask_publish_output="$(dotnet run --file "$dotask_metadata_reader" -- "$dotask_bootstrap_dir/publish.json" publish "$dotask_bootstrap_dir")"
-mkdir -p "$dotask_bootstrap_dir/sdk/src"
+mkdir -p "$dotask_bootstrap_dir/sdk/rust/src"
 cp "$dotask_cargo_output/release/dotask" "$dotask_bootstrap_dir/dotask"
-cp src/dotask-sdk/Cargo.toml "$dotask_bootstrap_dir/sdk/"
-cp src/dotask-sdk/src/lib.rs "$dotask_bootstrap_dir/sdk/src/"
+cp src/dotask-sdk/Cargo.toml "$dotask_bootstrap_dir/sdk/rust/"
+cp src/dotask-sdk/src/lib.rs "$dotask_bootstrap_dir/sdk/rust/src/"
 if [[ $# -eq 0 ]]; then
   set -- verify
 fi

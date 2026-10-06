@@ -21,11 +21,11 @@ try {
   $dotaskPublish = $dotaskPublishText.Substring($dotaskJsonStart) | ConvertFrom-Json
   if ([IO.Path]::IsPathRooted($dotaskPublish.Properties.PublishDir)) { $dotaskPublished = $dotaskPublish.Properties.PublishDir }
   else { $dotaskPublished = [IO.Path]::GetFullPath((Join-Path (Split-Path $dotaskHostProject) $dotaskPublish.Properties.PublishDir)) }
-  New-Item -ItemType Directory -Path (Join-Path $Destination 'sdk/src') -Force | Out-Null
+  New-Item -ItemType Directory -Path (Join-Path $Destination 'sdk/rust/src'), (Join-Path $Destination 'sdk/dotnet') -Force | Out-Null
   Copy-Item -LiteralPath (Join-Path $dotaskCargo.target_directory 'release/dotask.exe') -Destination $Destination
-  Copy-Item -LiteralPath (Join-Path $dotaskPublished 'Dotask.dotnet.dll') -Destination $Destination
-  Copy-Item -LiteralPath 'src/dotask-sdk/Cargo.toml' -Destination (Join-Path $Destination 'sdk')
-  Copy-Item -LiteralPath 'src/dotask-sdk/src/lib.rs' -Destination (Join-Path $Destination 'sdk/src')
+  Copy-Item -LiteralPath (Join-Path $dotaskPublished 'Dotask.dotnet.dll') -Destination (Join-Path $Destination 'sdk/dotnet')
+  Copy-Item -LiteralPath 'src/dotask-sdk/Cargo.toml' -Destination (Join-Path $Destination 'sdk/rust')
+  Copy-Item -LiteralPath 'src/dotask-sdk/src/lib.rs' -Destination (Join-Path $Destination 'sdk/rust/src')
 } catch {
   Write-Error $_
   exit 1

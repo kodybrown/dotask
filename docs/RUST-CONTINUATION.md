@@ -16,13 +16,17 @@ contracts; [VERIFICATION.md](VERIFICATION.md) owns dated acceptance evidence.
 - Repository orchestration is Rust: `installer-engine`, `rust-cli`,
   `create-installer`, `pack`, `verify`, `verify-docs`, `catalog`, and `shim`.
   Shared C# tasks and the C# authoring library remain maintained.
-- `build.cmd` and `build.sh` stage a native runner, `sdk/` sources, and `Dotask.dotnet.dll`
+- `build.cmd` and `build.sh` stage a native runner, `sdk/rust/` sources, and `sdk/dotnet/Dotask.dotnet.dll`
   helpers into a fresh temporary directory. Repository operations remain tasks.
 - `create-installer.rs` builds native binaries and publishes the C# helper DLL
   from evaluated `PublishDir`. A fresh payload contains native `dotask[.exe]`,
-  `sdk/`, and `Dotask.dotnet.dll`. The existing Rust
+  `sdk/rust/`, and `sdk/dotnet/Dotask.dotnet.dll`. The existing Rust
   installer creates packages and preserves immutable builds, receipts, and
   activation recovery. `pack.rs` uses the same creator.
+- Installer wiring uses `settings.installer.config` and `output`, with optional
+  `engine`. Stable metadata/options live in `.tasks/installer.yaml`. The local
+  wrapper stages the executable, helper DLL and SDK, fills dynamic fields, and
+  calls the existing shared creator for actual packaging.
 - Public Rust versions preserve major/minor and default to
   `major.minor.yyMM.ddhh`, with a frozen UTC `YYDDD-HHMM` stamp and optional Git
   revision. Packages and installed build names match apart from the app prefix.

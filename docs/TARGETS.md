@@ -56,7 +56,7 @@ requires Rust 1.95+ and Cargo. Nothing installs dependencies automatically.
 The header convention can extend to `#` comments for Python later; Python and
 other additional execution handlers remain unimplemented.
 
-Execution uses Rust 1.95+/Cargo and the bundled `sdk/` sources. Generated manifests,
+Execution uses Rust 1.95+/Cargo and the bundled `sdk/rust/` sources. Generated manifests,
 task/SDK snapshots, lockfiles, and build outputs are in a per-user external
 temporary cache. Source and declared support bytes identify immutable snapshots;
 Cargo handles build locking and compiler changes. Source-local `Cargo.toml`,

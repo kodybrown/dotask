@@ -8,7 +8,8 @@ services and the other [deferred features](DESIGN.md#deferred) are not APIs.
 The [Rust CLI](../README.md#rust-cli-development-preview) runs C# and Rust tasks
 and YAML groups, including nested calls,
 project management, help, shell completion, and the interactive group wizard.
-Stage `Dotask.dotnet.dll` and the `sdk/` helper crate beside the native executable.
+Stage `sdk/dotnet/Dotask.dotnet.dll` and the `sdk/rust/` helper crate beneath the
+native executable's directory.
 C# execution uses the installed .NET SDK; Rust uses Rust 1.95+/Cargo. Metadata for
 both languages is an ordinary-comment YAML header and needs no toolchain.
 Native initialization
@@ -176,6 +177,12 @@ The creator chooses which project settings become installer configuration;
 project identity is not copied implicitly. `application.name`, `description`,
 and optional `copyright` supply the interactive console banner. Shortcut
 declarations grant permissions while defaults choose the initial answers.
+Group shared installer settings under `settings.installer` using `config`,
+`engine`, and `output`; accessors use dotted keys such as `installer.config`.
+Dotask's own stable source template is `.tasks/installer.yaml`. Its local creator
+builds the native app plus helper DLL/SDK payload, fills dynamic metadata in a
+temporary config, and delegates actual packaging to the shared creator. Other
+applications keep their own build wrapper and installer configuration.
 Application versions are not constrained to dotask's calendar convention.
 Supply `application.build.stamp` and optional `commit` to align package and
 installed directory names with the app's own build information. Named package
@@ -188,7 +195,7 @@ preserves major/minor and adds calendar fields by default, with `--app-version`,
 Dotask's standalone Rust installer uses YAML receipts and the `installer/` plus
 `app/<build>/` layout. Older formats are unsupported; use fresh destinations or
 manually remove the old installation first. Its creator copies packages beneath the project-relative
-or absolute `settings.installer-output` directory (`artifacts/installers` here),
+or absolute `settings.installer.output` directory (`artifacts/installers` here),
 without redirecting MSBuild outputs. Use the bootstrap launcher when upgrading an older CLI/library,
 and pass explicit temporary absolute install/bin paths via `--installer-args`
 for tests. Never remove ownership/recovery records or overwrite an unrelated

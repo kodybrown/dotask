@@ -13,12 +13,32 @@ the destination machine. The project-owned `create-installer` task builds that
 package and supplies its application metadata, permitted shortcuts, prompt
 labels, and defaults.
 
-In dotask's source project, `.dotasks.yaml` owns project identity and task settings
-such as `installer-output`. `.tasks/create-installer.rs` currently writes the
-installer's application identity, description, copyright, commands, and defaults
-explicitly; top-level project name/description are not copied automatically.
-For other applications, the shared creator reads the YAML selected by the
-`installer-config` setting and packages it with the prepared payload.
+In dotask's source project, `.dotasks.yaml` owns project identity and nested task
+settings under `settings.installer`. Its `config` points to `.tasks/installer.yaml`,
+which owns dotask-specific application identity, description, copyright, commands,
+prompt labels, and defaults. Top-level project name/description are not copied
+automatically. The local Rust creator builds and stages `dotask[.exe]`,
+`sdk/dotnet/Dotask.dotnet.dll`, and the Rust SDK sources under `sdk/rust/`, fills
+build-time fields in a temporary config, then calls the shared creator to package
+that payload.
+For other applications, the shared creator reads the complete YAML selected by
+`installer.config` and packages the already-built payload.
+
+```yaml
+settings:
+  installer:
+    config: .tasks/installer.yaml
+    output: artifacts/installers
+    # engine: tools/dotask-installer.exe
+```
+
+`installer.engine` selects a prebuilt engine for the shared creator. Dotask's
+local wrapper can use that override; otherwise it builds its engine and queries
+Cargo's evaluated output directory, avoiding a machine-specific checked-in path.
+Its source YAML is a partial template: the wrapper supplies app version/build,
+platform, architecture, and payload, and resolves `${app-executable}` in command
+and shortcut entries. The shared creator receives complete configuration; it
+does not build an application or interpret dotask-specific template tokens.
 
 | Installer YAML | Purpose |
 | --- | --- |
@@ -54,9 +74,9 @@ The shared creator reads these settings, with matching CLI overrides:
 
 | Setting | Override | Meaning |
 | --- | --- | --- |
-| `installer-config` | `--config` | Installer YAML file |
-| `installer-engine` | `--engine` | Prebuilt host Rust installer executable |
-| `installer-output` | `--output` | Parent directory for complete packages |
+| `installer.config` | `--config` | Installer YAML file |
+| `installer.engine` | `--engine` | Prebuilt host Rust installer executable |
+| `installer.output` | `--output` | Parent directory for complete packages |
 
 Paths in task settings/options are project-relative or absolute. Build the payload
 before calling the creator. The creator never invokes an application compiler.
@@ -404,10 +424,14 @@ There is no Windows Installed Apps registration or Inno Setup dependency.
 
 The Rust `create-installer.rs` task builds the native CLI and installer engine,
 publishes the C# helper library using evaluated MSBuild `PublishDir`, and packages
-a fresh payload containing `dotask[.exe]`, `Dotask.dotnet.dll`, and `sdk/`. It invokes the
-existing Rust installer directly and returns the normal `InstallerArtifact`.
+a fresh payload containing `dotask[.exe]`, `sdk/dotnet/Dotask.dotnet.dll`, and
+`sdk/rust/`. It delegates packaging to the shared creator and returns the normal
+`InstallerArtifact`.
 The Rust `pack` task uses the same creator. Compiler output remains external;
-final packages go beneath `settings.installer-output`.
+final packages go beneath `settings.installer.output`. Stable installer options
+are authored in `.tasks/installer.yaml`; the local wrapper forwards the staged
+payload/configuration to `_/dotask-installer/create-installer` and returns its
+structured artifact. The generic creator and launcher remain shared tasks.
 
 Dotask's default public version is `major.minor.yyMM.ddhh`, preserving the major
 and minor from its Cargo package version. For example, a UTC build on October 6,

@@ -1,0 +1,29 @@
+# Dotask-specific installer metadata and installation defaults. The local
+# creator supplies the built app version, build stamp/revision, host platform,
+# architecture, and payload path without rewriting this source configuration.
+schema: 1
+application:
+  id: dotask
+  name: DoTask
+  author: Kody Brown
+  copyright: Copyright (C) 2026 Kody Brown
+  description: Portable project tasks, in the language of your choice, for any platform.
+interactive: true
+commands:
+  - name: dotask
+    executable: '${app-executable}'
+shortcuts: []
+inputs:
+  install-dir:
+    type: path
+    required: true
+    prompt: Install dotask in
+  additional-command:
+    type: boolean
+    default: false
+    prompt: Place an additional dotask command in another directory?
+defaults:
+  common:
+    additional-command: false
+  windows:
+    add-to-path: true

@@ -625,3 +625,25 @@ fn arbitrary_version_text_is_preserved_and_unsafe_path_characters_are_encoded() 
   assert_eq!(snapshot["application"]["version"], "Release 2026/10:preview");
   assert!(f.uninstall(&[]).status.success());
 }
+
+#[test]
+fn creator_transport_reads_partial_yaml_without_installation_or_prompts() {
+  let f = Fixture::new();
+  fs::write(&f.config,"schema: 1\napplication: {id: probe, name: 'Custom Probe'}\ninteractive: false\ndefaults: {common: {additional-command: false}}\n").unwrap();
+  let output = Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
+    .args(["__config", f.config.to_str().unwrap()])
+    .output()
+    .unwrap();
+  assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+  let config: Value = serde_json::from_slice(&output.stdout).unwrap();
+  assert_eq!(config["application"]["name"], "Custom Probe");
+  assert_eq!(config["interactive"], false);
+  assert!(!f.root.exists());
+  fs::write(&f.config, "- invalid\n").unwrap();
+  let output = Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
+    .args(["__config", f.config.to_str().unwrap()])
+    .output()
+    .unwrap();
+  assert!(!output.status.success());
+  assert!(!f.root.exists());
+}

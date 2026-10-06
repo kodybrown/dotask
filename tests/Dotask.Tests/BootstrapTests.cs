@@ -25,6 +25,9 @@ public sealed class BootstrapTests
       Assert.Equal(fixture.Identity, File.ReadAllText(Path.Combine(Path.GetDirectoryName(stagedDirectory)!, "bootstrap-owner")));
       Assert.False(File.Exists(assembly));
       Assert.DoesNotContain("stale-publish-file.txt", json.RootElement.GetProperty("supportFiles").EnumerateArray().Select(item => item.GetString()));
+      Assert.True(json.RootElement.GetProperty("dotnetSdk").GetBoolean());
+      Assert.True(json.RootElement.GetProperty("rustSdk").GetBoolean());
+      Assert.DoesNotContain("Dotask.dotnet.dll", json.RootElement.GetProperty("supportFiles").EnumerateArray().Select(item => item.GetString()));
       Assert.Empty(Directory.EnumerateDirectories(fixture.Temporary, "dotask-bootstrap*"));
     }
   }
@@ -87,6 +90,8 @@ public sealed class BootstrapTests
           let args: Vec<_> = std::env::args().skip(1).collect();
           println!("REPORT:{}", serde_json::json!({
             "args":args, "cwd":std::env::current_dir().unwrap(), "assembly":std::env::current_exe().unwrap(),
+            "dotnetSdk":std::env::current_exe().unwrap().parent().unwrap().join("sdk/dotnet/Dotask.dotnet.dll").is_file(),
+            "rustSdk":std::env::current_exe().unwrap().parent().unwrap().join("sdk/rust/Cargo.toml").is_file(),
             "supportFiles":std::fs::read_dir(std::env::current_exe().unwrap().parent().unwrap()).unwrap()
               .map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect::<Vec<_>>()
           }));

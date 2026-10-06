@@ -30,7 +30,18 @@ fn main() {
   }
 }
 fn run() -> Result<()> {
-  let options = config::Options::parse(std::env::args().skip(1))?;
+  let arguments: Vec<String> = std::env::args().skip(1).collect();
+  if arguments.first().is_some_and(|arg| arg == "__config") {
+    ensure!(arguments.len() == 2, "__config requires one YAML file");
+    // Creator-only transport: decode source YAML (including partial templates)
+    // without prompting or installing. The completed package is validated by
+    // the normal package operation after the creator supplies build metadata.
+    let value: serde_json::Value = files::read_yaml(std::path::Path::new(&arguments[1]))?;
+    ensure!(value.is_object(), "Installer configuration must be a YAML mapping");
+    println!("{}", serde_json::to_string(&value)?);
+    return Ok(());
+  }
+  let options = config::Options::parse(arguments)?;
   if options.help {
     println!(
             "dotask-installer [install|uninstall] [--config FILE]\n  --interactive | --non-interactive  Override installer.yaml prompt mode\n  --install-dir ABSOLUTE_PATH   Installation root\n  --bin-dir ABSOLUTE_PATH       Enable an additional command in this directory\n  --additional-command         Enable the additional command (default: false)\n  --add-to-path                Add the selected command directory to user PATH (Windows)\n  --set NAME=VALUE              Override a YAML input\n  --profile NAME               Select environment defaults\n  --prune-old-versions          Keep new and previously active builds\n  --desktop-shortcuts --start-menu-shortcuts --local-shortcuts\n  --shortcut-name NAME         Name for shortcuts using ${{shortcut-name}}, without extension\n  --start-menu-nested          Nest Windows shortcuts under name/name.lnk\n  --leave-settings | --remove-settings  Uninstall settings policy\n  --validate                   Validate package without installing or prompting\n  package --config FILE --output NEW_DIRECTORY\n  --output-parent DIRECTORY    Create an app-version/build-named package\n  --result-file FILE           Write the package FilePath as JSON\nInteractive by default; use --non-interactive for automation. Rollback and version switching are not supported."
