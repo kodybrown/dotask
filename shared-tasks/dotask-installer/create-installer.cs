@@ -8,6 +8,7 @@
 // examples: ["dotask create-installer --config packaging/installer.yaml --engine tools/installer.exe --output artifacts/installers"]
 // end-dotask
 using DoTask;
+using System.Text.Json;
 
 
 public static class Target
@@ -23,14 +24,24 @@ public static class Target
     if (!File.Exists(config) || !File.Exists(engine)) {
       throw new TaskException("Installer YAML and engine must both exist. Build or supply the matching Rust installer binary first.");
     }
-    var package = Path.Combine(output, project.OS.ToString().ToLowerInvariant() + "-" + project.Architecture.ToString().ToLowerInvariant(), Guid.NewGuid().ToString("N"));
-    await project.RunAsync(engine, ["package", "--config", config, "--output", package]);
-    await project.SetInstallerResultAsync(new InstallerArtifact {
-      FilePath = Path.Combine(package, project.IsWindows ? "installer.exe" : "installer"),
-      Kind = InstallerKind.Executable,
-      OS = project.OS,
-      Architecture = project.Architecture
-    });
+    var parent = Path.Combine(output, project.OS.ToString().ToLowerInvariant() + "-" + project.Architecture.ToString().ToLowerInvariant());
+    var resultFile = Path.Combine(Path.GetTempPath(), "dotask-package-" + Guid.NewGuid().ToString("N") + ".json");
+    try {
+      // The engine owns names derived from the packaged application's metadata.
+      // Read its structured result instead of guessing paths or scraping output.
+      await project.RunAsync(engine, ["package", "--config", config, "--output-parent", parent, "--result-file", resultFile]);
+      using var result = JsonDocument.Parse(await File.ReadAllTextAsync(resultFile));
+      await project.SetInstallerResultAsync(new InstallerArtifact {
+        FilePath = result.RootElement.GetProperty("FilePath").GetString()!,
+        Kind = InstallerKind.Executable,
+        OS = project.OS,
+        Architecture = project.Architecture
+      });
+    } finally {
+      if (File.Exists(resultFile)) {
+        File.Delete(resultFile);
+      }
+    }
     Console.WriteLine("Distribute the entire package directory, including installer.yaml and payload.");
   }
 }

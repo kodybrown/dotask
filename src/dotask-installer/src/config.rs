@@ -15,6 +15,8 @@ use std::{
 pub struct Options {
   pub package: bool,
   pub output: Option<PathBuf>,
+  pub output_parent: Option<PathBuf>,
+  pub result_file: Option<PathBuf>,
   pub uninstall: bool,
   pub interactive: Option<bool>,
   pub validate: bool,
@@ -33,6 +35,10 @@ impl Options {
       match arg.as_str() {
         "package" => result.package = true,
         "--output" => result.output = Some(args.next().context("--output requires a directory")?.into()),
+        "--output-parent" => {
+          result.output_parent = Some(args.next().context("--output-parent requires a directory")?.into())
+        }
+        "--result-file" => result.result_file = Some(args.next().context("--result-file requires a path")?.into()),
         "install" => (),
         "uninstall" => result.uninstall = true,
         "--help" | "-h" => result.help = true,
@@ -142,7 +148,20 @@ pub fn expand(value: &str, values: &BTreeMap<String, Value>) -> Result<String> {
 pub fn validate(package: &Package) -> Result<()> {
   ensure!(package.schema == 1, "Unsupported schema: {}", package.schema);
   files::name(&package.application.id)?;
-  files::name(&package.application.version)?;
+  crate::build_info::version_component(&package.application.version).map_err(anyhow::Error::msg)?;
+  if let Some(build) = &package.application.build {
+    crate::build_info::Stamp::parse(&build.stamp).map_err(anyhow::Error::msg)?;
+    if let Some(commit) = &build.commit {
+      ensure!(
+        commit.len() >= 7 && commit.len() <= 64 && commit.chars().all(|c| c.is_ascii_hexdigit()),
+        "Build commit must be a Git hexadecimal revision (at least seven characters)"
+      );
+    }
+    ensure!(
+      !build.dirty || build.commit.is_some(),
+      "A dirty build marker requires a Git revision"
+    );
+  }
   ensure!(!package.application.name.trim().is_empty(), "application.name is required");
   ensure!(
     package.platform == platform() && package.architecture == architecture(),

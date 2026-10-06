@@ -553,3 +553,75 @@ fn uninstall_removes_only_installer_created_empty_shortcut_folders() {
     assert!(menu.exists());
   }
 }
+
+#[test]
+fn named_package_and_installed_build_use_the_app_version_and_optional_revision() {
+  for commit in [None, Some("abcdef71234567890123456789012345678901234")] {
+    let f = Fixture::new();
+    f.configure(|p| {
+      p["application"]["version"] = "2.7.3-rc.1+build.5".into();
+      p["application"]["build"] = json!({"stamp":"26279-0612","commit":commit,"dirty":false});
+    });
+    let packages = f._temp.path().join("packages");
+    let result = f._temp.path().join("result.json");
+    f.good(&[
+      "package",
+      "--output-parent",
+      packages.to_str().unwrap(),
+      "--result-file",
+      result.to_str().unwrap(),
+    ]);
+    let result: Value = serde_json::from_str(&fs::read_to_string(&result).unwrap()).unwrap();
+    let artifact = PathBuf::from(result["FilePath"].as_str().unwrap());
+    let suffix = if commit.is_some() { "-abcdef7" } else { "" };
+    let identity = format!("2.7.3-rc.1+build.5-26279-0612{suffix}");
+    assert_eq!(
+      artifact.parent().unwrap().file_name().unwrap(),
+      format!("probe-{identity}").as_str()
+    );
+    let install = Command::new(&artifact).arg("--non-interactive").output().unwrap();
+    assert!(install.status.success(), "{}", String::from_utf8_lossy(&install.stderr));
+    assert_eq!(f.receipt()["active"], identity);
+    assert!(f.root.join("app").join(identity).is_dir());
+    f.good(&["package", "--output-parent", packages.to_str().unwrap()]);
+    assert_eq!(fs::read_dir(&packages).unwrap().count(), 1);
+    assert!(f.uninstall(&[]).status.success());
+  }
+}
+
+#[test]
+fn named_identity_collision_refuses_changed_contents_and_preserves_existing_build() {
+  let f = Fixture::new();
+  f.configure(|p| p["application"]["build"] = json!({"stamp":"26279-0612"}));
+  let packages = f._temp.path().join("packages");
+  f.good(&["package", "--output-parent", packages.to_str().unwrap()]);
+  f.good(&[]);
+  let before = fs::read(f.root.join("installer/installation.yaml")).unwrap();
+  fs::write(f.payload.join("changed.txt"), "different payload").unwrap();
+  assert!(!f
+    .run(&["package", "--output-parent", packages.to_str().unwrap()])
+    .status
+    .success());
+  let result = f.run(&[]);
+  assert!(!result.status.success());
+  assert!(String::from_utf8_lossy(&result.stderr).contains("different contents"));
+  assert_eq!(fs::read(f.root.join("installer/installation.yaml")).unwrap(), before);
+  assert!(!f.root.join("installer/pending.yaml").exists());
+}
+
+#[test]
+fn arbitrary_version_text_is_preserved_and_unsafe_path_characters_are_encoded() {
+  let f = Fixture::new();
+  f.configure(|p| {
+    p["application"]["version"] = "Release 2026/10:preview".into();
+    p["application"]["build"] = json!({"stamp":"26279-0612"});
+  });
+  f.good(&[]);
+  let identity = f.receipt()["active"].as_str().unwrap().to_string();
+  assert_eq!(identity, "Release%202026%2F10%3Apreview-26279-0612");
+  let snapshot: Value =
+    serde_saphyr::from_str(&fs::read_to_string(f.root.join("app").join(identity).join("installer.yaml")).unwrap())
+      .unwrap();
+  assert_eq!(snapshot["application"]["version"], "Release 2026/10:preview");
+  assert!(f.uninstall(&[]).status.success());
+}

@@ -18,15 +18,30 @@ fn engine_name() -> &'static str {
     "installer"
   }
 }
-pub fn package(config_file: &Path, output: &Path) -> Result<()> {
+pub fn package(config_file: &Path, destination: &Path, named: bool) -> Result<PathBuf> {
   let mut package: Package = files::read_yaml(config_file)?;
   config::validate(&package)?;
   let payload = files::absolute(Path::new(&package.payload), config_file.parent().unwrap())?;
   ensure!(
-    !files::overlaps(output, &payload),
+    !files::overlaps(destination, &payload),
     "Package output and payload must not overlap"
   );
-  ensure!(!output.exists(), "Package output already exists: {}", output.display());
+  if !named {
+    ensure!(
+      !destination.exists(),
+      "Package output already exists: {}",
+      destination.display()
+    );
+  }
+  // Producers can supply the application's own embedded build information.
+  // Otherwise freeze a packaging stamp once; installation never creates one.
+  if package.application.build.is_none() {
+    package.application.build = Some(Build {
+      stamp: crate::build_info::Stamp::now().text(),
+      commit: None,
+      dirty: false,
+    });
+  }
   let temporary = files::temporary()?;
   let staged_payload = temporary.path().join("payload");
   fs::create_dir(&staged_payload)?;
@@ -37,10 +52,38 @@ pub fn package(config_file: &Path, output: &Path) -> Result<()> {
     files::extract(&payload, &staged_payload)?;
   }
   verify_entries(&package, &staged_payload)?;
-  ensure!(!files::inventory(&staged_payload)?.is_empty(), "Payload is empty");
+  let inventory = files::inventory(&staged_payload)?;
+  ensure!(!inventory.is_empty(), "Payload is empty");
+  let identity = identity(&package, &inventory)?;
+  let output = if named {
+    destination.join(format!("{}-{}", package.application.id, identity))
+  } else {
+    destination.to_path_buf()
+  };
+  let _package_lock = lock(&output)?;
+  if named && output.exists() {
+    files::safe_path(&output)?;
+    let existing: Package = files::read_yaml(&output.join("installer.yaml"))?;
+    let existing_payload = files::absolute(Path::new(&existing.payload), &output)?;
+    let existing_temporary = files::temporary()?;
+    let existing_inventory = if existing_payload.is_dir() {
+      files::inventory(&existing_payload)?
+    } else {
+      files::extract(&existing_payload, existing_temporary.path())?;
+      files::inventory(existing_temporary.path())?
+    };
+    ensure!(
+      fingerprint(&existing, &existing_inventory)? == fingerprint(&package, &inventory)?
+        && files::file_hash(&output.join(engine_name()))? == files::file_hash(&std::env::current_exe()?)?,
+      "Package name already belongs to different contents: {}. Rebuild the application with a new build stamp.",
+      output.display()
+    );
+    println!("Reused installer: {}", output.join(engine_name()).display());
+    return Ok(output.join(engine_name()));
+  }
   // Only the deliverable uses the source tree's artifact directory. Compiler
   // output remains external and the completed package is an independent copy.
-  files::safe_path(output)?;
+  files::safe_path(&output)?;
   fs::create_dir_all(output.parent().context("Output needs a parent")?)?;
   let final_stage = tempfile::Builder::new()
     .prefix("installer-package-")
@@ -56,9 +99,30 @@ pub fn package(config_file: &Path, output: &Path) -> Result<()> {
   }
   fs::copy(std::env::current_exe()?, final_stage.path().join(engine_name()))?;
   files::write_yaml(&final_stage.path().join("installer.yaml"), &package)?;
-  fs::rename(final_stage.path(), output)?;
+  fs::rename(final_stage.path(), &output)?;
   println!("Created installer: {}", output.join(engine_name()).display());
-  Ok(())
+  Ok(output.join(engine_name()))
+}
+fn fingerprint(package: &Package, inventory: &BTreeMap<String, FileRecord>) -> Result<String> {
+  let mut normalized = package.clone();
+  // Relocating a package or pointing at an equivalent source payload must not
+  // change content identity. All other configuration remains part of the check.
+  normalized.payload = "payload".into();
+  Ok(files::hash(&serde_json::to_vec(&(inventory, normalized))?))
+}
+fn identity(package: &Package, inventory: &BTreeMap<String, FileRecord>) -> Result<String> {
+  let version = crate::build_info::version_component(&package.application.version).map_err(anyhow::Error::msg)?;
+  let id = if let Some(build) = &package.application.build {
+    format!(
+      "{version}-{}{}",
+      build.stamp,
+      crate::build_info::revision(build.commit.as_deref().unwrap_or(""), build.dirty)
+    )
+  } else {
+    format!("{version}-{}", &fingerprint(package, inventory)?[..16])
+  };
+  files::name(&id)?;
+  Ok(id)
 }
 fn as_string(path: &Path) -> String {
   path.to_string_lossy().into()
@@ -262,8 +326,7 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
   ensure!(!inventory.is_empty(), "Payload is empty");
   let yaml = serde_saphyr::to_string(&package)?;
   let config_hash = files::hash(yaml.as_bytes());
-  let fingerprint = files::hash(&serde_json::to_vec(&(&inventory, &config_hash))?);
-  let id = format!("{}-{}", package.application.version, &fingerprint[..16]);
+  let id = identity(&package, &inventory)?;
   files::name(&id)?;
   let directory = root.join("app").join(&id);
   let mut settings = Vec::new();
@@ -433,7 +496,12 @@ pub fn install(config_file: &Path, package: Package, options: &Options) -> Resul
   let mut builds = old.as_ref().map(|r| r.builds.clone()).unwrap_or_default();
   if directory.exists() {
     let expected = builds.get(&id).context("Existing build is not owned")?;
-    read_build(&root, &id, expected, false)?;
+    let existing = read_build(&root, &id, expected, false)?;
+    let existing_package: Package = files::read_yaml(&directory.join("installer.yaml"))?;
+    ensure!(
+      fingerprint(&existing_package, &existing.files)? == fingerprint(&package, &inventory)?,
+      "Build identity already belongs to different contents: {id}. Rebuild the application with a new build stamp."
+    );
   } else {
     let stage = tempfile::Builder::new().prefix("staging-").tempdir_in(root.join("app"))?;
     files::copy_payload(&payload, stage.path(), &inventory)?;

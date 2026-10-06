@@ -16,7 +16,7 @@ registration step.
   create-installer.cs
 ```
 
-This is a **0.1.0 local preview**, with no public package release yet. Windows,
+This is a **0.1 local preview**, with no public package release yet. Windows,
 Linux, and macOS are intended hosts. Current native CLI/task work is verified on
 Windows x64; Linux/macOS acceptance for this cutover is deferred. See [verification status](docs/VERIFICATION.md).
 
@@ -102,7 +102,9 @@ Pass installer options through `--installer-args` as a JSON array; see the
 [installer examples](docs/INSTALLATION.md#build-and-install-dotask-itself).
 For a custom command directory, substitute its path. The installer prints the
 selected installation location; it never edits shell profiles.
-Then run `dotask --version` (expected: `dotask 0.1.0`).
+Then run `dotask --version`; the Rust application reports
+`dotask major.minor.yyMM.ddhh (build YYDDD-HHMM[, commit git7])` using its embedded
+UTC build information. Git builds with local changes include a `-dirty` marker.
 
 The installation is independent of this source checkout. To check which command
 your shell resolves, use `command -v dotask` on Bash/Zsh or `Get-Command dotask -All`

@@ -26,14 +26,36 @@ fn help_runs_without_an_external_language_host() {
 }
 
 #[test]
-fn version_identifies_the_development_preview() {
+fn version_matches_embedded_application_build_metadata() {
   let output = run(&["--version"]);
   assert!(output.status.success(), "{output:?}");
   assert_eq!(
     String::from_utf8(output.stdout).unwrap().trim(),
-    format!("dotask {} (Rust CLI development preview)", env!("CARGO_PKG_VERSION"))
+    format!(
+      "dotask {} (build {}{})",
+      env!("DOTASK_APP_VERSION"),
+      env!("DOTASK_BUILD_STAMP"),
+      if env!("DOTASK_BUILD_COMMIT").is_empty() {
+        String::new()
+      } else {
+        format!(
+          ", commit {}{}",
+          &env!("DOTASK_BUILD_COMMIT")[..7],
+          if env!("DOTASK_BUILD_DIRTY") == "true" {
+            "-dirty"
+          } else {
+            ""
+          }
+        )
+      }
+    )
   );
   assert!(output.stderr.is_empty());
+  let metadata = run(&["__build-info"]);
+  assert!(metadata.status.success());
+  let metadata: serde_json::Value = serde_json::from_slice(&metadata.stdout).unwrap();
+  assert_eq!(metadata["version"], env!("DOTASK_APP_VERSION"));
+  assert_eq!(metadata["stamp"], env!("DOTASK_BUILD_STAMP"));
 }
 
 #[test]

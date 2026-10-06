@@ -23,6 +23,12 @@ contracts; [VERIFICATION.md](VERIFICATION.md) owns dated acceptance evidence.
   `sdk/`, and `Dotask.dotnet.dll`. The existing Rust
   installer creates packages and preserves immutable builds, receipts, and
   activation recovery. `pack.rs` uses the same creator.
+- Public Rust versions preserve major/minor and default to
+  `major.minor.yyMM.ddhh`, with a frozen UTC `YYDDD-HHMM` stamp and optional Git
+  revision. Packages and installed build names match apart from the app prefix.
+  `--app-version`, `--git-hash`, and `--build-stamp` override local creator choices;
+  the generic engine accepts other version conventions and missing Git metadata.
+  Repeated requested minutes advance with a warning before the app is compiled.
 - The C# CLI remains the behavior reference. Explicit `dotnet/pack` packages
   that reference; the local `pack` target packages the native application.
 - Shared catalogs, lockfiles, and installed shared task copies retain their

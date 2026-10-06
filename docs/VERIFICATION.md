@@ -1,5 +1,42 @@
 # Verification
 
+## App build metadata and matching directory names (2026-10-06)
+
+`build.cmd` passed 419 .NET Release tests and 52 Rust tests on Windows x64:
+11 installer units (including shared UTC calendar/date rollover checks), 27
+installer workflows, and 14 CLI cases. Formatting/clippy/docs/catalog/shim/
+whitespace gates passed. A shared-task whitespace issue was corrected and the
+full gate rerun; Cargo no longer watches an absent packed-refs file, which had
+caused unnecessary metadata recompiles. Evaluated .NET output paths and Cargo's
+target directory remain external; the Bash launcher passed syntax checking.
+
+Two local `pack --build-stamp 26279-1637` runs produced app versions preserving
+major/minor (`0.1.2610.0616`). Their assigned build stamps were `26279-1637` and
+`26279-1638`, with a one-minute warning on the second run. Each executable's
+embedded version, stamp, full Git revision, and dirty flag matched installer YAML
+and the package directory. The installed build matched that name without the
+`dotask-` prefix. Relocated temporary install/reuse/update/uninstall acceptance
+passed, including exact four-file payloads, Unicode, Rust-to-C# calls, metadata
+with an empty toolchain PATH, retained builds, and unowned-file preservation.
+
+`pack --app-version 2.7.3-rc.1+build.5 --git-hash false --build-stamp 26279-1640`
+produced a matching SemVer executable/package/installed directory without a Git
+suffix. Engine regressions also cover another application's arbitrary version,
+optional commit fields, percent-encoding unsafe version characters, identical
+named package reuse, and rejection of differing contents under an existing name.
+The shared creator was exercised through the maintained C# consumer workflow
+with structured package results and the application's own version.
+
+Evidence is in `C:\tmp\dotask-build-names-gate.log`,
+`C:\tmp\dotask-build-names-package-one.log`,
+`C:\tmp\dotask-build-names-package-two.log`,
+`C:\tmp\dotask-build-names-custom.log`, and
+`C:\tmp\dotask-build-names-acceptance.log`. Pre-commit test artifacts carry an
+explicit dirty marker. All acceptance uses temporary roots with PATH changes
+disabled. Existing artifact/build names and ownership baselines were preserved;
+no active installation or user PATH changed, and nothing was published or pushed.
+Linux/macOS acceptance remains deferred.
+
 ## Installer console sections and banner metadata (2026-10-05)
 
 `build.cmd` passed 419 .NET Release tests and 48 Rust tests on Windows x64:

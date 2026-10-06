@@ -2,14 +2,16 @@
 // description: Build the native CLI with its Rust task crate and C# helper DLL.
 // options:
 //   - { name: verify, type: bool, default: false, description: 'Run Rust tests, formatting, and clippy.' }
+//   - { name: build-info, description: 'JSON build metadata supplied by create-installer before compiling.' }
 // requires:
 //   - { kind: tool, value: cargo }
 //   - { kind: tool, value: dotnet }
 //   - { kind: file, value: _support/RustBuild.rs }
+//   - { kind: file, value: _support/BuildInfo.rs }
 // end-dotask
 #[path = "_support/RustBuild.rs"]
 mod rust_build;
-use dotask_sdk::{BuildContext, Result};
+use dotask_sdk::{serde_json, BuildContext, Result};
 fn main() {
   dotask_sdk::run(task);
 }
@@ -83,10 +85,17 @@ fn task(project: &BuildContext) -> Result<()> {
       "Cargo.toml",
     )?;
   } else {
-    rust_build::cargo(
+    let build = project
+      .parameter("build-info")
+      .ok()
+      .and_then(|value| value.as_str())
+      .map(serde_json::from_str::<dotask_sdk::Value>)
+      .transpose()?;
+    rust_build::cargo_build(
       project,
       &["build", "--package", "dotask-cli", "--locked", "--release"],
       "Cargo.toml",
+      build.as_ref(),
     )?;
   }
   println!(

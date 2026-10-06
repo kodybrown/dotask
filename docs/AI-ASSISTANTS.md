@@ -176,6 +176,14 @@ The creator chooses which project settings become installer configuration;
 project identity is not copied implicitly. `application.name`, `description`,
 and optional `copyright` supply the interactive console banner. Shortcut
 declarations grant permissions while defaults choose the initial answers.
+Application versions are not constrained to dotask's calendar convention.
+Supply `application.build.stamp` and optional `commit` to align package and
+installed directory names with the app's own build information. Named package
+creation uses `--output-parent` and a structured `--result-file`; identical names
+with different contents are rejected. Git is optional, and the application's
+version is never inferred from the installer/tool version. Dotask's local creator
+preserves major/minor and adds calendar fields by default, with `--app-version`,
+`--git-hash`, and `--build-stamp` overrides.
 
 Dotask's standalone Rust installer uses YAML receipts and the `installer/` plus
 `app/<build>/` layout. Older formats are unsupported; use fresh destinations or

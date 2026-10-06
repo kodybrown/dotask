@@ -342,6 +342,20 @@ flag. The installed engine and records must suffice without the original payload
 
 ### Installation layout and receipts
 
+The application producer owns its version format. Build metadata optionally
+supplies a frozen UTC `YYDDD-HHMM` stamp and Git revision; the installer never
+substitutes its own version or the task runner's version. Named packages use
+`<app-id>-<app-version>-<stamp>[-<git7>][-dirty]`; installed builds use that name
+without the app prefix. Version strings remain verbatim in metadata, with unsafe
+filesystem characters encoded only in directory components. Preserve full
+content fingerprints to reject collisions and modifications without exposing
+those fingerprints in metadata-based names. Reuse only identical packages.
+
+Dotask chooses `major.minor.yyMM.ddhh` as its default public version. Capture the
+build minute before compiling, advance an occupied minute with a warning, and
+embed the same assigned information in the CLI and package. The generic engine
+and shared creator support other version formats and missing Git metadata.
+
 Keep management files in a visible `installer/` directory beneath the application
 root. The uniform payload layout is `app/<version>-<build-id>/`:
 

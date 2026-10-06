@@ -512,3 +512,25 @@ acceptance, installation, and publication.
   and upgrade/command relocation from the earlier package passed. Evaluated
   build outputs remain external. No active installation or user PATH changed;
   nothing was published or pushed. Linux/macOS acceptance remains deferred.
+
+### 2026-10-06 Match package and installed names to application build metadata
+
+- Preserve dotask's major/minor prefix and default its public version to
+  `major.minor.yyMM.ddhh`, with embedded UTC `YYDDD-HHMM`, optional Git revision,
+  and an explicit dirty marker. Assign the minute before compilation, advance
+  an occupied minute with a warning, and verify binary/package metadata equality.
+- Create named installer directories directly, and use the same installed build
+  name without the application prefix. The generic engine and shared creator use
+  the packaged application's own version and optional Git information, support
+  arbitrary version labels, and encode unsafe directory characters. Preserve
+  internal integrity fingerprints, identical package/build reuse, collision
+  refusal, existing receipts, and immutable build ownership.
+- Add structured package results for the shared creator and local version/Git/
+  stamp overrides. Keep technical Cargo/helper-library versions independent.
+  Regenerate the canonical catalog without rewriting tracking baselines.
+- Verification: `build.cmd` passed 419 .NET and 52 Rust tests plus every required
+  gate. Calendar/date rollover, custom version/no-Git, matching named directories,
+  same-minute warning/advance, payload collision protection, shared C# creation,
+  and relocated mixed-language install/reuse/update/uninstall acceptance passed.
+  Output paths remain external and Bash syntax passes. No active installation or
+  user PATH changed; nothing was published or pushed. Linux/macOS remains deferred.

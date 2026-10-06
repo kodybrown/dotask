@@ -36,12 +36,24 @@ pub struct Application {
   pub id: String,
   pub name: String,
   pub version: String,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub build: Option<Build>,
   #[serde(default)]
   pub author: String,
   #[serde(default, skip_serializing_if = "String::is_empty")]
   pub copyright: String,
   #[serde(default)]
   pub description: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Build {
+  pub stamp: String,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub commit: Option<String>,
+  #[serde(default)]
+  pub dirty: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

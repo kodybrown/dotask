@@ -50,7 +50,7 @@ pub fn name(value: &str) -> Result<()> {
   ensure!(
     !value.is_empty()
       && value.len() <= 120
-      && value.chars().all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c))
+      && value.chars().all(|c| c.is_ascii_alphanumeric() || "-_.+%".contains(c))
       && !value.ends_with('.')
       && value != "."
       && value != "..",

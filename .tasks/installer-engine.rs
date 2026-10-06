@@ -5,6 +5,7 @@
 // requires:
 //   - { kind: tool, value: cargo }
 //   - { kind: file, value: _support/RustBuild.rs }
+//   - { kind: file, value: _support/BuildInfo.rs }
 // end-dotask
 #[path = "_support/RustBuild.rs"]
 mod rust_build;

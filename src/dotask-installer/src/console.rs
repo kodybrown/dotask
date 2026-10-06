@@ -258,6 +258,7 @@ mod tests {
       id: "example".into(),
       name: "Example".into(),
       version: "1".into(),
+      build: None,
       author: "Author".into(),
       copyright: "Copyright (C) 2026 Author".into(),
       description: "An application with a longer description.".into(),

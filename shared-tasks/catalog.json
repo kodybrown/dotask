@@ -9,7 +9,7 @@
       "files": [
         {
           "path": "dotask-installer/create-installer.cs",
-          "sha256": "fc751aef6546e1477881a529e4e4b3741674efafdd72d173b3a3c5514e75a44c"
+          "sha256": "072bf4923e094dc912f84ace8346f9b4530cf990b54ce6c907db2e4f6006b721"
         }
       ],
       "requires": []

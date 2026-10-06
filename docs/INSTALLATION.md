@@ -63,7 +63,7 @@ before calling the creator. The creator never invokes an application compiler.
 A project wrapper can call `CreateInstallerAsync("_/dotask-installer/create-installer",
 parameters)` and forward the artifact using `SetInstallerResultAsync`.
 A YAML task group can wrap the creator too. Packages are independently copied into
-`<output>/<os>-<architecture>/<unique-id>/`, and contain:
+`<output>/<os>-<architecture>/<app-id>-<app-version>-<stamp>[-<git7>][-dirty]/`, and contain:
 
 ```text
 installer.exe             # installer on Linux/macOS
@@ -91,6 +91,10 @@ application:
   id: example
   name: Example App
   version: 1.2.0
+  build:
+    stamp: 26279-0612       # UTC YYDDD-HHMM; supplied by the application build
+    commit: abcdef71234567890123456789012345678901234  # optional
+    dirty: false
   author: Example Author
   copyright: Copyright (C) 2026 Example Author
   description: A desktop application.
@@ -223,6 +227,37 @@ dotask install --installer-args '["--non-interactive", "--set", "add-to-path=fal
 ```
 
 ## Locations, launchers, and version retention
+
+### Package and installed build names
+
+Versions belong to the application being packaged, never the installer engine
+or dotask tool running the creator. `application.version` is an arbitrary
+nonempty version string: SemVer, calendar versions, and custom labels are
+supported. Common filename-safe characters, including SemVer `+` metadata, stay
+readable; unsafe characters and literal percent signs are percent-encoded only
+in directory names. The original version remains in metadata and display output.
+Encoded version/build components must fit the filesystem-safe name limits.
+
+Supply `application.build.stamp` as UTC `YYDDD-HHMM` to match the application's
+embedded build information. Git `commit` is optional; when supplied it is stored
+in full and displayed in names using its first seven characters. `dirty: true`
+adds `-dirty` and requires a commit. When package creation has no build metadata,
+the engine captures a packaging minute without a Git revision and saves it in
+the package. Installation always uses that saved stamp. Direct installation of
+an un-packaged config without build metadata retains a content-addressed identity.
+
+`package --output-parent DIRECTORY` creates a directory named
+`<app-id>-<app-version>-<stamp>[-<git7>][-dirty]`, with the engine, YAML, and payload
+directly inside. The installed build under `app/` uses the same name without the
+`<app-id>-` prefix. `--output DIRECTORY` remains an explicit complete package-path
+override. `--result-file FILE` writes the absolute installer `FilePath` as JSON;
+creator tasks read that result instead of parsing console output.
+
+Identical named packages can be reused. Matching names with different payload or
+configuration are rejected without overwriting the package or installed build.
+The internal full-content fingerprint remains an integrity check; no fingerprint
+is appended to build-metadata-based names. Previously owned build directories
+retain their names and receipts; no directory renaming or adoption is performed.
 
 Default application roots are `%LOCALAPPDATA%/Programs/<id>` on Windows and
 `~/.local/lib/<id>` on Linux/macOS. `--install-dir` selects the complete application
@@ -373,6 +408,28 @@ a fresh payload containing `dotask[.exe]`, `Dotask.dotnet.dll`, and `sdk/`. It i
 existing Rust installer directly and returns the normal `InstallerArtifact`.
 The Rust `pack` task uses the same creator. Compiler output remains external;
 final packages go beneath `settings.installer-output`.
+
+Dotask's default public version is `major.minor.yyMM.ddhh`, preserving the major
+and minor from its Cargo package version. For example, a UTC build on October 6,
+2026 at 06:12 displays
+`dotask 0.1.2610.0606 (build 26279-0612, commit abcdef7)` and produces
+`dotask-0.1.2610.0606-26279-0612-abcdef7`; installation uses
+`app/0.1.2610.0606-26279-0612-abcdef7`. Git revisions are omitted when unavailable
+or disabled. Technical Cargo and C# helper-library versions remain independent.
+
+The creator selects the minute before compiling the app. If an output already
+uses that minute, it advances one minute and warns, continuing until an unused
+minute is found. A lock serializes creation in the same output directory. The
+assigned stamp can therefore be ahead of wall-clock time; it is embedded in the
+binary and carried unchanged through package/installation metadata. The creator
+checks the compiled app's structured build information before packaging.
+
+Use `--app-version VERSION` on `create-installer` or `pack` to override dotask's
+calendar default, `--git-hash false` to omit Git information, and `--build-stamp
+YYDDD-HHMM` to request a reproducible UTC minute (still advanced on collision).
+These choices apply to dotask's local creator; other applications supply their
+own version/build metadata in installer YAML. No version-format convention is
+imposed by the shared creator or engine.
 Rust 1.95 or newer, Cargo, rustfmt, and clippy are required for source verification.
 The required gate includes Rust tests and the .NET suite. Destination machines
 need Rust/Cargo only to execute Rust tasks and the .NET SDK only to execute C#

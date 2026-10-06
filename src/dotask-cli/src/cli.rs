@@ -47,9 +47,36 @@ fn run_inner(arguments: Vec<OsString>) -> Result<i32> {
   if args.first().is_some_and(|s| s == "__complete") {
     return crate::completion::query(&args[1..]);
   }
+  if args == ["__build-info"] {
+    println!(
+      "{}",
+      serde_json::json!({"version":env!("DOTASK_APP_VERSION"),"stamp":env!("DOTASK_BUILD_STAMP"),
+      "commit": if env!("DOTASK_BUILD_COMMIT").is_empty() {None} else {Some(env!("DOTASK_BUILD_COMMIT"))},
+      "dirty":env!("DOTASK_BUILD_DIRTY") == "true"})
+    );
+    return Ok(0);
+  }
   let command = Arguments::parse(args)?;
   if command.version {
-    println!("dotask {} (Rust CLI development preview)", env!("CARGO_PKG_VERSION"));
+    let revision = if env!("DOTASK_BUILD_COMMIT").is_empty() {
+      String::new()
+    } else {
+      format!(
+        ", commit {}{}",
+        &env!("DOTASK_BUILD_COMMIT")[..7],
+        if env!("DOTASK_BUILD_DIRTY") == "true" {
+          "-dirty"
+        } else {
+          ""
+        }
+      )
+    };
+    println!(
+      "dotask {} (build {}{})",
+      env!("DOTASK_APP_VERSION"),
+      env!("DOTASK_BUILD_STAMP"),
+      revision
+    );
     return Ok(0);
   }
   let remaining = &command.remaining;
