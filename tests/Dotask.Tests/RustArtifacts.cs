@@ -55,11 +55,18 @@ internal static class RustArtifacts
     var source = Path.Combine(TargetDirectory.Value, "release");
     var destination = Path.Combine(Path.GetTempPath(), "dotask-native-tests", Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(destination);
-    foreach (var name in new[] { "dotask", "dotask-installer", "simple-installer-builder" }) {
+    foreach (var name in new[] { "dotask" }) {
       var file = name + (OperatingSystem.IsWindows() ? ".exe" : "");
       var input = Path.Combine(source, file);
       if (File.Exists(input)) {
         File.Copy(input, Path.Combine(destination, file));
+      }
+    }
+    var external = Environment.GetEnvironmentVariable("DOINSTALL_TOOL_DIR");
+    if (!string.IsNullOrWhiteSpace(external)) {
+      foreach (var name in new[] { "doinstall", "doinstall-builder" }) {
+        var file = name + (OperatingSystem.IsWindows() ? ".exe" : "");
+        File.Copy(Path.Combine(external, file), Path.Combine(destination, file));
       }
     }
     var sdk = Path.Combine(source, "sdk");

@@ -1,9 +1,8 @@
 [workspace]
-members = ["src/dotask-cli", "src/dotask-installer", "src/dotask-sdk"]
+members = ["src/dotask-cli", "src/dotask-sdk"]
 resolver = "3"
 
-# Cargo reads profiles from the workspace root. Preserve the installer's
-# delivery settings when building either native executable.
+# Cargo reads profiles from the workspace root. Keep native delivery optimized.
 [profile.release]
 lto = true
 strip = true

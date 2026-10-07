@@ -1,5 +1,30 @@
 # Verification
 
+## Independent doinstall extraction (2026-10-07)
+
+Dotask's complete `build.cmd verify` gate passed 419 .NET Release tests and 15
+Rust tests on Windows x64, plus formatting, clippy, docs, catalog, and whitespace.
+The installer, builder, Windows shim implementation/assets, and runtime behavior
+suite now belong to the independent doinstall repository. Its `build.cmd verify`
+passed 52 Rust tests plus formatting/clippy/shim integrity and native PE checks,
+without dotask or .NET dependencies. The previous shim PE/hash test moved there;
+dotask retains external-tool adapter and C# consumer integration coverage.
+
+A temporary dotask package was created using external doinstall tools, with
+matching embedded version/stamp/commit/dirty metadata. Temporary install, native
+launch, and retained self-uninstall passed. A Windows verbatim staging path exposed
+mixed separator handling; the SDK now normalizes explicitly portable paths without
+changing raw process arguments or UTF-16 names. Its new regression passes.
+
+Shared adapters are `_/doinstall/*`; generic launching is `_/installer/install`.
+Catalog and reviewed installed-copy tracking were regenerated through the native
+manager. CI pins doinstall commit `b3150eef78c342e6b81b0d4424ae86c432d50d3b`;
+that checkout is unavailable remotely until the new repository is pushed.
+All source/build outputs remain separate and external. No active installation,
+user PATH, publication, or push changed. Native Linux/macOS/ARM64 acceptance
+remains pending. The separate C# reference CLI removal is outside this extraction.
+
+
 ## Configurable creation and nested runtime schema (2026-10-07)
 
 `build.cmd verify` passed all 420 .NET Release tests and 65 Rust tests on Windows

@@ -13,3 +13,5 @@ settings:
   installer:
     config: .tasks/installer.yaml
     output: artifacts/installers
+  doinstall:
+    source: ../doinstall

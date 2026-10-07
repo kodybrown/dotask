@@ -6,21 +6,6 @@ permissions:
   contents: read
 
 jobs:
-  shim-source:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-      - name: Install shim development tools
-        run: sudo apt-get update && sudo apt-get install -y clang lld llvm
-      - name: Prepare Rust toolchain
-        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
-      - name: Cross-compile both Windows shims from source
-        run: ./build.sh shim
-      - name: Verify generated shim records
-        run: ./build.sh shim --verify
   test:
     strategy:
       fail-fast: false
@@ -38,6 +23,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout pinned doinstall source
+        uses: actions/checkout@v4
+        with:
+          repository: kodybrown/doinstall
+          ref: b3150eef78c342e6b81b0d4424ae86c432d50d3b
+          path: doinstall-source
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
@@ -46,7 +37,11 @@ jobs:
       - name: Bootstrap and verify
         # Rust CLI, installer, SDK, and native integration tests use this gate.
         shell: ${{ matrix.shell }}
+        env:
+          DOINSTALL_SOURCE: ${{ github.workspace }}/doinstall-source
         run: ${{ matrix.launcher }} verify
       - name: Package
         shell: ${{ matrix.shell }}
+        env:
+          DOINSTALL_SOURCE: ${{ github.workspace }}/doinstall-source
         run: ${{ matrix.launcher }} create-installer

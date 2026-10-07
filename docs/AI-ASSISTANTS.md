@@ -155,13 +155,13 @@ the library before claiming it exists. Ordinary .NET APIs can fill gaps.
 ## Rules that prevent common mistakes
 
 For installation tasks, read [the installation contract](INSTALLATION.md).
-The shared `_/simple-installer/install` always invokes `create-installer`,
+The shared `_/installer/install` always invokes `create-installer`,
 then runs its returned `InstallerArtifact`. It does not publish or copy the
 application itself. `create-installer` must build only, then call
 `SetInstallerResultAsync` once. Use `CreateInstallerAsync` and `RunInstallerAsync`
 for custom orchestration; do not scrape stdout or guess artifact paths.
 `installer-args` is a JSON string array replacing default installer arguments.
-An exact project `install` can delegate to `_/simple-installer/install` explicitly.
+An exact project `install` can delegate to `_/installer/install` explicitly.
 The console installer prompts by default. For unattended execution, pass
 `--installer-args '["--non-interactive"]'` to install, or `--non-interactive` to
 uninstall. Installer YAML owns defaults, prompt mode, and labels; Windows PATH
@@ -255,7 +255,7 @@ launcher to bypass conflicts.
 
 In the DoTask source repository, `shared-tasks/` is the canonical source of
 reusable tasks; `.tasks/` contains the copies used by the repository itself.
-Keep the `dotnet/format.cs`, `simple-installer/*.rs`, `dotnet/pack.cs`, and `git/check.rs` copies
+Keep the `dotnet/format.cs`, `doinstall/*.rs`, `dotnet/pack.cs`, and `git/check.rs` copies
 identical when updating them, and regenerate the catalog. The standard formatter
 formats the solution and C# files throughout the selected tasks directory;
 `--verify` checks both without running optional `_/text/fixeol`.

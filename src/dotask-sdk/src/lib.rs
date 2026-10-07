@@ -64,7 +64,30 @@ impl BuildContext {
     Path::new(self.data["InvocationDirectory"].as_str().unwrap())
   }
   pub fn path(&self, path: impl AsRef<Path>) -> PathBuf {
-    self.root().join(path)
+    #[cfg(windows)]
+    {
+      use std::os::windows::ffi::{OsStrExt, OsStringExt};
+      // This API accepts portable paths. Verbatim Windows roots reject mixed
+      // separators, so normalize slashes without changing arbitrary process
+      // arguments or losing UTF-16 filename data.
+      let units: Vec<_> = path
+        .as_ref()
+        .as_os_str()
+        .encode_wide()
+        .map(|unit| {
+          if unit == b'/' as u16 {
+            b'\\' as u16
+          } else {
+            unit
+          }
+        })
+        .collect();
+      self.root().join(std::ffi::OsString::from_wide(&units))
+    }
+    #[cfg(not(windows))]
+    {
+      self.root().join(path)
+    }
   }
   pub fn parameters(&self) -> &Value {
     &self.data["Parameters"]
@@ -329,4 +352,22 @@ fn validate_installer(value: &Value, context: &BuildContext) -> Result<()> {
     bail!("Installer arguments must be strings without NUL characters.");
   }
   Ok(())
+}
+
+#[cfg(all(test, windows))]
+mod path_tests {
+  use super::*;
+  #[test]
+  fn portable_separators_work_under_verbatim_windows_roots() {
+    let temporary = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(temporary.path()).unwrap();
+    let context = BuildContext {
+      data: json!({"RootDirectory":root}),
+    };
+    let portable = format!("{}/generated/result.txt", root.display());
+    let file = context.path(portable);
+    fs::create_dir_all(file.parent().unwrap()).unwrap();
+    fs::write(&file, b"generated").unwrap();
+    assert_eq!(fs::read(root.join("generated").join("result.txt")).unwrap(), b"generated");
+  }
 }

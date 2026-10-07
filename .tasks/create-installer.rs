@@ -3,7 +3,7 @@
 // options:
 //   - { name: app-version, description: Optional application version pattern override. }
 //   - { name: build-stamp, description: Optional reproducible UTC YYDDD-HHMM build stamp. }
-// requires: [{ kind: task, value: _/simple-installer/create-installer }]
+// requires: [{ kind: task, value: _/doinstall/create-installer }]
 // end-dotask
 use dotask_sdk::{json, BuildContext, Result};
 fn main() {
@@ -16,6 +16,6 @@ fn task(project: &BuildContext) -> Result<()> {
       parameters[name] = value.into();
     }
   }
-  let artifact = project.create_installer("_/simple-installer/create-installer", parameters)?;
+  let artifact = project.create_installer("_/doinstall/create-installer", parameters)?;
   project.set_installer_result(&artifact)
 }

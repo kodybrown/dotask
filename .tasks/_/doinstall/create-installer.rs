@@ -5,7 +5,7 @@
 //   - { name: output, type: path, description: Package parent directory; otherwise installer.output. }
 //   - { name: app-version, description: Override the application version pattern. }
 //   - { name: build-stamp, description: Reproducible UTC YYDDD-HHMM build stamp. }
-// requires: [{ kind: file, value: simple-installer/_support/BuildInfo.rs }]
+// requires: [{ kind: file, value: doinstall/_support/BuildInfo.rs }]
 // end-dotask
 #[path = "_support/BuildInfo.rs"]
 mod build_info;
@@ -106,7 +106,7 @@ fn task(project: &BuildContext) -> Result<()> {
   }
   fs::create_dir_all(&output)?;
   // Persistent locks stay outside deliverables and avoid unlink/reopen races.
-  let locks = fs::canonicalize(std::env::temp_dir())?.join("simple-installer-build-locks");
+  let locks = fs::canonicalize(std::env::temp_dir())?.join("doinstall-build-locks");
   fs::create_dir_all(&locks)?;
   use dotask_sdk::sha2::{Digest, Sha256};
   let lock_path = locks.join(format!(
@@ -125,7 +125,7 @@ fn task(project: &BuildContext) -> Result<()> {
   if directory.exists() {
     dotask_sdk::bail!("Installer version already exists: {}", directory.display());
   }
-  let temporary = tempfile::Builder::new().prefix("simple-installer-").tempdir()?;
+  let temporary = tempfile::Builder::new().prefix("doinstall-").tempdir()?;
   let staging = fs::canonicalize(temporary.path())?;
   let payload = staging.join("payload");
   fs::create_dir(&payload)?;

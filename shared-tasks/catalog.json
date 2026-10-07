@@ -36,6 +36,62 @@
       "requires": []
     },
     {
+      "id": "doinstall/assemble",
+      "entryPoint": "doinstall/assemble.rs",
+      "description": "Assemble a distributable installer directory from resolved configuration and payload.",
+      "runtime": "rust",
+      "files": [
+        {
+          "path": "doinstall/assemble.rs",
+          "sha256": "292f2d239fc1445f0aa8ae1aeb66e2cda4a9c92c248d451163dfad8c73ff6e09"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "doinstall/build",
+      "entryPoint": "doinstall/build.rs",
+      "description": "Build an explicitly selected doinstall source checkout using its own Cargo tooling.",
+      "runtime": "rust",
+      "files": [
+        {
+          "path": "doinstall/build.rs",
+          "sha256": "6088d3d9755eb455cb1c6c775bc4c1d28988ad9370049891b10cbf6d521ac708"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "doinstall/create-installer",
+      "entryPoint": "doinstall/create-installer.rs",
+      "description": "Run configured build steps and gather files to create an application installer.",
+      "runtime": "rust",
+      "files": [
+        {
+          "path": "doinstall/_support/BuildInfo.rs",
+          "sha256": "ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53"
+        },
+        {
+          "path": "doinstall/create-installer.rs",
+          "sha256": "21d57d71fe1956b35c2a6c5e34b18f7697181019e89935a2ce60c1073e51d50a"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "doinstall/uninstall",
+      "entryPoint": "doinstall/uninstall.rs",
+      "description": "Run the retained installer to uninstall an application without rebuilding it.",
+      "runtime": "rust",
+      "files": [
+        {
+          "path": "doinstall/uninstall.rs",
+          "sha256": "5ebf40c0fda9a4814dfdcf07992e12ed9be04b8130aba9ae858ba699c2ca997a"
+        }
+      ],
+      "requires": []
+    },
+    {
       "id": "dotnet/build",
       "entryPoint": "dotnet/build.cs",
       "description": "Restore packages and build the configured solution.",
@@ -181,57 +237,14 @@
       "requires": []
     },
     {
-      "id": "simple-installer/assemble",
-      "entryPoint": "simple-installer/assemble.rs",
-      "description": "Assemble a distributable installer directory from resolved configuration and payload.",
-      "runtime": "rust",
-      "files": [
-        {
-          "path": "simple-installer/assemble.rs",
-          "sha256": "292f2d239fc1445f0aa8ae1aeb66e2cda4a9c92c248d451163dfad8c73ff6e09"
-        }
-      ],
-      "requires": []
-    },
-    {
-      "id": "simple-installer/create-installer",
-      "entryPoint": "simple-installer/create-installer.rs",
-      "description": "Run configured build steps and gather files to create an application installer.",
-      "runtime": "rust",
-      "files": [
-        {
-          "path": "simple-installer/_support/BuildInfo.rs",
-          "sha256": "ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53"
-        },
-        {
-          "path": "simple-installer/create-installer.rs",
-          "sha256": "25dbc8c890d7f4eec0c57c192e0704d13089a78cc7ff3aa57ebf81cf8fa5c59b"
-        }
-      ],
-      "requires": []
-    },
-    {
-      "id": "simple-installer/install",
-      "entryPoint": "simple-installer/install.rs",
+      "id": "installer/install",
+      "entryPoint": "installer/install.rs",
       "description": "Create and run the project's installer for this OS and architecture.",
       "runtime": "rust",
       "files": [
         {
-          "path": "simple-installer/install.rs",
+          "path": "installer/install.rs",
           "sha256": "0c34f54789de6e37495ccba92dc2290464c207075927cc6e1ca4cedc5fa92a53"
-        }
-      ],
-      "requires": []
-    },
-    {
-      "id": "simple-installer/uninstall",
-      "entryPoint": "simple-installer/uninstall.rs",
-      "description": "Run the retained installer to uninstall an application without rebuilding it.",
-      "runtime": "rust",
-      "files": [
-        {
-          "path": "simple-installer/uninstall.rs",
-          "sha256": "5ebf40c0fda9a4814dfdcf07992e12ed9be04b8130aba9ae858ba699c2ca997a"
         }
       ],
       "requires": []

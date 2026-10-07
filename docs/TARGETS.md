@@ -284,9 +284,11 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `_/dotnet/check`   | Checks solution presence and SDK/MSBuild/formatter versions                                      |
 | `_/dotnet/verify`  | Runs installed official check/test/format tasks; skips missing ones and stops on failure         |
 | `_/dotnet/publish` | `settings.project`; publishes for the requested OS/architecture                                  |
-| `_/simple-installer/install` | Executes `create-installer`, validates its result, and runs its installer |
-| `_/simple-installer/create-installer` | Runs YAML build steps and gathers their expected files into an installer |
-| `_/simple-installer/uninstall` | Runs the retained engine without rebuilding the application |
+| `_/installer/install` | Executes `create-installer`, validates its result, and runs its installer |
+| `_/doinstall/create-installer` | Runs YAML build steps and gathers their expected files into an installer |
+| `_/doinstall/build` | Explicitly builds a configured external source checkout using doinstall's own Cargo tooling |
+| `_/doinstall/assemble` | Invokes an external builder/runtime pair with resolved configuration and payload |
+| `_/doinstall/uninstall` | Runs the retained engine without rebuilding the application |
 | `_/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
 | `_/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
 

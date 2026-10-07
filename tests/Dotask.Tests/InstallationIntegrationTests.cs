@@ -1,32 +1,10 @@
 using System.Diagnostics;
-using System.Reflection.PortableExecutable;
-using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace DoTask.Tests;
 
 public sealed class InstallationIntegrationTests
 {
-  [Fact]
-  public void BundledShimsMatchTheirHashesArchitecturesAndHaveNoManagedRuntimeDependency()
-  {
-    using var stream = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream("Shim/hashes.json")!;
-    var hashes = JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
-    foreach (var entry in hashes) {
-      using var source = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream("Shim/" + entry.Key)!;
-      Assert.Equal(entry.Value, Convert.ToHexStringLower(SHA256.HashData(source)));
-    }
-    foreach (var (architecture, machine) in new[] { ("x64", Machine.Amd64), ("arm64", Machine.Arm64) }) {
-      using var binary = typeof(InstallationIntegrationTests).Assembly.GetManifestResourceStream($"Shim/assets/win-{architecture}.exe")!;
-      Assert.Equal(hashes[$"assets/win-{architecture}.exe"], Convert.ToHexStringLower(SHA256.HashData(binary)));
-      binary.Position = 0;
-      using var pe = new PEReader(binary);
-      Assert.Equal(machine, pe.PEHeaders.CoffHeader.Machine);
-      Assert.Null(pe.PEHeaders.CorHeader);
-      Assert.Equal(Subsystem.WindowsCui, pe.PEHeaders.PEHeader!.Subsystem);
-    }
-  }
-
   [Fact]
   public async Task PublishedApplicationInstallerRunsAndUpdatesWithCustomOutputPaths()
   {
@@ -119,7 +97,7 @@ public sealed class InstallationIntegrationTests
           commands = new[] { new { name = "probe", executable = OperatingSystem.IsWindows() ? "installed-probe.exe" : "installed-probe" } }
         }
       }));
-      var engine = RustArtifacts.Binary("dotask-installer");
+      var engine = RustArtifacts.Binary("doinstall");
       return await ProcessRunner.RunAsync(new ProcessDefinition {
         Executable = engine,
         Arguments = ["--non-interactive", "--set", "add-to-path=false", "--config", config, "--install-dir", Path.Combine(root, "installed-probe"), "--bin-dir", bin],

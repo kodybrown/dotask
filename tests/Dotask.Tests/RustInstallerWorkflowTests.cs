@@ -8,9 +8,9 @@ public sealed class RustInstallerWorkflowTests
   public async Task SharedTasksPackageInstallLaunchAndUninstallGuiPayloadWithoutOriginalPackage()
   {
     using var project = new TestProject { NativeRunner = true };
-    var engine = RustArtifacts.Binary("dotask-installer");
-    var builder = RustArtifacts.Binary("simple-installer-builder");
-    Assert.True(File.Exists(engine) && File.Exists(builder), "Build the installer first: build.cmd build-installer (Unix: ./build.sh build-installer).");
+    var engine = RustArtifacts.Binary("doinstall");
+    var builder = RustArtifacts.Binary("doinstall-builder");
+    Assert.True(File.Exists(engine) && File.Exists(builder), "Build the installer first: build.cmd verify, or set DOINSTALL_TOOL_DIR to a built doinstall tool pair.");
     project.WriteBuildProperties();
     var source = project.Write("GuiProbe/GuiProbe.csproj", """
       <Project Sdk="Microsoft.NET.Sdk">
@@ -48,7 +48,7 @@ public sealed class RustInstallerWorkflowTests
     }
     var added = await ProcessRunner.RunAsync(new ProcessDefinition {
       Executable = RustArtifacts.Binary("dotask"),
-      Arguments = ["--add", "_/simple-installer/*"],
+      Arguments = ["--add", "_/doinstall/*", "_/installer/install"],
       // --add prefers a cached catalog even when the online source is overridden.
       // Keep all shared-task locations fixture-owned so an older user catalog
       // cannot hide the installer tasks or receive test downloads and locks.
@@ -82,7 +82,7 @@ public sealed class RustInstallerWorkflowTests
     sourceConfig["build-steps"] = JsonSerializer.SerializeToNode(new object[] {
       new { gather = new[] { new { from = payload, files = Directory.EnumerateFiles(payload).Select(Path.GetFileName).ToArray() } } },
       new {
-        run = "_/simple-installer/assemble",
+        run = "_/doinstall/assemble",
         with = new Dictionary<string, object> {
           ["builder"] = builder, ["installer"] = engine, ["config"] = "${config}", ["output"] = "${package}"
         }
@@ -93,7 +93,7 @@ public sealed class RustInstallerWorkflowTests
       use dotask_sdk::{json, BuildContext, Result};
       fn main() { dotask_sdk::run(task); }
       fn task(project: &BuildContext) -> Result<()> {
-        let artifact = project.create_installer("_/simple-installer/create-installer", json!({}))?;
+        let artifact = project.create_installer("_/doinstall/create-installer", json!({}))?;
         project.set_installer_result(&artifact)
       }
       """);

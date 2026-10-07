@@ -16,34 +16,40 @@ tasks:
     files:
       _/archive/_support/Archive.rs: 05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e
       _/archive/create-zip.rs: 7d7701fa1e484c689de35fb5895c6411e72534d015ff3e7192aaa6d0c419b97f
+  _/doinstall/assemble:
+    source: _
+    revision: e89470a20a857c9859f8960e865ae7ebc51662fc1034976a33332faa72c7fdd6
+    requires: []
+    files:
+      _/doinstall/assemble.rs: 292f2d239fc1445f0aa8ae1aeb66e2cda4a9c92c248d451163dfad8c73ff6e09
+  _/doinstall/build:
+    source: _
+    revision: a1bcd781795257dee23cd39d1bfea605abe969570701fcef61894498ff745f99
+    requires: []
+    files:
+      _/doinstall/build.rs: 6088d3d9755eb455cb1c6c775bc4c1d28988ad9370049891b10cbf6d521ac708
+  _/doinstall/create-installer:
+    source: _
+    revision: d62271a920bb658956223dcedb105de0ab6269a0d96b46a6fc9d136b8e31b375
+    requires: []
+    files:
+      _/doinstall/_support/BuildInfo.rs: ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53
+      _/doinstall/create-installer.rs: 21d57d71fe1956b35c2a6c5e34b18f7697181019e89935a2ce60c1073e51d50a
+  _/doinstall/uninstall:
+    source: _
+    revision: 0d7e8b9c8897d89974fd096630d61f5369268f8ea9595e22f06e0c406cb429e8
+    requires: []
+    files:
+      _/doinstall/uninstall.rs: 5ebf40c0fda9a4814dfdcf07992e12ed9be04b8130aba9ae858ba699c2ca997a
   _/git/check:
     source: _
     revision: ad2aca63684e1d59cda111c494c15147116cda41e019c54854e469aac1502874
     requires: []
     files:
       _/git/check.rs: 4ee12848d5ac3f12dd7d38e6091e8423515f5e300e72f3a4f198b50c5bfc227d
-  _/simple-installer/assemble:
+  _/installer/install:
     source: _
-    revision: c8ac7d9f2fa4ccb2fd3ae0c658029856783fbdd2166e9577019af0146b91990d
+    revision: b79aeb6692c60c7a93fbd561fe025c40d8aedc1ba33651264f6cb979df1e4410
     requires: []
     files:
-      _/simple-installer/assemble.rs: 292f2d239fc1445f0aa8ae1aeb66e2cda4a9c92c248d451163dfad8c73ff6e09
-  _/simple-installer/create-installer:
-    source: _
-    revision: db5b320b19da0beed52b66d38b760d44d19c0aa544cb694ed22e020905813991
-    requires: []
-    files:
-      _/simple-installer/_support/BuildInfo.rs: ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53
-      _/simple-installer/create-installer.rs: 25dbc8c890d7f4eec0c57c192e0704d13089a78cc7ff3aa57ebf81cf8fa5c59b
-  _/simple-installer/install:
-    source: _
-    revision: 14ece3e9af15a64a9afcebd4bbf74d21f7497a5e33d5a31abda37f688a332e90
-    requires: []
-    files:
-      _/simple-installer/install.rs: 0c34f54789de6e37495ccba92dc2290464c207075927cc6e1ca4cedc5fa92a53
-  _/simple-installer/uninstall:
-    source: _
-    revision: f0d3051504dd6bc3b147155e75d8436385af1c594ceebee0ba0b7005fd58a204
-    requires: []
-    files:
-      _/simple-installer/uninstall.rs: 5ebf40c0fda9a4814dfdcf07992e12ed9be04b8130aba9ae858ba699c2ca997a
+      _/installer/install.rs: 0c34f54789de6e37495ccba92dc2290464c207075927cc6e1ca4cedc5fa92a53

@@ -168,33 +168,29 @@ public sealed class RepositoryTaskTests
     project.Target("verify-docs", "File.AppendAllText(\"order\", \"docs;\");");
     project.Target("catalog", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\").ToString());",
       "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    project.Target("shim", "File.AppendAllText(\"order\", \";shim:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\"));",
-      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    project.Target("build-installer", "File.AppendAllText(\"order\", \"rust:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
-      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     project.Target("build", "File.AppendAllText(\"order\", \"cli:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
       "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     var result = await RustArtifacts.Run(project.Root, ["verify", "-c", "Debug"]);
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
-    Assert.Equal("check;rust:True;cli:True;Debug;docs;True;shim:True", File.ReadAllText(order));
+    Assert.Equal("check;cli:True;Debug;docs;True", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify-docs.cs"));
     result = await RustArtifacts.Run(project.Root, ["verify"]);
     Assert.Equal(1, result.ExitCode);
-    Assert.Equal("check;rust:True;cli:True;Release;", File.ReadAllText(order));
+    Assert.Equal("check;cli:True;Release;", File.ReadAllText(order));
     File.Delete(order);
     project.Target("build", "Environment.Exit(23);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
-    Assert.Equal("check;rust:True;", File.ReadAllText(order));
+    Assert.Equal("check;", File.ReadAllText(order));
     File.Delete(order);
     project.Target("build", "Environment.Exit(24);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     Assert.Equal(24, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
-    Assert.Equal("check;rust:True;", File.ReadAllText(order));
+    Assert.Equal("check;", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "build.cs"));
     Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
-    Assert.Equal("check;rust:True;", File.ReadAllText(order));
+    Assert.Equal("check;", File.ReadAllText(order));
   }
 
   [Fact]

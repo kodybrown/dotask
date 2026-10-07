@@ -370,7 +370,6 @@ Tab: it should offer `Debug` and `Release`. See [completion details](docs/USAGE.
 ./build.sh git/check --whitespace  # Git availability and staged/unstaged whitespace
 ./build.sh catalog --verify        # Check shared source hashes/metadata
 ./build.sh catalog                 # Regenerate the shared catalog
-./build.sh shim --verify           # Verify bundled shim source/binary hashes
 ./build.sh build                   # Build the native CLI and prepare SDKs
 ./build.sh build --verify          # Rust CLI tests, rustfmt, and clippy
 ./build.sh create-installer        # Create the standalone installer directory
@@ -428,9 +427,9 @@ The [documentation index](docs/README.md) links to all guides and design contrac
 
 ## Rust CLI development preview
 
-The root Cargo workspace contains `src/dotask-cli`, `src/dotask-installer`, and `src/dotask-sdk`,
+The root Cargo workspace contains `src/dotask-cli` and `src/dotask-sdk`,
 with a single root `Cargo.lock` and release profile. The new CLI builds a native
-`dotask` executable alongside the installer. The Rust CLI is the bootstrap
+`dotask` executable. The installer is the independent [doinstall project](https://github.com/kodybrown/doinstall). The Rust CLI is the bootstrap
 runner and installer payload. The C# CLI remains a behavior reference.
 The C# task authoring library and shared tasks remain maintained components.
 See the [transition design](docs/DESIGN.md#rust-cli-transition) for the agreed

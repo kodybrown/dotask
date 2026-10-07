@@ -14,11 +14,11 @@ YamlDotNet parses declarative headers/configuration for the reference CLI.
 
 ## Rust CLI transition
 
-Keep one repository with the new Rust CLI at `src/dotask-cli`, the existing Rust
-installer at `src/dotask-installer`, and the maintained C# authoring library at
+Keep dotask's Rust CLI at `src/dotask-cli`, Rust SDK at `src/dotask-sdk`, and the
+maintained C# authoring library at
 `src/Dotask`. The Rust packages share a root Cargo workspace, lockfile, and
-release profile. Preserve the installer's pinned dependencies and external
-output directory when adding workspace members.
+release profile. Installer dependencies and verification live in doinstall's
+independent workspace.
 
 The Rust CLI now runs C# tasks, Rust tasks, and YAML groups. It owns command parsing,
 root discovery, exact/shortcut selection, sessions, group sequencing, process
@@ -243,7 +243,7 @@ merge, source naming, and preview publishing contracts.
 
 ## Application installation
 
-The shared `dotask-installer/install.cs` coordinates `create-installer`
+The shared `_/installer/install` coordinates `create-installer`
 and launches its structured `InstallerArtifact`. Console and GUI apps use the
 same contract; there is no direct-copy fallback or search for existing packages.
 Creation and launching are separate, and invocation-scoped results prevent stale
@@ -259,185 +259,18 @@ Existing unrecognized directories and unowned launchers remain conflicts.
 
 Unix commands are symlinks. Windows commands use the bundled native launcher plus
 a UTF-8 `.shim` sidecar. Source and x64/ARM64 delivery assets remain in
-`src/Dotask.Shim`; ordinary installs do not compile or download launchers.
+the external doinstall repository; ordinary installs do not compile or download launchers.
 The launcher preserves process arguments, standard streams, and exit behavior.
 See [installation](INSTALLATION.md) for the ownership and activation contract.
 
-## Standalone installer design
+## External installer integration
 
-This section records the agreed design and deliberately deferred features.
-The implemented interface and native acceptance limits are documented in
-[Application installers](INSTALLATION.md) and [verification](VERIFICATION.md).
-
-### Task and distribution boundaries
-
-- Group reusable C# tasks under `_/dotask-installer/*`, with canonical sources in
-  `shared-tasks/dotask-installer/`. Application build/publish steps remain
-  project-specific; packaging and installation must work with non-.NET payloads.
-  Migrate existing shared install tasks through dotask management commands,
-  avoiding competing short names. PTS acceptance must use that workflow.
-- Use a generic Rust installer, without an Inno Setup dependency or Windows
-  Installed Apps integration. Retain the existing bundled Windows command shims;
-  consumers do not rebuild them. The installer must support automated uninstall.
-- Distribute a platform/architecture-specific executable, same-basename YAML,
-  and a payload directory or ZIP. YAML carries application metadata, version,
-  inputs, defaults, and installation instructions. Resolve payload paths relative
-  to the YAML. No dotask or language toolchain is required on the destination.
-- `create-installer` builds a package and returns its artifact without installing;
-  `install` invokes the creator and runs the artifact. Preserve custom project
-  creators and the structured artifact contract.
-
-### Inputs and desktop integration
-
-Install and uninstall are console-interactive by default. Installer YAML may
-disable prompts; explicit `--interactive` / `--non-interactive` override it.
-Redirected interactive execution fails with unattended-mode guidance. Package
-creation and validation never prompt. Missing required information, invalid
-values, or unresolved conflicts stop with an actionable error and nonzero status.
-Named typed inputs own prompts and choices. Value precedence is CLI overrides,
-explicit YAML values, environment-profile defaults, OS defaults, then common
-defaults. Interactive answers may replace defaults. Environment profiles include
-Linux desktop/distribution differences such as Omarchy.
-
-Always create stable commands in the chosen app root. Additional commands are
-optional, default No, and suggest that root's parent instead of consulting `BIN`.
-Windows can append the selected command directory to user PATH, preserving
-existing entries; an existing persistent PATH entry skips that question.
-Confirmation follows a location summary. Ctrl+C prints `Canceled` and exits 130;
-activation journals preserve the existing recovery contract. YAML owns prompt
-labels and defaults, while CLI values override individual questions.
-
-The standalone installer reads only its packaged installer YAML. The creator
-maps project settings to that document explicitly; it does not make the installer
-depend on source-project configuration. Application name, optional copyright,
-and description own the console banner. Interactive prompts, settings, and summary
-use consistent indentation and separators sized to the visible console width
-minus one column; unattended output stays plain. Shortcut declarations grant
-location permissions, while defaults set initial answers. The additional command
-is always available today; its false default is a preference, not a permission.
-
-Use nested task settings (`installer.config` and `installer.output`) to locate
-the source YAML and deliverables. `.tasks/installer.yaml` keeps `application`,
-ordered `build-steps`, and destination `runtime` settings separate. Producer tasks
-and their expected gathered files belong in `build-steps`; there is no producer
-registration or hard-coded installer SDK inventory. The Rust shared creator runs
-those ordinary tasks, propagates failures, removes build steps, and preserves the
-same nested runtime schema in distributed YAML. Destination installers reject
-build steps and old root-level runtime fields. Installer assembly runs in a
-separate build-machine executable; it is not a shipped installer subcommand.
-
-Launcher preferences may change during an update. Ownership comes from the
-receipt's actual launcher inventory, not a required match against old preference
-values. Lock previous and desired locations, verify owned files, refuse unowned
-destinations, and remove only obsolete owned launchers. Pending activation retries
-require the same package and requested destinations.
-
-Shortcuts are available to console and GUI applications. YAML declares which
-options are allowed and their defaults; CLI overrides and interactive choices
-must respect those permissions. Support Windows Start menu and desktop shortcuts,
-Linux application/desktop entries where supported, and macOS desktop aliases.
-Terminal behavior, arguments, working directory, and icons need explicit metadata.
-Desktop integration must be tested with an actual GUI consumer, including WinExe.
-
-Shortcut names can reference the typed `shortcut-name` input, defaulting to the
-application name, and must remain safe filesystem names after expansion. Windows
-Start Menu links optionally use `name/name.lnk`, defaulting to flat placement;
-desktop/local and Linux menu entries stay flat. Record only installer-created
-menu folders and remove them only when empty. Dotask itself declares no Start
-Menu link: a bare task-runner launch is not a useful application entry point.
-
-Uninstall preserves settings by default. `--leave-settings` and
-`--remove-settings` are mutually exclusive; removal is restricted to declared
-application-owned settings, never arbitrary documents or unrelated user data.
-An explicit unattended uninstall invocation does not require another confirmation
-flag. The installed engine and records must suffice without the original payload.
-
-### Installation layout and receipts
-
-The application producer owns its version format. Build metadata optionally
-supplies a frozen UTC `YYDDD-HHMM` stamp and Git revision; the installer never
-substitutes its own version or the task runner's version. Named packages use
-`<app-id>-<app-version>-<stamp>[-<git7>][-dirty]`; installed builds use that name
-without the app prefix. Version strings remain verbatim in metadata, with unsafe
-filesystem characters encoded only in directory components. Preserve full
-content fingerprints to reject collisions and modifications without exposing
-those fingerprints in metadata-based names. Reuse only identical packages.
-
-Dotask chooses `major.minor.yyMM.ddhh` as its default public version. Capture the
-build minute before compiling, advance an occupied minute with a warning, and
-embed the same assigned information in the CLI and package. The generic engine
-and shared creator support other version formats and missing Git metadata.
-
-Keep management files in a visible `installer/` directory beneath the application
-root. The uniform payload layout is `app/<version>-<build-id>/`:
-
-```text
-pts/
-  installer/
-    installer.exe
-    installer.yaml
-    installation.yaml
-  app/
-    1.2.0-abc123/
-      installer.yaml
-      installation.yaml
-      <application files>
-    1.3.0-def456/
-      installer.yaml
-      installation.yaml
-      <application files>
-```
-
-The executable has no `.exe` suffix on Unix. The root management receipt is
-mutable installation state: identity, resolved locations, active and previously
-active builds, owned shortcuts/commands, and installed build inventory. Each
-build keeps an immutable receipt and a snapshot of its installer YAML. Uninstall
-uses the corresponding installed configuration together with actual ownership
-records, rather than recomputing locations from defaults or assuming the newest
-configuration describes all older builds. Reserved metadata names must not
-collide with payload files. The current YAML schema is defined in the public reference.
-
-Always using version directories replaces the earlier fixed-location layout
-proposal. Retaining multiple builds and an application's
-ability to run from a version-specific path are separate concerns. Directory
-layout alone cannot make incompatible application paths or data formats work.
-Keep application settings in their normal locations; do not redirect XDG/AppData
-settings through links into individual builds.
-
-Convenience commands and optional shortcuts live in the application root:
-for example `pts.lnk`, `pts.exe` plus `pts.shim`, or a Unix command symlink and
-desktop launcher/alias. There are independent local and external
-launchers targeting the active application build directly. External shortcuts
-are refreshed on installation, without chaining through local ones.
-Both sets require ownership tracking, collision checks, and uninstall handling.
-
-Encourage versioned installations. `--prune-old-versions`, a YAML default, or an
-interactive choice enables pruning after successful installation and activation.
-Keep the new active build and the last active build, not the next lower version
-number. An identical reinstall must not shift that history. Preserve modified or
-otherwise unsafe-to-remove builds and report them. Without pruning, retain older
-builds. Installations from previous formats are unsupported; do not import them
-or adopt their directories and launchers.
-
-### Rollback is deferred
-
-Do not implement `--rollback` or `--set-version` in the initial feature. Retaining
-a previous build does not promise that it can safely be reactivated. The reasons
-to defer are:
-
-- Newer applications may migrate settings, databases, or documents incompatibly;
-  changing executable paths does not undo those migrations.
-- Running applications keep using their current build; switching launchers does
-  not switch existing processes.
-- Builds can differ in entry points, commands, icons, and shortcut definitions.
-- Updating several launchers can be interrupted, leaving mixed activation state;
-  recovery and ownership checks require a separate design.
-- Retained builds can be missing or modified and must be validated before use.
-
-Users may invoke an older installer, but that is a new installation attempt, not
-a guaranteed data downgrade or automatic rollback. Automated failure recovery is
-also distinct from a user-requested version switch. Deferring these new engine
-features does not remove the current .NET engine's activation recovery behavior.
+Doinstall owns the runtime, builder, Windows shim, schema, and installer behavior
+tests in its independent repository. Dotask owns generic InstallerArtifact
+transport and launching, plus shared `_/doinstall/*` adapters and
+`_/installer/install`. Producer/gather/archive orchestration remains task code.
+The authoritative installer design lives at
+[doinstall's design contract](https://github.com/kodybrown/doinstall/blob/main/docs/DESIGN.md).
 
 ## Deferred
 

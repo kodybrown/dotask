@@ -6,11 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <AssemblyMetadata Include="RepositoryRoot" Value="$(MSBuildProjectDirectory)/../.." />
-    <EmbeddedResource Include="../../.tasks/shim.rs" LogicalName="Shim/build-task.rs" />
-    <EmbeddedResource Include="../../src/Dotask.Shim/shim.c;../../src/Dotask.Shim/kernel32.def;../../src/Dotask.Shim/assets/hashes.json"
-                      LogicalName="Shim/%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../../src/Dotask.Shim/assets/win-*.exe"
-                      LogicalName="Shim/assets/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../.tasks/verify.rs;../../.tasks/verify-docs.rs;../../.tasks/catalog.rs"
                       LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../build.sh;../../build.cmd;../../.tasks/misc/bootstrap.targets"

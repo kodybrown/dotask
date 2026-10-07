@@ -6,7 +6,7 @@ These instructions apply to every task in this repository.
 
 - Product and command: `dotask`
 - C# namespace: `DoTask` (including `DoTask.Cli` and `DoTask.Runtime`)
-- Project type: Rust CLI and task SDK, .NET 10 reference CLI and C# support/library, and Rust installer
+- Project type: Rust CLI and task SDK, .NET 10 reference CLI and C# support/library
 - Integration checkout: the primary checkout on `develop`, located with `git worktree list --porcelain`
 - Integration branch: `develop`
 - Task worktree root: `../worktrees/ai` relative to the integration checkout
@@ -118,7 +118,7 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   `.yaml` files, and MSBuild `.targets` files are not tasks. Windows native bootstrap
   staging lives in `.tasks/misc/prepare-bootstrap.ps1`.
 - Author reusable task changes in `shared-tasks/`. Keep installed copies under
-  `.tasks/_/`, including `simple-installer/`, identical to their canonical sources.
+  `.tasks/_/`, including `doinstall/`, identical to their canonical sources.
 - Recursive task paths define full names; shared copies include source/group/task.
   The official source is `_`, the default for omitted sources; only the task-root
   `_` directory is exempt from underscore-prefixed discovery exclusions.
@@ -135,9 +135,9 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   project/target help reads YAML and checks effective defaults.
 - CLI-only `--help`/`-h` skips project discovery and reads; target completion skips project configuration; management completion stays local.
 - Keep YAML declarative and keep services deferred.
-- Shared `simple-installer/install` requires a `create-installer` returning an
+- Shared `installer/install` requires a `create-installer` returning an
   `InstallerArtifact`, then launches it. It never falls back to copying files.
-  Dotask’s standalone Rust installer uses YAML receipts and preserves
+  The external doinstall runtime uses YAML receipts and preserves
   existing ownership; payload selection stays in `.tasks/installer.yaml`. See `docs/INSTALLATION.md`.
   Preserve installation ownership, immutable builds, and activation recovery journals.
   Test with explicit temporary install/bin roots; do not modify the user's active install.
@@ -168,15 +168,16 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - `verify-docs` declares and executes `git/check` with `Whitespace = true` after
   checking required documents; plain `git/check` only checks tool availability.
 - All changes: `git diff --check`.
-- The required gate also checks bundled shim hashes. Changes to `src/Dotask.Shim`
-  require `./build.sh shim` with LLVM, review of both native delivery assets and
-  hashes, and native Windows acceptance. Ordinary builds/installs use bundled assets.
-- The gate builds and tests `src/dotask-installer` with Rust 1.95+, rustfmt, and
-  clippy before .NET integration tests. It also requires the `src/dotask-cli`
-  preview's Rust checks. Both packages belong to the root Cargo workspace and
-  share its `Cargo.lock` and release profile. `build-installer` builds the host
-  installer; `build` builds the native CLI and SDKs. Each accepts `--verify`
-  for tests, formatting, and clippy. Keep Rust outputs external too.
+- Doinstall owns installer, builder, shim sources/assets, and behavior verification
+  in its independent repository. Do not reintroduce those implementations here.
+  Canonical shared `_/doinstall/*` tasks wrap its tools; `_/installer/install`
+  launches generic artifacts. The source checkout for development is selected by
+  `settings.doinstall.source`; prebuilt tools can be supplied to assemble directly.
+- The gate tests dotask's Rust CLI/SDK with Rust 1.95+, rustfmt, and clippy, then
+  SDK and external-tool adapter integration. `test-sdks` prepares the configured
+  external tool pair through the shared build wrapper. Independent doinstall
+  tests belong to its own `build.cmd verify`/`./build.sh verify` gate. Keep outputs
+  external and query each project's evaluated Cargo target directory.
 - The Rust CLI reads common YAML headers without language toolchains and runs
   Rust tasks, C# tasks and YAML groups. C# compilation invokes the installed
   .NET SDK directly with isolated MSBuild hooks and the maintained helper DLL.

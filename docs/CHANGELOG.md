@@ -584,3 +584,32 @@ acceptance, installation, and publication.
   and bootstrap argument forwarding passed. Evaluated .NET and Cargo outputs
   remain external. No active installation, user PATH, publication, or push changed.
   Linux/macOS acceptance remains pending.
+
+### 2026-10-07 Extract doinstall into an independent repository
+
+- Move the standalone installer, builder, runtime schema/design ownership,
+  receipt/recovery logic, native shim sources/assets, and installer behavior
+  tests into the independent doinstall repository. Remove the installer Cargo
+  member and private build/shim tasks from dotask; its workspace now contains
+  only the CLI and Rust SDK.
+- Keep Rust shared adapters under doinstall and move technology-neutral artifact
+  launching to installer/install. Build an explicitly configured external checkout
+  through its own Cargo development tool, with optional source/environment overrides.
+  Keep producer/gather/archive orchestration in task YAML and use external tools
+  for SDK adapter integration. Refresh catalog/tracking for reviewed identical copies.
+- Pin CI's doinstall checkout to b3150eef78c342e6b81b0d4424ae86c432d50d3b.
+  The new repository remains local until separately pushed; remote CI cannot
+  fetch that pin until doinstall is published. No source download occurs implicitly
+  in local build tasks. Preserve direct checkout workflow and user verification
+  placeholders.
+- Normalize portable Rust SDK paths under Windows verbatim roots while preserving
+  UTF-16 filenames and raw process arguments. Add a focused file-creation regression
+  for the staging path issue exposed by full external-tool package creation.
+- Verification: build.cmd verify passed all 419 .NET Release tests and 15 Rust
+  tests plus formatting/clippy/docs/catalog/whitespace gates. Doinstall independently
+  passed 52 Rust tests and its shim integrity/PE checks. Temporary installer creation,
+  matching embedded build metadata, install/launch/retained uninstall, and external
+  GUI adapter/shortcut tests passed. Cargo outputs remain external. Shim delivery
+  bytes remain unchanged and their integrity test now lives in doinstall. No active
+  installation, user PATH, publication, or push changed; native Linux/macOS/ARM64
+  acceptance remains pending.
