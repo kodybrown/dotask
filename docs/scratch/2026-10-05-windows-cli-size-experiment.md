@@ -1,5 +1,8 @@
 # Windows x64 CLI size experiment (2026-10-05)
 
+Historical experiment: the C# executable and support host paths below refer to
+the inspected revisions. They are no longer present in the current checkout.
+
 This is measured evidence for one committed baseline, not a change to the
 [CLI transition design](../DESIGN.md#rust-cli-transition) or a claim of Native
 AOT support. No runtime source, dependencies, or packaging defaults changed.

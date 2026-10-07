@@ -125,6 +125,12 @@ impl Catalog {
   }
   pub fn find(&self, name: &str) -> Result<Option<&Target>> {
     let exact: Vec<_> = self.targets.iter().filter(|t| t.name.eq_ignore_ascii_case(name)).collect();
+    if exact.len() > 1 {
+      // No full-name spelling can disambiguate colliding files. Report the
+      // catalog's file-level diagnostic instead of suggesting the same command
+      // twice, including for existence queries and optional nested calls.
+      bail!("{}", exact[0].error.as_deref().unwrap_or("Ambiguous full target name."));
+    }
     let matches = if exact.is_empty() {
       self
         .targets

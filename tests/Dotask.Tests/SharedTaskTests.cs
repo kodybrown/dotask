@@ -1,22 +1,13 @@
-using System.Net;
-using System.Text;
 using System.Text.Json;
-using DoTask.Cli;
-using DoTask.Cli.Completion;
-using DoTask.Cli.Configuration;
-using DoTask.Cli.Discovery;
-using DoTask.Cli.Execution;
-using DoTask.Cli.SharedTasks;
 
 namespace DoTask.Tests;
 
 public class SharedTaskTests
 {
-  protected virtual bool NativeRunner => false;
   [Fact]
   public async Task ListingAlignsDescriptionsAndComparesActualCacheWithoutChangingProject()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Online("tools/one");
     fixture.Online("tools/longer");
     fixture.WriteCatalog();
@@ -50,7 +41,7 @@ public class SharedTaskTests
   [Fact]
   public async Task ListingDetectsPrivateSupportChangesAndUntrackedCopies()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/one", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"file\", \"value\": \"tools/data.txt\"}\n// end-dotask\n");
     var support = Path.Combine(fixture.Options.PrivateDirectory, "tools/data.txt");
     File.WriteAllText(support, "original");
@@ -71,14 +62,14 @@ public class SharedTaskTests
   [InlineData("_/dotnet/build")]
   public async Task OfficialSourceUsesReservedDirectoryAndQualifiedCompletion( string selection )
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Online("dotnet/build");
     fixture.WriteCatalog();
     var added = await fixture.Run("--add", selection);
     Assert.True(added.Code == 0, added.Error + added.Output);
     Assert.True(File.Exists(fixture.Installed("_/dotnet/build")));
     Assert.Equal("_", Assert.Single(fixture.Lock().Tasks).Value.Source);
-    Assert.Contains(CompletionEngine.Complete("dotask _/dotnet/b", fixture.Project.Root), c => c.Value == "_/dotnet/build");
+    Assert.Contains(NativeCompletion.Complete("dotask _/dotnet/b", fixture.Project.Root), c => c.Value == "_/dotnet/build");
     var help = await fixture.Run("--help");
     Assert.Contains("Official tasks (_)", help.Output);
   }
@@ -86,7 +77,7 @@ public class SharedTaskTests
   [Fact]
   public async Task SharedManagementRemovesIdleStateAndDryRunPreservesIt()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/one");
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/one")).Code);
     var state = Path.Combine(fixture.Project.Tasks, ".dotask");
@@ -105,64 +96,38 @@ public class SharedTaskTests
   [InlineData("notes.txt", "keep")]
   [InlineData("transaction/notes.txt", "keep")]
   [InlineData(".gitignore", "custom")]
-  public void IdleCleanupPreservesUnrecognizedFiles( string path, string content )
+  public async Task IdleCleanupPreservesUnrecognizedFiles( string path, string content )
   {
     using var project = new TestProject();
     project.Write(".tasks/.dotask/owner", "dotask shared-task transaction state v1\n");
     var file = project.Write(".tasks/.dotask/" + path, content);
-    new ProjectTaskTransaction(TaskDirectory.Locate(project.Root)).Apply([], CancellationToken.None);
+    Assert.Equal(0, (await RustArtifacts.Run(project.Root, ["--sync"], new(Path.Combine(project.Root, "cache"), Path.Combine(project.Root, "private")))).ExitCode);
     Assert.Equal(content, File.ReadAllText(file));
     Assert.True(File.Exists(Path.Combine(project.Tasks, ".dotask/owner")));
   }
 
   [Fact]
-  public void IdleCleanupRemovesRecognizedOrphanStaging()
+  public async Task IdleCleanupRemovesRecognizedOrphanStaging()
   {
     using var project = new TestProject();
     project.Write(".tasks/.dotask/owner", "dotask shared-task transaction state v1\n");
     project.Write(".tasks/.dotask/transaction/0.original", "backup");
     project.Write(".tasks/.dotask/transaction/1.new", "staged");
-    new ProjectTaskTransaction(TaskDirectory.Locate(project.Root)).Apply([], CancellationToken.None);
+    Assert.Equal(0, (await RustArtifacts.Run(project.Root, ["--sync"], new(Path.Combine(project.Root, "cache"), Path.Combine(project.Root, "private")))).ExitCode);
     Assert.False(Directory.Exists(Path.Combine(project.Tasks, ".dotask")));
-  }
-
-  [Fact]
-  public async Task OfficialCatalogMatchesSourcesAndPublishedCSharpTasksCompile()
-  {
-    using var project = new TestProject();
-    var assembly = typeof(SharedTaskTests).Assembly;
-    foreach (var name in assembly.GetManifestResourceNames().Where(n => n.StartsWith("Shared/", StringComparison.Ordinal))) {
-      using var stream = assembly.GetManifestResourceStream(name)!;
-      using var reader = new StreamReader(stream);
-      project.Write(".tasks/_/" + name[7..].Replace('\\', '/'), await reader.ReadToEndAsync());
-    }
-    var root = Path.Combine(project.Tasks, "_");
-    var catalog = JsonSerializer.Deserialize<SharedCatalog>(File.ReadAllBytes(Path.Combine(root, "catalog.json")), SharedTaskJson.Options)!;
-    foreach (var task in catalog.Tasks) {
-      foreach (var file in task.Files) {
-        Assert.Equal(file.Sha256, SharedTaskFiles.HashFile(Path.Combine(root, file.Path)));
-      }
-    }
-    var targets = new TargetCatalog(project.Tasks);
-    Assert.Equal(catalog.Tasks.Count(task => task.Runtime == "csharp"), targets.Targets.Count);
-    var compiler = new TargetCompiler();
-    foreach (var task in targets.Targets) {
-      var result = await compiler.CompileAsync(task, CancellationToken.None);
-      Assert.True(result.Success, task.Name + ": " + result.Diagnostics);
-    }
   }
 
   [Fact]
   public async Task PrivateSupportFilesAreTrackedAndSharedOwnershipPreventsPrematureRemoval()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/one", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"file\", \"value\": \"tools/_support/Helper.cs\"}\n// end-dotask\n");
     fixture.Private("tools/two", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"file\", \"value\": \"tools/_support/Helper.cs\"}\n// end-dotask\n");
     var support = Path.Combine(fixture.Options.PrivateDirectory, "tools/_support/Helper.cs");
     Directory.CreateDirectory(Path.GetDirectoryName(support)!);
     File.WriteAllText(support, "public static class Helper { }");
     Assert.Equal(0, (await fixture.Run("--add", "PRIVATE-TASKS/tools/{one,two}")).Code);
-    Assert.Equal(2, new TargetCatalog(fixture.Project.Tasks).Targets.Count);
+    Assert.Equal(2, NativeCompletion.Complete("dotask private-tasks/tools/", fixture.Project.Root).Count(c => c.Kind == "target"));
     var installed = Path.Combine(fixture.Project.Tasks, "private-tasks/tools/_support/Helper.cs");
     Assert.True(File.Exists(installed));
     Assert.Equal(0, (await fixture.Run("--remove", "private-tasks/tools/one")).Code);
@@ -179,7 +144,7 @@ public class SharedTaskTests
   [Fact]
   public async Task YamlTaskDependenciesAreCopiedAndShownInHelpButNeverAutomaticallyExecuted()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/run", metadata: "// dotask: 1\n// requires:\n//   - {\"kind\": \"task\", \"value\": \"tools/help\"}\n// end-dotask\n");
     fixture.Private("tools/help", "throw new TaskException(\"Do not automatically execute me\");");
     var added = await fixture.Run("--add", "private-tasks/tools/run");
@@ -202,7 +167,7 @@ public class SharedTaskTests
   [InlineData("// dotask: 1\n// requires:\n//   - {\"kind\": \"invalid\", \"value\": \"invalid\"}\n// end-dotask\n")]
   public async Task InvalidPrivateYamlDependenciesFailBeforeProjectMutation( string metadata )
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     var original = fixture.Private("tools/run", metadata: metadata);
     var bytes = File.ReadAllBytes(original);
     Assert.Equal(1, (await fixture.Run("--add", "private-tasks/tools/run")).Code);
@@ -214,7 +179,7 @@ public class SharedTaskTests
   [Fact]
   public async Task LegacyPrivateManifestFailsWithMigrationInstructionsWithoutChangingOriginals()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     var original = fixture.Private("tools/run");
     var manifest = Path.ChangeExtension(original, ".task.json");
     const string contents = "{\"requires\":[\"tools/check\"]}";
@@ -231,7 +196,7 @@ public class SharedTaskTests
   [Fact]
   public async Task ConcurrentAddsSerializeAndPreserveBothTrackingEntries()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/one");
     fixture.Private("tools/two");
     var results = await Task.WhenAll(fixture.Run("--add", "private-tasks/tools/one"), fixture.Run("--add", "private-tasks/tools/two"));
@@ -242,13 +207,12 @@ public class SharedTaskTests
   [Fact]
   public async Task CustomDirectoryUsesRootConfigAndLockCannotManageAnotherDirectory()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Project.Write(".dotasks.yaml", "name: anchored\nsettings: {}\n");
     fixture.Private("tools/one");
     var result = await fixture.Run("--use-dir", "build/tasks", "--add", "private-tasks/tools/one");
     Assert.True(result.Code == 0, result.Error);
-    var directory = TaskDirectory.Locate(fixture.Project.Root, "build/tasks");
-    Assert.Equal(fixture.Project.Root, directory.RootDirectory);
+    Assert.Contains("anchored", (await fixture.Run("--use-dir", "build/tasks", "--verbose")).Output);
     Assert.True(File.Exists(Path.Combine(fixture.Project.Root, "build/tasks/private-tasks/tools/one.cs")));
     Assert.Equal(1, (await fixture.Run("--remove", "private-tasks/tools/one")).Code);
     Assert.Equal(0, (await fixture.Run("--use-dir", "build/tasks", "--remove", "private-tasks/tools/one")).Code);
@@ -257,7 +221,7 @@ public class SharedTaskTests
   [Fact]
   public async Task UnrecognizedInternalDirectoryIsNeverRemovedOrAdopted()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/one");
     var handwritten = fixture.Project.Write(".tasks/.dotask/transaction/notes.txt", "keep this");
     Assert.Equal(1, (await fixture.Run("--add", "private-tasks/tools/one")).Code);
@@ -268,7 +232,7 @@ public class SharedTaskTests
   [Fact]
   public async Task UnsupportedCatalogRuntimeAndDependencyCyclesFailWithoutMutations()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Online("tools/one", dependencies: ["tools/two"]);
     fixture.Online("tools/two", dependencies: ["tools/one"]);
     fixture.WriteCatalog();
@@ -283,63 +247,25 @@ public class SharedTaskTests
   [Fact]
   public async Task ManagementCompletionUsesOnlyLocalMetadataAndInstalledTracking()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/hello");
-    var suggestions = CompletionEngine.Complete("dotask --add private-tasks/tools/h", fixture.Project.Root,
+    var suggestions = NativeCompletion.Complete("dotask --add private-tasks/tools/h", fixture.Project.Root,
       sharedTaskOptions: fixture.Options);
     Assert.Contains(suggestions, c => c.Value == "private-tasks/tools/hello");
     Assert.False(Directory.Exists(fixture.Options.CacheDirectory));
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/hello")).Code);
     Directory.Delete(fixture.Options.PrivateDirectory, true);
     Directory.Delete(fixture.Options.CacheDirectory, true);
-    suggestions = CompletionEngine.Complete("dotask --remove private-tasks/tools/h", fixture.Project.Root,
+    suggestions = NativeCompletion.Complete("dotask --remove private-tasks/tools/h", fixture.Project.Root,
       sharedTaskOptions: fixture.Options);
     Assert.Contains(suggestions, c => c.Value == "private-tasks/tools/hello");
     Assert.False(Directory.Exists(fixture.Options.CacheDirectory));
   }
 
   [Fact]
-  public void RootConfigAnchorsAnEmptyProjectAndNestedTaskNamesStayUnambiguous()
-  {
-    using var project = new TestProject();
-    Directory.Delete(project.Tasks);
-    project.Write(".dotasks.yaml", "name: Root project\nsettings: { message: hello }");
-    var child = Path.Combine(project.Root, "src");
-    Directory.CreateDirectory(child);
-    var directory = TaskDirectory.Locate(child);
-    Assert.Equal(project.Root, directory.RootDirectory);
-    Assert.Empty(new TargetCatalog(directory.DirectoryPath).Targets);
-    Assert.Equal("Root project", ProjectConfiguration.Load(directory.DirectoryPath).Name);
-    project.Target("_/dotnet/build", metadata: "// dotask: 1\n// description: \"Build.\"\n// end-dotask\n");
-    var catalog = new TargetCatalog(project.Tasks);
-    Assert.Equal("_/dotnet/build", catalog.Get("build").Name);
-    Assert.Same(catalog.Get("build"), catalog.Get("dotnet/build"));
-    Assert.Same(catalog.Get("build"), catalog.Get("DOTNET-BUILD"));
-    project.Target("second-source/dotnet/build");
-    catalog = new TargetCatalog(project.Tasks);
-    Assert.Throws<TaskException>(() => catalog.Get("build"));
-    Assert.Throws<TaskException>(() => catalog.Get("dotnet/build"));
-    project.Target("build");
-    project.Write(".tasks/_/dotnet/_support/Helper.cs", "invalid C# helper");
-    catalog = new TargetCatalog(project.Tasks);
-    Assert.Equal("build", catalog.Get("build").Name);
-    Assert.Equal(3, catalog.Targets.Count);
-    Assert.Contains(CompletionEngine.Complete("dotask second-source/dotnet/b", project.Root), c => c.Value == "second-source/dotnet/build");
-  }
-
-  [Fact]
-  public void RootAndLegacyConfigCannotSilentlyMerge()
-  {
-    using var project = new TestProject();
-    project.Write(".dotasks.yaml", "settings: {}");
-    project.Write(".tasks/config.yaml", "settings: {}");
-    Assert.Contains("Both", Assert.Throws<TaskException>(() => ProjectConfiguration.Load(project.Tasks)).Message);
-  }
-
-  [Fact]
   public async Task AddCopiesPrivateTasksAndPreservesHandwrittenConfiguration()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     var original = fixture.Private("my-tasks/sortini");
     var yaml = "# handwritten comment\nname: 'My project'\nsettings: { value: 42 }\n";
     fixture.Project.Write(".dotasks.yaml", yaml);
@@ -361,7 +287,7 @@ public class SharedTaskTests
   [InlineData(true)]
   public async Task AddNeverOverwritesUntrackedFilesEvenWhenBytesMatch( bool identical )
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     var original = fixture.Private("tools/hello");
     var existing = identical ? File.ReadAllText(original) : "// handwritten task";
     fixture.Project.Write(".tasks/private-tasks/tools/hello.cs", existing);
@@ -375,7 +301,7 @@ public class SharedTaskTests
   [Fact]
   public async Task AddSyncAndRemoveProtectLocalEditsAndDeletion()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     var source = fixture.Private("tools/hello");
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/hello")).Code);
     var originalLock = File.ReadAllBytes(fixture.LockPath);
@@ -400,7 +326,7 @@ public class SharedTaskTests
   [Fact]
   public async Task ReviewedMergeUpdatesBaselineWithoutOverwritingLocalContent()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     var original = fixture.Private("tools/hello");
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/hello")).Code);
     File.AppendAllText(original, "\n// upstream\n");
@@ -418,7 +344,7 @@ public class SharedTaskTests
   [Fact]
   public async Task AcceptMergeCannotAcknowledgeAnUnreviewedNewerRevision()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     var source = fixture.Private("tools/hello");
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/hello")).Code);
     File.AppendAllText(fixture.Installed("private-tasks/tools/hello"), "\n// local\n");
@@ -433,7 +359,7 @@ public class SharedTaskTests
   [Fact]
   public async Task UntouchedFilesSyncAndCanBeRemovedAgainstTheirInstalledVersionOffline()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     var original = fixture.Private("tools/hello");
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/hello")).Code);
     File.AppendAllText(original, "\n// new upstream\n");
@@ -452,7 +378,7 @@ public class SharedTaskTests
   [Fact]
   public async Task DryRunDoesNotCreateProjectFilesAndWildcardsAreFixedSelections()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     Directory.Delete(fixture.Project.Tasks);
     fixture.Private("tools/one");
     fixture.Private("tools/two");
@@ -469,7 +395,7 @@ public class SharedTaskTests
   [Fact]
   public async Task MissingOrInvalidTrackingNeverAdoptsOrDeletesProjectFiles()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/hello");
     Assert.Equal(0, (await fixture.Run("--add", "private-tasks/tools/hello")).Code);
     var task = File.ReadAllBytes(fixture.Installed("private-tasks/tools/hello"));
@@ -484,7 +410,7 @@ public class SharedTaskTests
   [Fact]
   public async Task AConflictPreventsPartialChangesAcrossTheWholeBatch()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/one");
     fixture.Private("tools/two");
     fixture.Project.Write(".tasks/private-tasks/tools/two.cs", "// keep");
@@ -496,7 +422,7 @@ public class SharedTaskTests
   [Fact]
   public async Task OnlineDownloadIsSelectiveVerifiedAndReusableOffline()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Online("dotnet/one");
     fixture.Online("dotnet/two");
     fixture.WriteCatalog();
@@ -514,7 +440,7 @@ public class SharedTaskTests
   [Fact]
   public async Task CorruptOnlineFilesAndUnsafeCatalogPathsNeverReachTheProject()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Online("dotnet/build");
     fixture.WriteCatalog();
     File.AppendAllText(Path.Combine(fixture.OnlineDirectory, "dotnet/build.cs"), "tampered");
@@ -532,7 +458,7 @@ public class SharedTaskTests
   [Fact]
   public async Task RequiredTasksAndSharedSupportFilesAreInstalledAndRemovedSafely()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Online("dotnet/restore");
     fixture.Online("dotnet/build", dependencies: ["dotnet/restore"]);
     fixture.WriteCatalog();
@@ -550,7 +476,7 @@ public class SharedTaskTests
     if (OperatingSystem.IsWindows()) {
       return;
     }
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/hello");
     var outside = Path.Combine(fixture.Root, "outside");
     Directory.CreateDirectory(outside);
@@ -561,76 +487,9 @@ public class SharedTaskTests
   }
 
   [Fact]
-  public void TransactionRollsBackFilesAndTrackingAfterFailure()
-  {
-    using var project = new TestProject();
-    project.Write(".tasks/tools/one.cs", "original");
-    project.Write(".dotasks-lock.yaml", "old lock");
-    var transaction = new ProjectTaskTransaction(TaskDirectory.Locate(project.Root));
-    TaskFileChange[] changes = [
-      new(".tasks/tools/one.cs", SharedTaskFiles.Hash("original"), "new"u8.ToArray()),
-      new(".tasks/tools/two.cs", null, "new file"u8.ToArray()),
-      new(".dotasks-lock.yaml", SharedTaskFiles.Hash("old lock"), "new lock"u8.ToArray())];
-    Assert.Throws<IOException>(() => transaction.Apply(changes, CancellationToken.None, index =>
-    {
-      if (index == 1) {
-        throw new IOException("Simulated interrupted update");
-      }
-    }));
-    Assert.Equal("original", File.ReadAllText(Path.Combine(project.Tasks, "tools/one.cs")));
-    Assert.Equal("old lock", File.ReadAllText(Path.Combine(project.Root, ".dotasks-lock.yaml")));
-    Assert.False(File.Exists(Path.Combine(project.Tasks, "tools/two.cs")));
-    Assert.False(transaction.HasPending);
-    Assert.False(Directory.Exists(Path.Combine(project.Tasks, ".dotask")));
-  }
-
-  [Fact]
-  public void InterruptedTransactionRecoversButNeverOverwritesSubsequentUserEdits()
-  {
-    using var project = new TestProject();
-    project.Write(".tasks/tools/one.cs", "new");
-    project.Write(".tasks/.dotask/owner", "dotask shared-task transaction state v1\n");
-    project.Write(".tasks/.dotask/transaction/0.original", "original");
-    var journal = new ProjectTaskTransaction.Journal(1,
-      [new(".tasks/tools/one.cs", SharedTaskFiles.Hash("original"), SharedTaskFiles.Hash("new"), "0.original")]);
-    project.Write(".tasks/.dotask/transaction/journal.json", JsonSerializer.Serialize(journal, SharedTaskJson.Options));
-    var transaction = new ProjectTaskTransaction(TaskDirectory.Locate(project.Root));
-    project.Write(".tasks/tools/one.cs", "later edit");
-    Assert.Throws<TaskException>(() => transaction.Recover());
-    Assert.Equal("later edit", File.ReadAllText(Path.Combine(project.Tasks, "tools/one.cs")));
-    Assert.True(transaction.HasPending);
-    project.Write(".tasks/tools/one.cs", "new");
-    transaction.Recover();
-    Assert.Equal("original", File.ReadAllText(Path.Combine(project.Tasks, "tools/one.cs")));
-    Assert.False(transaction.HasPending);
-    Assert.False(Directory.Exists(Path.Combine(project.Tasks, ".dotask")));
-  }
-
-  [Fact]
-  public async Task HttpCatalogAndFilesUseSelectiveRequestsAndVerifyHashes()
-  {
-    using var fixture = new Fixture(NativeRunner);
-    fixture.Online("tools/hello");
-    fixture.Online("tools/unused");
-    var requests = new List<string>();
-    using var client = new HttpClient(new Handler(request =>
-    {
-      var path = request.RequestUri!.AbsolutePath.Split("/shared-tasks/")[1];
-      requests.Add(path);
-      var bytes = path == "catalog.json" ? JsonSerializer.SerializeToUtf8Bytes(new SharedCatalog(1, fixture.CatalogTasks.ToArray()), SharedTaskJson.Options)
-        : File.ReadAllBytes(Path.Combine(fixture.OnlineDirectory, path));
-      return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
-    }));
-    var store = new SharedTaskStore(fixture.Options with { OnlineDirectory = null }, client);
-    var catalog = await store.CatalogAsync("_", true, CancellationToken.None);
-    await store.SaveAsync("_", catalog.Tasks[0], CancellationToken.None);
-    Assert.Equal(["catalog.json", "tools/hello.cs"], requests);
-  }
-
-  [Fact]
   public async Task FreshCheckoutRunsQualifiedNestedTasksWithoutAnySourceOrCache()
   {
-    using var fixture = new Fixture(NativeRunner);
+    using var fixture = new Fixture();
     fixture.Private("tools/child", "Console.WriteLine(BuildContext.Current.Config.Get<string>(\"message\") + \":\" + BuildContext.Current.TargetName);");
     fixture.Private("tools/parent", "await BuildContext.Current.ExecTargetAsync(\"private-tasks/tools/child\");", async: true);
     fixture.Project.Write(".dotasks.yaml", "settings: { message: offline }");
@@ -651,11 +510,6 @@ public class SharedTaskTests
     Assert.False(Directory.Exists(fixture.Options.PrivateDirectory));
   }
 
-  private sealed class Handler( Func<HttpRequestMessage, HttpResponseMessage> response ) : HttpMessageHandler
-  {
-    protected override Task<HttpResponseMessage> SendAsync( HttpRequestMessage request, CancellationToken cancellationToken ) => Task.FromResult(response(request));
-  }
-
   private sealed class Fixture : IDisposable
   {
     public TestProject Project { get; } = new();
@@ -665,8 +519,7 @@ public class SharedTaskTests
     public string LockPath => Path.Combine(Project.Root, ".dotasks-lock.yaml");
     public List<SharedTask> CatalogTasks { get; } = [];
 
-    private readonly bool _nativeRunner;
-    public Fixture( bool nativeRunner ) { _nativeRunner = nativeRunner; Options = new(Path.Combine(Root, "cache"), Path.Combine(Root, "private"), OnlineDirectory); }
+    public Fixture() { Options = new(Path.Combine(Root, "cache"), Path.Combine(Root, "private"), OnlineDirectory); }
     public string Installed( string id ) => Path.Combine(Project.Tasks, id + ".cs");
     public TaskLock Lock() => TaskLock.Read(File.ReadAllBytes(LockPath), ".tasks");
     public string Private( string id, string body = "Console.WriteLine(\"hello\");", bool async = false, string metadata = "" )
@@ -698,14 +551,8 @@ public class SharedTaskTests
     }
     public async Task<(int Code, string Output, string Error)> Run( params string[] args )
     {
-      if (_nativeRunner) {
-        var result = await RustArtifacts.Run(Project.Root, args, Options);
-        return (result.ExitCode, result.StandardOutput, result.StandardError);
-      }
-      using var output = new StringWriter();
-      using var error = new StringWriter();
-      var code = await CliApplication.RunAsync(args, Project.Root, output, error, sharedTaskOptions: Options);
-      return (code, output.ToString(), error.ToString());
+      var result = await RustArtifacts.Run(Project.Root, args, Options);
+      return (result.ExitCode, result.StandardOutput, result.StandardError);
     }
     public void Dispose()
     {

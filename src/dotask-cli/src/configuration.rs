@@ -90,7 +90,7 @@ pub(crate) fn load(directory: &Directory) -> Result<Value> {
   }
   let text = |key: &str| -> Result<Option<String>> {
     match get(&value, key) {
-      None => Ok(None),
+      None | Some(Value::Null) => Ok(None),
       Some(Value::String(s)) => Ok((!s.trim().is_empty()).then(|| s.trim().to_owned())),
       _ => bail!("{source} {key} must be a string."),
     }

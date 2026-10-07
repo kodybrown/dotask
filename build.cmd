@@ -17,6 +17,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".tasks\misc\prepare-boo
 set "dotask_exit_code=%errorlevel%"
 if not "%dotask_exit_code%"=="0" goto cleanup
 set "DOTASK_SOURCE_RUST_SDK=%CD%\src\dotask-sdk"
+set "DOTASK_SOURCE_ROOT=%CD%"
 set "DOTASK_SOURCE_SDK_STAGE=%dotask_bootstrap_dir%\sdk"
 "%dotask_bootstrap_dir%\dotask.exe" %*
 set "dotask_exit_code=%errorlevel%"

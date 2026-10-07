@@ -1,9 +1,3 @@
-using DoTask.Cli;
-using DoTask.Cli.Completion;
-using DoTask.Cli.Configuration;
-using DoTask.Cli.Discovery;
-using DoTask.Cli.Execution;
-
 namespace DoTask.Tests;
 
 public sealed class TaskGroupTests
@@ -20,7 +14,7 @@ public sealed class TaskGroupTests
     project.Write(".tasks/check.task", yaml);
     using var output = new StringWriter();
     using var error = new StringWriter();
-    var code = await CliApplication.RunAsync(["check"], project.Root, output, error);
+    var code = await NativeCli.RunAsync(["check"], project.Root, output, error);
     Assert.Equal(expected, code);
     Assert.Empty(output.ToString());
     if (expected == 0) {
@@ -49,11 +43,11 @@ public sealed class TaskGroupTests
   [InlineData("{}")]
   [InlineData("steps: [broken")]
   [InlineData("steps: &loop [*loop]")]
-  public void MalformedGroupsHaveMetadataErrors( string yaml )
+  public async Task MalformedGroupsHaveMetadataErrors( string yaml )
   {
     using var project = new TestProject();
     project.Write(".tasks/check.task", yaml);
-    Assert.NotNull(Assert.Single(new TargetCatalog(project.Tasks).Targets).Error);
+    Assert.Contains("Metadata error", (await project.RunAsync()).StandardOutput);
   }
 
   [Fact]
@@ -63,14 +57,14 @@ public sealed class TaskGroupTests
     project.Write(".tasks/tools/check.task", "description: Check everything.\nsteps: [{run: missing, optional: true, with: {flag: true}}]");
     using var output = new StringWriter();
     using var error = new StringWriter();
-    Assert.Equal(0, await CliApplication.RunAsync(["help", "check"], project.Root, output, error));
+    Assert.Equal(0, await NativeCli.RunAsync(["help", "check"], project.Root, output, error));
     Assert.Contains("Check everything.", output.ToString());
     Assert.Contains("./.tasks/tools/check.task", output.ToString());
     Assert.Contains("missing (optional)", output.ToString());
     Assert.Contains("with flag: true", output.ToString());
-    Assert.Contains(CompletionEngine.Complete("dotask tools/c", project.Root), c => c.Value == "tools/check");
+    Assert.Contains(NativeCompletion.Complete("dotask tools/c", project.Root), c => c.Value == "tools/check");
     project.Target("tools/check");
-    Assert.Throws<TaskException>(() => new TargetCatalog(project.Tasks).Get("tools/check"));
+    Assert.Equal(1, (await project.RunAsync("help", "tools/check")).ExitCode);
   }
 
   [Fact]
@@ -131,7 +125,7 @@ public sealed class TaskGroupTests
     project.Write(".tasks/two/same.task", "steps: []");
     using var output = new StringWriter();
     using var error = new StringWriter();
-    Assert.Equal(1, await CliApplication.RunAsync(["check"], project.Root, output, error));
+    Assert.Equal(1, await NativeCli.RunAsync(["check"], project.Root, output, error));
     Assert.Contains(diagnostic, error.ToString());
   }
 
@@ -160,24 +154,4 @@ public sealed class TaskGroupTests
     Assert.Contains("Compilation failed", result.StandardError);
   }
 
-  [Fact]
-  public void SharedSourceEnumerationStillExcludesProjectGroups()
-  {
-    using var project = new TestProject();
-    project.Target("tools/run");
-    project.Write(".tasks/tools/group.task", "steps: []");
-    Assert.Single(TargetCatalog.EnumerateSources(project.Tasks, false));
-    Assert.Equal(2, new TargetCatalog(project.Tasks).Targets.Count);
-  }
-
-  [Fact]
-  public async Task CancellationIsHonoredEvenForEmptyGroups()
-  {
-    using var project = new TestProject();
-    project.Write(".tasks/check.task", "steps: []");
-    var directory = TaskDirectory.Locate(project.Root);
-    var executor = new TargetExecutor(directory, ProjectConfiguration.Empty, new TargetCompiler());
-    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => executor.ExecuteAsync(
-      new TargetCatalog(project.Tasks).Get("check"), [], new CancellationToken(true)));
-  }
 }

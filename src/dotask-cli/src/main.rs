@@ -17,6 +17,9 @@ mod transaction;
 mod wizard;
 mod yaml;
 
+#[cfg(test)]
+mod regression_tests;
+
 fn main() {
   // Preserve the full Windows exit code; ExitCode::from(u8) would truncate it.
   std::process::exit(cli::run(std::env::args_os().skip(1).collect()));

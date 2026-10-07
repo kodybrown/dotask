@@ -8,7 +8,7 @@ public sealed class InstallerWorkflowTests
   [Fact]
   public async Task MissingFailedAmbiguousAndResultlessCreatorsNeverFallBackToDirectInstallation()
   {
-    using var project = new TestProject { NativeRunner = true };
+    using var project = new TestProject();
     CopyInstall(project);
     var result = await project.RunAsync("install");
     Assert.NotEqual(0, result.ExitCode);
@@ -34,7 +34,7 @@ public sealed class InstallerWorkflowTests
   [Fact]
   public async Task SharedInstallAlwaysBuildsAndRunsReturnedInstallerWithExactArgumentsAndCustomOverride()
   {
-    using var project = new TestProject { NativeRunner = true };
+    using var project = new TestProject();
     CopyInstall(project);
     project.WriteBuildProperties();
     project.Write("installer/Probe.csproj", """
@@ -104,7 +104,7 @@ public sealed class InstallerWorkflowTests
   [Fact]
   public async Task ResultValidationRejectsMissingArtifactsWrongPlatformsAndDuplicateResults()
   {
-    using var project = new TestProject { NativeRunner = true };
+    using var project = new TestProject();
     var context = project.Context();
     var file = project.Write(OperatingSystem.IsWindows() ? "installer.exe" : "installer", "not executed");
     var artifact = new InstallerArtifact { FilePath = file, Kind = InstallerKind.Executable, OS = context.OS, Architecture = context.Architecture };
@@ -132,7 +132,7 @@ public sealed class InstallerWorkflowTests
       return;
     }
 
-    using var project = new TestProject { NativeRunner = true };
+    using var project = new TestProject();
     var file = project.Write("installer with spaces.sh", "printf '%s' \"$1\" > result\nexit 19\n");
     var context = project.Context();
     var error = await Assert.ThrowsAsync<ProcessFailedException>(() => context.RunInstallerAsync(new InstallerArtifact {

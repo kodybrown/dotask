@@ -8,13 +8,12 @@ use serde_json::Value;
 use std::path::Path;
 
 pub(crate) fn script(shell: &str) -> Result<i32> {
-  // Both runners serve the same shell protocol. Keep one canonical script per
-  // shell until the maintained C# reference CLI is retired.
+  // Keep one canonical adapter per shell alongside its native query protocol.
   let script = match shell.to_ascii_lowercase().as_str() {
-    "bash" => include_str!("../../Dotask.Cli/Completion/Scripts/bash"),
-    "zsh" => include_str!("../../Dotask.Cli/Completion/Scripts/zsh"),
-    "fish" => include_str!("../../Dotask.Cli/Completion/Scripts/fish"),
-    "powershell" => include_str!("../../Dotask.Cli/Completion/Scripts/powershell"),
+    "bash" => include_str!("../completion/bash"),
+    "zsh" => include_str!("../completion/zsh"),
+    "fish" => include_str!("../completion/fish"),
+    "powershell" => include_str!("../completion/powershell"),
     _ => bail!("Choose a completion shell: bash, zsh, fish, or powershell."),
   };
   print!("{script}");

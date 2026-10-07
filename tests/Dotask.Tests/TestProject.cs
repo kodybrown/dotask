@@ -1,14 +1,11 @@
 using System.Text.Json;
 using System.Xml.Linq;
-using DoTask.Cli;
-using DoTask.Cli.Execution;
 using DoTask.Runtime;
 
 namespace DoTask.Tests;
 
 public sealed class TestProject : IDisposable
 {
-  public bool NativeRunner { get; init; }
   public string Root { get; } = Path.Combine(Path.GetTempPath(), "dotask-tests", "project with spaces " + Guid.NewGuid().ToString("N"));
   public string Tasks => Path.Combine(Root, ".tasks");
   public string OutputRoot => Path.Combine(OperatingSystem.IsWindows() ? @"C:\tmp\_dotnet" : "/tmp/_dotnet",
@@ -63,8 +60,8 @@ public sealed class TestProject : IDisposable
     TaskDirectory = Tasks,
     TargetFile = Path.Combine(Tasks, "test.cs"),
     TargetName = "test",
-    CliExecutable = DotnetHost.Find(),
-    CliArguments = [typeof(CliApplication).Assembly.Location],
+    CliExecutable = RustArtifacts.Binary("dotask"),
+    CliArguments = [],
     SessionDirectory = Root,
     Settings = JsonSerializer.SerializeToElement(new { }),
     Parameters = JsonSerializer.SerializeToElement(new { }),
@@ -73,19 +70,24 @@ public sealed class TestProject : IDisposable
 
   public async Task<ProcessResult> RunAsync( params string[] arguments ) => await RunFromAsync(Root, arguments);
 
-  public async Task<ProcessResult> RunFromAsync( string directory, params string[] arguments )
+  public Task<ProcessResult> RunFromAsync( string directory, params string[] arguments )
+    => RustArtifacts.Run(directory, arguments);
+
+  public async Task<string> BuildProcessProbeAsync( string source )
   {
-    if (NativeRunner) {
-      return await RustArtifacts.Run(directory, arguments);
-    }
-    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
-    return await ProcessRunner.RunAsync(new ProcessDefinition {
+    // ProcessRunner belongs to the maintained C# helper. Build its child probe
+    // directly with the SDK rather than depending on a CLI compiler API.
+    WriteBuildProperties("probe/Directory.Build.props", "<TargetFramework>net10.0</TargetFramework>");
+    var project = Write("probe/Probe.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings></PropertyGroup></Project>");
+    Write("probe/Program.cs", source);
+    var result = await Context().RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),
-      Arguments = [typeof(CliApplication).Assembly.Location, .. arguments],
-      WorkingDirectory = directory,
-      CaptureOutput = true,
-      ThrowOnError = false
-    }, timeout.Token);
+      Arguments = ["build", project, "-c", "Release", "--nologo", "-t:Build", "-getProperty:TargetPath"],
+      CaptureOutput = true
+    });
+    var path = result.StandardOutput.Trim();
+    Assert.True(File.Exists(path), result.StandardOutput + result.StandardError);
+    return path;
   }
 
   public void Dispose()

@@ -1,7 +1,4 @@
 using System.Text.Json;
-using DoTask.Cli;
-using DoTask.Cli.Execution;
-using DoTask.Cli.Metadata;
 
 namespace DoTask.Tests;
 
@@ -151,12 +148,10 @@ public sealed class IntegrationTests
     Assert.Contains("exit code 7", failure.StandardError);
   }
 
-  [Theory]
-  [InlineData(false)]
-  [InlineData(true)]
-  public async Task TargetCompilationIsolatesConsumerMsbuildButSupportsIncludedFiles( bool native )
+  [Fact]
+  public async Task TargetCompilationIsolatesConsumerMsbuildButSupportsIncludedFiles()
   {
-    using var project = new TestProject { NativeRunner = native };
+    using var project = new TestProject();
     project.Write("Directory.Build.props", "<Project><PropertyGroup><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>");
     project.Write("Directory.Build.targets", "<Project><Target Name=\"Poison\" BeforeTargets=\"Build\"><Error Text=\"CONSUMER-BUILD-RAN\" /></Target></Project>");
     project.Write(".tasks/shared/Words.cs", "public static class Words { public static string Message => \"included\"; }");
@@ -245,12 +240,10 @@ public sealed class IntegrationTests
     Assert.False(File.Exists(Path.Combine(project.Root, "marker")));
   }
 
-  [Theory]
-  [InlineData(false)]
-  [InlineData(true)]
-  public async Task NativeFileBasedPackageReferencesAreSupported( bool native )
+  [Fact]
+  public async Task NativeFileBasedPackageReferencesAreSupported()
   {
-    using var project = new TestProject { NativeRunner = native };
+    using var project = new TestProject();
     project.Write(".tasks/package.cs", """
       #:package YamlDotNet@16.3.0
       Console.WriteLine(typeof(YamlDotNet.RepresentationModel.YamlStream).Name);
@@ -260,12 +253,10 @@ public sealed class IntegrationTests
     Assert.Contains("YamlStream", result.StandardOutput);
   }
 
-  [Theory]
-  [InlineData(false)]
-  [InlineData(true)]
-  public async Task NativeProjectReferencesKeepTheirOwnBuildProperties( bool native )
+  [Fact]
+  public async Task NativeProjectReferencesKeepTheirOwnBuildProperties()
   {
-    using var project = new TestProject { NativeRunner = native };
+    using var project = new TestProject();
     project.WriteBuildProperties("shared/Directory.Build.props",
       "<TargetFramework>net10.0</TargetFramework><DefineConstants>LIBRARY_FLAG</DefineConstants>");
     project.Write("shared/Library.csproj", "<Project Sdk=\"Microsoft.NET.Sdk\" />");
@@ -286,29 +277,27 @@ public sealed class IntegrationTests
     Assert.Contains("library-built", result.StandardOutput);
   }
 
-  [Fact]
-  public async Task DirectCompilationAcceptsPortableSeparatorsAndRecordsOutput()
-  {
-    using var project = new TestProject();
-    var file = project.Target("nested/run", "Console.WriteLine(typeof(BuildContext).Name);");
-    // Keep this input unnormalized even though the fixture normally returns
-    // native paths: direct compiler callers can supply portable separators.
-    var target = MetadataReader.Read(file.Replace('\\', '/'));
-    var result = await new TargetCompiler().CompileAsync(target, CancellationToken.None);
-    Assert.True(result.Success, result.Diagnostics);
-    Assert.True(File.Exists(result.AssemblyPath));
-  }
 
   [Fact]
-  public async Task ConcurrentCompilationUsesConsistentSnapshots()
+  public async Task ConcurrentNativeCompilationUsesDistinctConsistentSnapshots()
   {
     using var project = new TestProject();
-    var target = MetadataReader.Read(project.Target("run", "Console.WriteLine(\"concurrent\");"));
-    var compiler = new TargetCompiler(cacheRoot: Path.Combine(project.Root, "cache"));
-    var results = await Task.WhenAll(Enumerable.Range(0, 2).Select(i => compiler.CompileAsync(target, CancellationToken.None,
-      Path.Combine(project.Root, "snapshot" + i))));
-    Assert.All(results, result => Assert.True(result.Success, result.Diagnostics));
-    Assert.NotEqual(results[0].AssemblyPath, results[1].AssemblyPath);
-    Assert.Equal(File.ReadAllBytes(results[0].AssemblyPath!), File.ReadAllBytes(results[1].AssemblyPath!));
+    project.Target("nested/run", """
+      var assembly = System.Reflection.Assembly.GetExecutingAssembly().Location;
+      Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new {
+        Path = assembly,
+        Hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(assembly)))
+      }));
+      await Task.Delay(500);
+      """, async: true);
+    // Portable separators enter the native CLI rather than a retired compiler API.
+    var results = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ =>
+      project.RunAsync("--use-dir", project.Tasks.Replace('\\', '/'), "nested/run")));
+    Assert.All(results, result => Assert.True(result.ExitCode == 0, result.StandardError));
+    using var first = JsonDocument.Parse(results[0].StandardOutput);
+    using var second = JsonDocument.Parse(results[1].StandardOutput);
+    Assert.NotEqual(first.RootElement.GetProperty("Path").GetString(), second.RootElement.GetProperty("Path").GetString());
+    Assert.Equal(first.RootElement.GetProperty("Hash").GetString(), second.RootElement.GetProperty("Hash").GetString());
+    Assert.All(new[] { first, second }, document => Assert.False(File.Exists(document.RootElement.GetProperty("Path").GetString())));
   }
 }

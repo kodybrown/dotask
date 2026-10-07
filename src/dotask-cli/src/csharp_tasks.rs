@@ -224,3 +224,51 @@ fn copy_output(source: &Path, destination: &Path) -> Result<()> {
   }
   Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn published_csharp_tasks_compile_with_native_host_without_execution() {
+    let repository = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
+    let project = repository.join("src/Dotask/Dotask.csproj");
+    // The retired CLI exposed a compile-only API used by this regression. Test
+    // the native compiler directly, keeping task entry points unexecuted and
+    // using the SDK's evaluated output path for the maintained helper library.
+    let dotnet = std::env::var_os("DOTNET_HOST_PATH").unwrap_or_else(|| "dotnet".into());
+    let helper = Command::new(&dotnet)
+      .current_dir(repository)
+      .arg("build")
+      .arg(&project)
+      .args([
+        "-c",
+        "Release",
+        "--nologo",
+        "--verbosity",
+        "quiet",
+        "-t:Build",
+        "-getProperty:TargetPath",
+      ])
+      .output()
+      .unwrap();
+    assert!(helper.status.success(), "{}", String::from_utf8_lossy(&helper.stderr));
+    let assembly = PathBuf::from(String::from_utf8(helper.stdout).unwrap().trim());
+    assert!(assembly.is_file(), "Missing helper at {}", assembly.display());
+    let host = Host { dotnet, assembly };
+    let root = repository.join("shared-tasks");
+    let snapshot = tempfile::tempdir().unwrap();
+    let files = crate::catalog::sources(&root, false, false).unwrap();
+    assert!(!files.is_empty());
+    for (index, file) in files.iter().enumerate() {
+      let target = crate::task_metadata::metadata(file, &root);
+      assert!(target.error.is_none(), "{}: {:?}", file.display(), target.error);
+      let output = snapshot.path().join(index.to_string());
+      fs::create_dir(&output).unwrap();
+      let compiled = host
+        .compile(&target, &output)
+        .unwrap_or_else(|error| panic!("{}: {error:#}", file.display()));
+      assert!(compiled.is_file());
+    }
+  }
+}

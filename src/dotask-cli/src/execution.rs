@@ -120,18 +120,31 @@ impl Executor {
       && !stage.join("dotnet/Dotask.dotnet.dll").is_file()
     {
       // The source launcher needs no .NET work for help or Rust-only tasks.
-      // Compile SDK preparation with the source Rust SDK, then execute the
-      // original target normally; failures retain their task exit code.
-      let catalog = self.catalog(session)?;
+      // SDK preparation belongs to the bootstrap checkout, even when --use-dir
+      // selects a consuming project. Keep its settings and call chain separate
+      // so consumer tasks cannot replace preparation or create false cycles.
+      // Failures retain the preparation task's exit code.
+      let root = std::env::var_os("DOTASK_SOURCE_ROOT")
+        .map(PathBuf::from)
+        .ok_or_else(|| anyhow::anyhow!("Source bootstrap requires its checkout root"))?;
+      let preparation = Executor {
+        directory: Directory {
+          task_directory: root.join(".tasks"),
+          invocation_directory: root.clone(),
+          root_directory: root,
+        },
+        configuration: Value::Null,
+        verbose: self.verbose,
+      };
+      let catalog = preparation.catalog(session)?;
+      let preparation = Executor {
+        configuration: catalog.configuration.clone(),
+        ..preparation
+      };
       let prepare = catalog
         .find("build-sdks")?
         .ok_or_else(|| anyhow::anyhow!("Source bootstrap requires build-sdks"))?;
-      let code = self.execute(
-        prepare,
-        &[format!("stage-dir={}", Path::new(&stage).display())],
-        &chain,
-        session,
-      )?;
+      let code = preparation.execute(prepare, &[format!("stage-dir={}", Path::new(&stage).display())], &[], session)?;
       if code != 0 {
         return Ok(code);
       }

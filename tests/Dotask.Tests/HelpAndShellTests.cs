@@ -1,9 +1,3 @@
-using DoTask.Cli;
-using DoTask.Cli.Completion;
-using DoTask.Cli.Configuration;
-using DoTask.Cli.Execution;
-using DoTask.Cli.Metadata;
-
 namespace DoTask.Tests;
 
 public sealed class HelpAndShellTests
@@ -45,8 +39,8 @@ public sealed class HelpAndShellTests
     Directory.CreateDirectory(temporary);
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
     var result = await ProcessRunner.RunAsync(new ProcessDefinition {
-      Executable = DotnetHost.Find(),
-      Arguments = [typeof(CliApplication).Assembly.Location, .. command.Split(' ', StringSplitOptions.RemoveEmptyEntries)],
+      Executable = RustArtifacts.Binary("dotask"),
+      Arguments = [.. command.Split(' ', StringSplitOptions.RemoveEmptyEntries)],
       WorkingDirectory = project.Root,
       Environment = new Dictionary<string, string?> {
         ["DOTNET_HOST_PATH"] = unusableHost,
@@ -79,7 +73,7 @@ public sealed class HelpAndShellTests
     project.Write(".tasks/config.yaml", "invalid: [");
     project.Target("project-only-target", metadata: "// dotask: 1\n// description: \"Project-only description.\"\n// end-dotask\n");
     var expected = new StringWriter();
-    HelpWriter.Usage(new HelpText(expected));
+    expected.Write((await project.RunAsync("--help")).StandardOutput);
     foreach (var args in new[]
     {
       command.Split(' '),
@@ -87,7 +81,7 @@ public sealed class HelpAndShellTests
     }) {
       var output = new StringWriter();
       var error = new StringWriter();
-      var code = await CliApplication.RunAsync(args, project.Root, output, error);
+      var code = await NativeCli.RunAsync(args, project.Root, output, error);
       Assert.Equal(0, code);
       Assert.Equal("", error.ToString());
       Assert.Equal(expected.ToString(), output.ToString());
@@ -95,7 +89,7 @@ public sealed class HelpAndShellTests
       Assert.DoesNotContain("project-only", output.ToString());
     }
     var withoutProject = new StringWriter();
-    Assert.Equal(0, await CliApplication.RunAsync(command.Split(' '), Path.GetPathRoot(project.Root)!, withoutProject, new StringWriter()));
+    Assert.Equal(0, await NativeCli.RunAsync(command.Split(' '), Path.GetPathRoot(project.Root)!, withoutProject, new StringWriter()));
     Assert.Equal(expected.ToString(), withoutProject.ToString());
   }
 
@@ -131,7 +125,7 @@ public sealed class HelpAndShellTests
     var result = await project.RunAsync([.. command.Split(' ', StringSplitOptions.RemoveEmptyEntries), "--verbose"]);
     Assert.Equal(0, result.ExitCode);
     Assert.Equal("", result.StandardError);
-    Assert.StartsWith("Example project" + Environment.NewLine + "Project description.", result.StandardOutput);
+    Assert.StartsWith("Example project" + "\n" + "Project description.", result.StandardOutput);
     Assert.Contains("Settings:", result.StandardOutput);
     Assert.Contains("  tasks: ./.tasks", result.StandardOutput);
     Assert.Contains("  app:", result.StandardOutput);
@@ -162,13 +156,13 @@ public sealed class HelpAndShellTests
     using var project = new TestProject();
     var fallback = await project.RunAsync("--verbose");
     Assert.Equal(0, fallback.ExitCode);
-    Assert.StartsWith(Path.GetFileName(project.Root) + Environment.NewLine, fallback.StandardOutput);
+    Assert.StartsWith(Path.GetFileName(project.Root) + "\n", fallback.StandardOutput);
     Assert.Contains("  tasks: ./.tasks", fallback.StandardOutput);
     Assert.Contains("(no targets)", fallback.StandardOutput);
     project.Write(".abc/config.yaml", "name: Custom project\ndescription: Selected task directory.");
     var selected = await project.RunAsync("--use-dir", ".abc", "--verbose");
     Assert.Equal(0, selected.ExitCode);
-    Assert.StartsWith("Custom project" + Environment.NewLine + "Selected task directory.", selected.StandardOutput);
+    Assert.StartsWith("Custom project" + "\n" + "Selected task directory.", selected.StandardOutput);
     Assert.Contains("  tasks: ./.abc", selected.StandardOutput);
     Assert.Contains("\nTargets:", selected.StandardOutput);
   }
@@ -197,7 +191,7 @@ public sealed class HelpAndShellTests
     project.Write(".tasks/config.yaml", "targets: { baddefault: { defaults: { configuration: Unknown } } }");
     var listing = await project.RunAsync("help");
     Assert.Equal(0, listing.ExitCode);
-    Assert.Contains("Metadata error:", listing.StandardOutput);
+    Assert.Contains("Metadata error in ", listing.StandardOutput);
     Assert.Contains("Invalid value for --configuration", listing.StandardOutput);
     Assert.Contains("A valid description.", listing.StandardOutput);
     var detailed = await project.RunAsync("help", "baddefault");
@@ -206,39 +200,38 @@ public sealed class HelpAndShellTests
   }
 
   [Fact]
-  public void CombinedHelpMergesDescriptionsAndDefaultsForCompatibleOptions()
+  public async Task CombinedHelpMergesDescriptionsAndDefaultsForCompatibleOptions()
   {
     using var project = new TestProject();
-    var build = MetadataReader.Read(project.Target("build", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n"));
-    var test = MetadataReader.Read(project.Target("test", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"CONFIGURATION\", \"alias\": \"C\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n"));
-    var publish = MetadataReader.Read(project.Target("publish", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n"));
-    var clean = MetadataReader.Read(project.Target("clean", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"release\", \"debug\"], \"default\": \"debug\", \"description\": \"Mode to clean.\"}\n// end-dotask\n"));
-    var custom = MetadataReader.Read(project.Target("custom", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n"));
+    project.Target("build", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n");
+    project.Target("test", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"CONFIGURATION\", \"alias\": \"C\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n");
+    project.Target("publish", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"], \"default\": \"Debug\", \"description\": \"Mode.\"}\n// end-dotask\n");
+    project.Target("clean", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"release\", \"debug\"], \"default\": \"debug\", \"description\": \"Mode to clean.\"}\n// end-dotask\n");
+    project.Target("custom", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     project.Write(".tasks/config.yaml", "targets: { publish: { defaults: { configuration: Release } } }");
     var output = new StringWriter();
-    var config = ProjectConfiguration.Load(project.Tasks);
-    HelpWriter.CombinedOptions(new HelpText(output), [build, test, publish, clean, custom], config);
+    output.Write((await project.RunAsync("--verbose")).StandardOutput.Split("Target options:\n")[1]);
     Assert.Contains("--configuration, -c <Debug|Release>  Mode.", output.ToString());
     Assert.DoesNotContain("Targets:", output.ToString());
     Assert.DoesNotContain("Defaults:", output.ToString());
     Assert.DoesNotContain("(default:", output.ToString());
     Assert.Single(output.ToString().Split('\n'), line => line.Contains("--configuration"));
     var detailed = new StringWriter();
-    HelpWriter.Target(new HelpText(detailed), clean, config, null, clean.Name, project.Root);
+    detailed.Write((await project.RunAsync("help", "clean")).StandardOutput);
     Assert.Contains("Mode to clean. (default: debug)", detailed.ToString());
     Assert.DoesNotContain("Targets:", detailed.ToString());
   }
 
   [Fact]
-  public void CombinedHelpKeepsIncompatibleOptionContractsSeparate()
+  public async Task CombinedHelpKeepsIncompatibleOptionContractsSeparate()
   {
     using var project = new TestProject();
     var variants = new[] { "", ", alias: m", ", type: int", ", required: true", ", choices: [one, two]", ", completion: file" };
-    var targets = variants.Select(( attributes, i ) => MetadataReader.Read(project.Target($"task{i}",
-      metadata: $"// dotask: 1\n// options: [{{name: mode, description: Mode{attributes}}}]\n// end-dotask"))).ToArray();
+    var targets = variants.Select(( attributes, i ) => project.Target($"task{i}",
+      metadata: $"// dotask: 1\n// options: [{{name: mode, description: Mode{attributes}}}]\n// end-dotask")).ToArray();
     var output = new StringWriter();
-    HelpWriter.CombinedOptions(new HelpText(output), targets, ProjectConfiguration.Load(project.Tasks));
-    var text = output.ToString().Replace("\r\n", "\n");
+    output.Write((await project.RunAsync("--verbose")).StandardOutput.Split("Target options:\n")[1]);
+    var text = output.ToString().Replace("\r\n", "\n").Split("\n\nSee `dotask help")[0];
     Assert.Equal(variants.Length, text.Split('\n').Count(line => line.Contains("--mode")));
     Assert.DoesNotContain("Targets:", text);
     Assert.Contains("--mode, -m <string>", text);
@@ -270,8 +263,8 @@ public sealed class HelpAndShellTests
     var fullHelp = await project.RunAsync("DOTNET-RUN", "--help");
     Assert.Equal(0, shortHelp.ExitCode);
     Assert.Equal(0, fullHelp.ExitCode);
-    Assert.StartsWith("Target:" + Environment.NewLine + "  run ", shortHelp.StandardOutput);
-    Assert.Contains(Environment.NewLine + "                  Source: './.tasks/dotnet run.cs'", shortHelp.StandardOutput);
+    Assert.StartsWith("Target:" + "\n" + "  run ", shortHelp.StandardOutput);
+    Assert.Contains("\n" + "                  Source: './.tasks/dotnet run.cs'", shortHelp.StandardOutput);
     Assert.DoesNotContain("run (dotnet-run)", shortHelp.StandardOutput);
     Assert.Equal(shortHelp.StandardOutput, fullHelp.StandardOutput);
     project.Target("rust run", metadata: "// dotask: 1\n// description: \"Run Rust.\"\n// end-dotask\n");
@@ -294,7 +287,7 @@ public sealed class HelpAndShellTests
   public void ShellScriptsAreEmbeddedAndAvailableWithoutProject( string shell, string marker )
   {
     var output = new StringWriter();
-    CompletionCommand.PrintScript(shell, output);
+    NativeCompletion.PrintScript(shell, output);
     Assert.Contains(marker, output.ToString());
     Assert.Contains("__complete", output.ToString());
   }
@@ -308,12 +301,12 @@ public sealed class HelpAndShellTests
     using var project = new TestProject();
     project.Target("run", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     var script = new StringWriter();
-    CompletionCommand.PrintScript("bash", script);
+    NativeCompletion.PrintScript("bash", script);
     project.Write("completion.bash", script.ToString());
     var result = await ProcessRunner.RunAsync(new ProcessDefinition {
       Executable = "/bin/bash",
       Arguments = ["--noprofile", "--norc", "-c", """
-        dotask() { "$DOTASK_TEST_HOST" "$DOTASK_TEST_CLI" "$@"; }
+        dotask() { "$DOTASK_TEST_CLI" "$@"; }
         source ./completion.bash
         COMP_LINE='dotask run -c r'
         COMP_POINT=${#COMP_LINE}
@@ -329,8 +322,7 @@ public sealed class HelpAndShellTests
         [[ ${COMPREPLY[0]} == Release ]] || exit 11
         """],
       Environment = new Dictionary<string, string?> {
-        ["DOTASK_TEST_HOST"] = DotnetHost.Find(),
-        ["DOTASK_TEST_CLI"] = typeof(CliApplication).Assembly.Location
+        ["DOTASK_TEST_CLI"] = RustArtifacts.Binary("dotask")
       },
       WorkingDirectory = project.Root,
       CaptureOutput = true,
@@ -346,7 +338,7 @@ public sealed class HelpAndShellTests
     project.Target("run", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"name\"}\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     const string prefix = "dotask run name=日本語 -c r";
     var output = new StringWriter();
-    CompletionCommand.Query(["--shell", "bash", "--line", prefix + " unrelated", "--position", System.Text.Encoding.UTF8.GetByteCount(prefix).ToString()], project.Root, output);
+    NativeCompletion.Query(["--shell", "bash", "--line", prefix + " unrelated", "--position", System.Text.Encoding.UTF8.GetByteCount(prefix).ToString()], project.Root, output);
     Assert.StartsWith("Release\tvalue", output.ToString());
   }
 }

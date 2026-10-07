@@ -7,7 +7,7 @@ public sealed class RustInstallerWorkflowTests
   [Fact]
   public async Task SharedTasksPackageInstallLaunchAndUninstallGuiPayloadWithoutOriginalPackage()
   {
-    using var project = new TestProject { NativeRunner = true };
+    using var project = new TestProject();
     var engine = RustArtifacts.Binary("doinstall");
     var builder = RustArtifacts.Binary("doinstall-builder");
     Assert.True(File.Exists(engine) && File.Exists(builder), "Build the installer first: build.cmd verify, or set DOINSTALL_TOOL_DIR to a built doinstall tool pair.");

@@ -12,5 +12,6 @@ trap 'exit 143' TERM
 # rebuild it, so neither a JSON parser nor a .NET toolchain is needed here.
 cargo run --manifest-path Cargo.toml --package dotask-cli --locked --release -- __stage-runner "$dotask_bootstrap_dir"
 export DOTASK_SOURCE_RUST_SDK="$PWD/src/dotask-sdk"
+export DOTASK_SOURCE_ROOT="$PWD"
 export DOTASK_SOURCE_SDK_STAGE="$dotask_bootstrap_dir/sdk"
 "$dotask_bootstrap_dir/dotask" "$@"

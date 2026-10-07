@@ -1,5 +1,3 @@
-using DoTask.Cli.Completion;
-
 namespace DoTask.Tests;
 
 public sealed class CompletionTests
@@ -24,7 +22,7 @@ public sealed class CompletionTests
       //   - {"name": "detailed", "type": "bool"}
       // end-dotask
       """);
-    Assert.Contains(CompletionEngine.Complete(line, project.Root), c => c.Value == expected);
+    Assert.Contains(NativeCompletion.Complete(line, project.Root), c => c.Value == expected);
     Assert.False(Directory.Exists(Path.Combine(project.Tasks, "obj")));
   }
 
@@ -33,7 +31,7 @@ public sealed class CompletionTests
   {
     using var project = new TestProject();
     project.Target("run", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
-    var suggestions = CompletionEngine.Complete("dotask run -c Debug --", project.Root);
+    var suggestions = NativeCompletion.Complete("dotask run -c Debug --", project.Root);
     Assert.DoesNotContain(suggestions, c => c.Value == "--configuration");
   }
 
@@ -49,7 +47,7 @@ public sealed class CompletionTests
     using var project = new TestProject();
     project.Target("dotnet run", "DoesNotCompile();", "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"alias\": \"c\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     project.Write(".tasks/config.yaml", "invalid: [");
-    Assert.Contains(CompletionEngine.Complete(line, project.Root), c => c.Value == expected);
+    Assert.Contains(NativeCompletion.Complete(line, project.Root), c => c.Value == expected);
   }
 
   [Fact]
@@ -58,16 +56,16 @@ public sealed class CompletionTests
     using var project = new TestProject();
     project.Target("dotnet format", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     project.Target("rust format", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"check\", \"type\": \"bool\"}\n// end-dotask\n");
-    var names = CompletionEngine.Complete("dotask ", project.Root);
+    var names = NativeCompletion.Complete("dotask ", project.Root);
     Assert.DoesNotContain(names, c => c.Value == "format");
     Assert.Contains(names, c => c.Value == "dotnet-format");
     Assert.Contains(names, c => c.Value == "rust-format");
-    Assert.DoesNotContain(CompletionEngine.Complete("dotask format --", project.Root), c => c.Value is "--verify" or "--check");
-    Assert.Contains(CompletionEngine.Complete("dotask dotnet-format --", project.Root), c => c.Value == "--verify");
+    Assert.DoesNotContain(NativeCompletion.Complete("dotask format --", project.Root), c => c.Value is "--verify" or "--check");
+    Assert.Contains(NativeCompletion.Complete("dotask dotnet-format --", project.Root), c => c.Value == "--verify");
     project.Target("format", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"all\", \"type\": \"bool\"}\n// end-dotask\n");
-    Assert.Single(CompletionEngine.Complete("dotask f", project.Root), c => c.Value == "format");
-    Assert.Contains(CompletionEngine.Complete("dotask format --", project.Root), c => c.Value == "--all");
-    Assert.DoesNotContain(CompletionEngine.Complete("dotask format --", project.Root), c => c.Value is "--verify" or "--check");
+    Assert.Single(NativeCompletion.Complete("dotask f", project.Root), c => c.Value == "format");
+    Assert.Contains(NativeCompletion.Complete("dotask format --", project.Root), c => c.Value == "--all");
+    Assert.DoesNotContain(NativeCompletion.Complete("dotask format --", project.Root), c => c.Value is "--verify" or "--check");
   }
 
   [Fact]
@@ -79,10 +77,10 @@ public sealed class CompletionTests
     File.Copy(project.Target("custom", metadata: "// dotask: 1\n// options:\n//   - {\"name\": \"output\", \"type\": \"path\", \"completion\": \"directory\"}\n// end-dotask\n"), Path.Combine(custom, "custom.cs"));
     project.Write("custom tasks/config.yaml", "this is intentionally invalid YAML [");
     Directory.CreateDirectory(Path.Combine(project.Root, "output files"));
-    Assert.Contains(CompletionEngine.Complete("dotask --use-dir 'custom tasks' custom --output out", project.Root),
+    Assert.Contains(NativeCompletion.Complete("dotask --use-dir 'custom tasks' custom --output out", project.Root),
       c => c.Value == "output files/" && c.Kind == "directory");
-    Assert.Contains(CompletionEngine.Complete("dotask --use-dir=cu", project.Root), c => c.Value == "--use-dir=custom tasks/");
-    Assert.Contains(CompletionEngine.Complete("dotask --use-dir cu", project.Root), c => c.Value == "custom tasks/");
+    Assert.Contains(NativeCompletion.Complete("dotask --use-dir=cu", project.Root), c => c.Value == "--use-dir=custom tasks/");
+    Assert.Contains(NativeCompletion.Complete("dotask --use-dir cu", project.Root), c => c.Value == "custom tasks/");
   }
 
   [Theory]
@@ -92,8 +90,8 @@ public sealed class CompletionTests
   [InlineData("dotask --use-dir a` b run ", "powershell", "a b")]
   public void TokenizationPreservesShellArgumentBoundaries( string line, string shell, string directory )
   {
-    var words = ShellWords.Parse(line, shell);
-    Assert.Equal(directory, words[2]);
-    Assert.Equal("", words[^1]);
+    using var project = new TestProject();
+    project.Write(directory + "/run.cs", "// dotask: 1\n// options: [{name: flag, type: bool}]\n// end-dotask");
+    Assert.Contains(NativeCompletion.Complete(line + "--", project.Root, shell), c => c.Value == "--flag");
   }
 }

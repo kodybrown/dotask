@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Text.Json;
-using DoTask.Cli.Execution;
-using DoTask.Cli.Metadata;
 
 namespace DoTask.Tests;
 
@@ -11,14 +9,11 @@ public sealed class ProcessAndFilesTests
   public async Task ProcessArgumentsRoundTripWithoutShellExpansion()
   {
     using var project = new TestProject();
-    var source = project.Write(".tasks/probe.cs", "Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(args));");
-    var compiler = new TargetCompiler();
-    var compiled = await compiler.CompileAsync(MetadataReader.Read(source), CancellationToken.None);
-    Assert.True(compiled.Success, compiled.Diagnostics);
+    var assembly = await project.BuildProcessProbeAsync("Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(args));");
     string[] arguments = ["", "two words", "a\"b", "'single'", "a=b=c", @"back\slash\", "$(touch BAD)", "& | ; < > %PATH%", "日本語", "line1\nline2"];
     var result = await project.Context().RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),
-      Arguments = [compiled.AssemblyPath!, .. arguments],
+      Arguments = [assembly, .. arguments],
       CaptureOutput = true
     });
     Assert.Equal(arguments, JsonSerializer.Deserialize<string[]>(result.StandardOutput.Trim()));
@@ -29,10 +24,8 @@ public sealed class ProcessAndFilesTests
   public async Task ProcessFailurePreservesExitCodeAndCanBeOptedOut()
   {
     using var project = new TestProject();
-    var target = MetadataReader.Read(project.Target("exit", "Environment.Exit(19);"));
-    var compiled = await new TargetCompiler().CompileAsync(target, CancellationToken.None);
-    Assert.True(compiled.Success, compiled.Diagnostics);
-    var definition = new ProcessDefinition { Executable = DotnetHost.Find(), Arguments = [compiled.AssemblyPath!], CaptureOutput = true };
+    var assembly = await project.BuildProcessProbeAsync("Environment.Exit(19);");
+    var definition = new ProcessDefinition { Executable = DotnetHost.Find(), Arguments = [assembly], CaptureOutput = true };
     var error = await Assert.ThrowsAsync<ProcessFailedException>(() => project.Context().RunAsync(definition));
     Assert.Equal(19, error.ExitCode);
     Assert.Equal(19, (await project.Context().RunAsync(definition with { ThrowOnError = false })).ExitCode);
@@ -42,17 +35,14 @@ public sealed class ProcessAndFilesTests
   public async Task CancellationKillsTheStartedProcess()
   {
     using var project = new TestProject();
-    var file = project.Target("wait", """
-      File.WriteAllText(argsFile(), Environment.ProcessId.ToString());
+    var assembly = await project.BuildProcessProbeAsync("""
+      File.WriteAllText(Path.Combine(Environment.CurrentDirectory, "pid.txt"), Environment.ProcessId.ToString());
       await Task.Delay(Timeout.Infinite);
-      static string argsFile() => Path.Combine(Environment.CurrentDirectory, "pid.txt");
-      """, async: true);
-    var compiled = await new TargetCompiler().CompileAsync(MetadataReader.Read(file), CancellationToken.None);
-    Assert.True(compiled.Success, compiled.Diagnostics);
+      """);
     using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
     var running = project.Context().RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),
-      Arguments = [compiled.AssemblyPath!],
+      Arguments = [assembly],
       CaptureOutput = true
     }, cancellation.Token);
     var pidFile = Path.Combine(project.Root, "pid.txt");

@@ -15,10 +15,17 @@ impl Text {
     }
   }
   pub fn line(&self, value: &str, indent: usize) {
+    for line in self.lines(value, indent) {
+      println!("{line}");
+    }
+  }
+  // Keep rendering separate from terminal writes so Unicode and narrow-width
+  // contracts can be tested without changing the process's console settings.
+  fn lines(&self, value: &str, indent: usize) -> Vec<String> {
     let Some(width) = self.width else {
-      println!("{value}");
-      return;
+      return vec![value.into()];
     };
+    let mut lines = Vec::new();
     let indent = " ".repeat(if indent < width - 1 { indent } else { 2 });
     for (i, line) in value.replace("\r\n", "\n").replace('\r', "\n").split('\n').enumerate() {
       let mut remaining = if i == 0 || line.is_empty() {
@@ -39,30 +46,40 @@ impl Text {
           split = width;
         }
         let byte = chars[split].0;
-        println!("{}", remaining[..byte].trim_end());
+        lines.push(remaining[..byte].trim_end().into());
         remaining = format!("{indent}{}", remaining[byte..].trim_start());
       }
-      println!("{remaining}");
+      lines.push(remaining);
     }
+    lines
   }
   pub fn row(&self, prefix: &str, value: &str) -> usize {
+    let (lines, indent) = self.row_lines(prefix, value);
+    for line in lines {
+      println!("{line}");
+    }
+    indent
+  }
+  fn row_lines(&self, prefix: &str, value: &str) -> (Vec<String>, usize) {
+    let mut lines = Vec::new();
     let prefix = if self.width.is_some_and(|w| prefix.chars().count() >= w - 1) {
       if !prefix.trim().is_empty() {
-        self.line(prefix.trim_end(), 2);
+        lines.extend(self.lines(prefix.trim_end(), 2));
       }
       "  "
     } else {
       prefix
     };
-    self.line(
+    let indent = prefix.chars().count();
+    lines.extend(self.lines(
       &if value.is_empty() {
         prefix.trim_end().into()
       } else {
         format!("{prefix}{value}")
       },
-      prefix.chars().count(),
-    );
-    prefix.chars().count()
+      indent,
+    ));
+    (lines, indent)
   }
   fn section(&self, name: &str) {
     self.line(&format!("\n{name}:"), 0);
@@ -389,5 +406,44 @@ fn unavailable(target: &Target, directory: &Directory) -> Option<&'static str> {
       Some("requires Rust 1.95+ and Cargo")
     }
     _ => None,
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  #[test]
+  fn wrapping_preserves_words_and_aligned_continuations() {
+    let prefix = "  --configuration, -c <Debug|Release>  ";
+    let description = ["Build configuration for the selected project."; 5].join(" ");
+    for width in [60, 96, 120] {
+      let text = Text { width: Some(width) };
+      let (lines, indent) = text.row_lines(prefix, &description);
+      assert!(lines.len() > 1);
+      assert!(lines.iter().all(|l| l.chars().count() <= width));
+      assert!(lines[0].starts_with(prefix));
+      assert!(lines.iter().skip(1).all(|l| l.starts_with(&" ".repeat(indent))));
+      assert_eq!(lines.iter().map(|l| &l[indent..]).collect::<Vec<_>>().join(" "), description);
+    }
+  }
+  #[test]
+  fn long_labels_tokens_and_unicode_are_not_lost() {
+    let label = format!("--{}", "x".repeat(90));
+    let value = format!("{}😀{}", "y".repeat(57), "z".repeat(150));
+    let text = Text { width: Some(60) };
+    let (lines, _) = text.row_lines(&format!("{label}  "), &value);
+    assert!(lines.iter().all(|l| l.chars().count() <= 60));
+    assert_eq!(lines.iter().map(|l| l.trim()).collect::<String>(), format!("{label}{value}"));
+    assert_eq!(text.row_lines(&" ".repeat(59), "😀").0, ["  😀"]);
+  }
+  #[test]
+  fn unknown_or_narrow_console_widths_and_redirected_output_do_not_wrap() {
+    for width in [None, Some(0), Some(59)] {
+      let text = Text {
+        width: width.filter(|w| *w >= 60),
+      };
+      let value = format!("  --input <path>  {}", "x".repeat(200));
+      assert_eq!(text.lines(&value, 18), [value]);
+    }
   }
 }

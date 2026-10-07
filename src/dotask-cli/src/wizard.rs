@@ -412,4 +412,208 @@ mod tests {
       assert_eq!(std::fs::read_dir(directory.task_directory).unwrap().count(), 1);
     }
   }
+
+  #[test]
+  fn back_discards_only_the_unfinished_step_at_every_prompt() {
+    for unfinished in [
+      ":back",
+      "run\n:back",
+      ":manual\n:back",
+      "run\n1\n:back",
+      "run\n1\nn\n:back",
+      ":manual\nabsent\ny\n:back",
+      ":manual\nabsent\ny\ny\n:back",
+      ":manual\nabsent\ny\ny\nvalue\n:back",
+      ":manual\nabsent\ny\ny\nvalue\nstring\n:back",
+    ] {
+      let (_root, directory) = fixture();
+      std::fs::write(
+        directory.task_directory.join("run.cs"),
+        "// dotask: 1\n// options: [{name: message}]\n// end-dotask",
+      )
+      .unwrap();
+      let mut lines = vec!["checks", "Keep my work", "y", "run", "1", "n", "saved", "y"];
+      lines.extend(unfinished.split('\n'));
+      lines.extend(["n", "y", "y"]);
+      interact(&mut input(&lines), &directory).unwrap();
+      let value = crate::yaml::parse(
+        &std::fs::read_to_string(directory.task_directory.join("checks.task")).unwrap(),
+        "checks.task",
+      )
+      .unwrap();
+      assert_eq!(value["description"], "Keep my work");
+      assert_eq!(value["steps"].as_array().unwrap().len(), 1);
+      assert_eq!(value["steps"][0]["with"]["message"], "saved");
+    }
+  }
+
+  #[test]
+  fn first_step_back_and_cancel_never_commit_a_partial_step() {
+    let (_root, directory) = fixture();
+    interact(&mut input(&["checks", "", "y", ":back", "n", "n", "y"]), &directory).unwrap();
+    let group = crate::yaml::parse(
+      &std::fs::read_to_string(directory.task_directory.join("checks.task")).unwrap(),
+      "checks.task",
+    )
+    .unwrap();
+    assert!(group["steps"].as_array().unwrap().is_empty());
+    for answers in [
+      ":cancel",
+      "new\n:cancel",
+      "new\n\ny\n:cancel",
+      "new\n\nn\nn\n:cancel",
+    ] {
+      let (_root, directory) = fixture();
+      assert!(interact(&mut input(&answers.split('\n').collect::<Vec<_>>()), &directory)
+        .unwrap_err()
+        .is::<process::Cancelled>());
+      assert!(!directory.task_directory.join("new.task").exists());
+    }
+  }
+
+  #[test]
+  fn known_targets_use_canonical_names_and_only_explicit_typed_parameters() {
+    let (_root, directory) = fixture();
+    std::fs::create_dir_all(directory.task_directory.join("_/dotnet")).unwrap();
+    std::fs::write(directory.task_directory.join("_/dotnet/check.cs"), "// dotask: 1\n// description: Inspect project.\n// options: [{name: configuration, choices: [Debug, Release], default: Debug}, {name: count, type: int}, {name: flag, type: bool}]\n// end-dotask\nthrow new Exception(\"Must not run\");").unwrap();
+    std::fs::write(
+      directory.root_directory.join(".dotasks.yaml"),
+      "targets: {_/dotnet/check: {defaults: {configuration: Release}}}",
+    )
+    .unwrap();
+    interact(
+      &mut input(&[
+        "verify",
+        "Verify things.",
+        "y",
+        "Inspect",
+        "1",
+        "n",
+        "",
+        "invalid",
+        "3",
+        "true",
+        "n",
+        "y",
+        "y",
+      ]),
+      &directory,
+    )
+    .unwrap();
+    let value = crate::yaml::parse(
+      &std::fs::read_to_string(directory.task_directory.join("verify.task")).unwrap(),
+      "verify.task",
+    )
+    .unwrap();
+    assert_eq!(value["require_at_least_1_step"], true);
+    assert_eq!(value["steps"][0]["run"], "_/dotnet/check");
+    assert!(!value["steps"][0]["optional"].as_bool().unwrap_or(false));
+    assert!(value["steps"][0]["with"].get("configuration").is_none());
+    assert_eq!(value["steps"][0]["with"]["count"], 3);
+    assert_eq!(value["steps"][0]["with"]["flag"], true);
+  }
+
+  #[test]
+  fn manual_parameters_and_reordering_round_trip_safely() {
+    let (_root, directory) = fixture();
+    interact(
+      &mut input(&[
+        "checks",
+        "Description: #quoted",
+        "y",
+        ":manual",
+        "future/check",
+        "y",
+        "y",
+        "message",
+        "",
+        "a: # b",
+        "y",
+        "enabled",
+        "bool",
+        "false",
+        "n",
+        "y",
+        ":manual",
+        "later/run",
+        "y",
+        "n",
+        "n",
+        "1,1",
+        "2,1",
+        "n",
+        "y",
+      ]),
+      &directory,
+    )
+    .unwrap();
+    let value = crate::yaml::parse(
+      &std::fs::read_to_string(directory.task_directory.join("checks.task")).unwrap(),
+      "checks.task",
+    )
+    .unwrap();
+    assert_eq!(value["description"], "Description: #quoted");
+    assert!(!value["require_at_least_1_step"].as_bool().unwrap_or(false));
+    assert_eq!(value["steps"][0]["run"], "later/run");
+    assert_eq!(value["steps"][1]["with"]["message"], "a: # b");
+    assert_eq!(value["steps"][1]["with"]["enabled"], false);
+    assert!(value["steps"].as_array().unwrap().iter().all(|s| s["optional"] == true));
+  }
+
+  #[test]
+  fn invalid_names_existing_targets_empty_values_and_portable_paths_are_preserved() {
+    let (_root, directory) = fixture();
+    interact(
+      &mut input(&["../escape", "help", "existing", "new", "", "n", "n", "y"]),
+      &directory,
+    )
+    .unwrap();
+    assert_eq!(
+      std::fs::read_to_string(directory.task_directory.join("existing.task")).unwrap(),
+      "steps: []\n"
+    );
+    std::fs::write(
+      directory.task_directory.join("run.cs"),
+      "// dotask: 1\n// options: [{name: message, required: true}, {name: output, type: path}]\n// end-dotask",
+    )
+    .unwrap();
+    interact(
+      &mut input(&[
+        "paths",
+        "",
+        "y",
+        "run",
+        "1",
+        "n",
+        ":empty",
+        "./artifacts/output",
+        "n",
+        "n",
+        "y",
+      ]),
+      &directory,
+    )
+    .unwrap();
+    let value = crate::yaml::parse(
+      &std::fs::read_to_string(directory.task_directory.join("paths.task")).unwrap(),
+      "paths.task",
+    )
+    .unwrap();
+    assert_eq!(value["steps"][0]["with"]["message"], "");
+    assert_eq!(value["steps"][0]["with"]["output"], "./artifacts/output");
+  }
+
+  #[cfg(unix)]
+  #[test]
+  fn symlink_destination_never_overwrites_external_data() {
+    #[cfg(unix)]
+    {
+      let (_root, directory) = fixture();
+      let outside = directory.root_directory.join("outside");
+      std::fs::write(&outside, "keep").unwrap();
+      std::os::unix::fs::symlink(&outside, directory.task_directory.join("linked.task")).unwrap();
+      interact(&mut input(&["linked", "safe", "", "n", "n", "y"]), &directory).unwrap();
+      assert_eq!(std::fs::read_to_string(outside).unwrap(), "keep");
+    }
+  }
 }

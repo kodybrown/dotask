@@ -5,10 +5,11 @@
     <RootNamespace>DoTask.Tests</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="NativeCliBaseline.json" LogicalName="NativeCliBaseline.json" />
     <AssemblyMetadata Include="RepositoryRoot" Value="$(MSBuildProjectDirectory)/../.." />
     <EmbeddedResource Include="../../.tasks/verify.rs;../../.tasks/verify-docs.rs;../../.tasks/catalog.rs"
                       LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../../build.sh;../../build.cmd;../../.tasks/misc/bootstrap.targets"
+    <EmbeddedResource Include="../../build.sh;../../build.cmd"
                       LogicalName="Bootstrap/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../.tasks/misc/prepare-bootstrap.ps1" LogicalName="Bootstrap/prepare-bootstrap.ps1" />
     <EmbeddedResource Include="../../shared-tasks/**/*">
@@ -18,10 +19,11 @@
     <EmbeddedResource Include="../../.tasks/_/**/*.cs;../../.tasks/_/**/*.rs">
       <LogicalName>$([System.String]::Copy('InstalledShared/%(RecursiveDir)%(Filename)%(Extension)').Replace('\', '/'))</LogicalName>
     </EmbeddedResource>
-    <ProjectReference Include="../../src/Dotask.Cli/Dotask.Cli.csproj" />
+    <ProjectReference Include="../../src/Dotask/Dotask.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" PrivateAssets="all" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
     <Using Include="Xunit" />
   </ItemGroup>
 </Project>

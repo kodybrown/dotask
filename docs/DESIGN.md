@@ -7,10 +7,11 @@ context, typed values, safe argument passing, portable paths, filesystem helpers
 and target-call transport.
 It has no third-party runtime dependencies or DI container.
 
-`src/Dotask.Cli` retains the C# behavior reference. Discovery, comment-header metadata, YAML loading,
-binding, help, completion, SDK compilation, and execution are separate components.
-YamlDotNet parses declarative headers/configuration for the reference CLI.
-`Program.cs` only wires cancellation and invokes the application.
+`src/dotask-cli` is the sole executable implementation. Discovery, comment-header
+metadata, YAML loading, binding, help, completion, SDK compilation, and execution
+are separate native components. `main.rs` invokes the application.
+The retired C# executable remains available in Git history; it is not built or
+needed by tests. The .NET solution contains the maintained helper and test suite.
 
 ## Rust CLI transition
 
@@ -24,9 +25,8 @@ The Rust CLI now runs C# tasks, Rust tasks, and YAML groups. It owns command par
 root discovery, exact/shortcut selection, sessions, group sequencing, process
 execution, nested-call dispatch, and exit/cancellation handling. It also owns
 YAML configuration/groups, binding, requirement validation, initialization, shared
-management, help, shell completion, and the interactive group wizard. The C# CLI at
-`src/Dotask.Cli` remains the reference implementation. Rust is the bootstrap
-runner and packaged application; `src/dotask-sdk` is its maintained Rust task
+management, help, shell completion, and the interactive group wizard. Rust is the
+bootstrap runner and packaged application; `src/dotask-sdk` is its maintained Rust task
 helper crate. See the
 [preview commands](../README.md#rust-cli-development-preview).
 
@@ -49,9 +49,9 @@ the task's synthetic project are isolated; explicit project references retain
 normal output policy. Rust compilation uses the installed Cargo/Rust toolchain.
 Missing tools leave headers/help available and cause actionable execution errors.
 
-Nested context carries a CLI executable and argument prefix: native dotask with
-an empty prefix, or the .NET host with the C# CLI assembly. Both use the same
-`__exec` file transport and immutable configuration snapshot. The public C# task
+Nested context carries the native CLI executable with an empty argument prefix.
+C# and Rust tasks use the same `__exec` file transport and immutable configuration
+snapshot. The public C# task
 API and invocation-local installer results are unchanged. Context files are
 private and execution snapshots are cleaned up after completion/cancellation.
 
@@ -64,9 +64,9 @@ The following decisions describe the overall transition, including later stages
 that are not yet available consumer APIs:
 
 1. Replace the CLI with Rust while preserving existing C# task authoring,
-   metadata, compilation, nested calls, and observable CLI behavior. Keep the
-   C# CLI operational as a reference until replacement verification succeeds;
-   retain the C# library and C# tasks afterward.
+   metadata, compilation, nested calls, and observable CLI behavior. Retain the
+   C# library and C# task support. Regression tests execute the native CLI; fixed
+   pre-removal help/completion/YAML snapshots preserve earlier expectations.
 2. Add Rust task execution and a bundled Rust helper crate at `src/dotask-sdk`.
    Each task has one `.rs` entry file. Generate Cargo build manifests in an
    external cache and reference the bundled helper crate's source. Use the

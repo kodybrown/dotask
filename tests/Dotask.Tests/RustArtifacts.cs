@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
-using DoTask.Cli.SharedTasks;
 
 namespace DoTask.Tests;
 
@@ -75,10 +74,9 @@ internal static class RustArtifacts
       Directory.CreateDirectory(Path.GetDirectoryName(output)!);
       File.Copy(input, output);
     }
-    AppDomain.CurrentDomain.ProcessExit += (_, _) => {
-      try { Directory.Delete(destination, recursive: true); }
-      catch (IOException) { /* Preserve a snapshot still used by a descendant. */ }
-      catch (UnauthorizedAccessException) { /* A locked snapshot remains recoverable. */ }
+    AppDomain.CurrentDomain.ProcessExit += ( _, _ ) =>
+    {
+      try { Directory.Delete(destination, recursive: true); } catch (IOException) { /* Preserve a snapshot still used by a descendant. */ } catch (UnauthorizedAccessException) { /* A locked snapshot remains recoverable. */ }
     };
     return destination;
   }

@@ -3,7 +3,6 @@ name: DoTask
 description: Portable, cross-platform tasks written in the language of your choice.
 settings:
   solution: dotask.slnx
-  project: src/Dotask.Cli/Dotask.Cli.csproj
   sdks:
     config: .tasks/sdks.yaml
   app:

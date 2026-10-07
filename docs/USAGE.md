@@ -9,16 +9,16 @@ implements the commands below, including initialization, shared-task management,
 shell completion, help, the task-group wizard, C# and Rust task execution, and nested calls.
 Rust owns YAML configuration, groups, option binding, and requirement checks.
 CLI-only help/version, initialization, online shared-task management, and projects
-containing only YAML groups need no language host. Reading C# task metadata uses
-the staged .NET 10 support host without invoking the SDK; executing C# tasks
-requires the .NET 10 SDK. Rust execution requires Cargo/Rust 1.95+ and the bundled
-`sdk/` source directory; Rust metadata needs no toolchain. Private C# catalog management also reads C# metadata.
+containing only YAML groups need no language host. Reading C# or Rust task
+metadata and managing private C# catalogs needs no toolchain. Executing C# tasks
+requires the .NET 10 SDK and `sdk/dotnet/Dotask.dotnet.dll`. Rust execution requires
+Cargo/Rust 1.95+ and the bundled `sdk/rust/` source directory.
 
-The Rust CLI is the repository bootstrap and installer payload. The C# CLI remains
-a behavior reference; see [verification](VERIFICATION.md). Shared Rust variants,
-`--lang`, and extension-qualified task calls remain future work. Both CLIs use
-the same shared-task catalog, hashes, lockfiles, and recovery journals. A native
-no-op sync preserves the existing lockfile's bytes and comments.
+The native CLI is the sole executable, repository bootstrap, and installer
+payload; see [verification](VERIFICATION.md). Shared Rust variants, `--lang`, and
+extension-qualified task calls remain future work. Existing shared-task catalogs,
+hashes, lockfiles, and recovery journals retain their wire formats. A no-op sync
+preserves the existing lockfile's bytes and comments.
 
 After building the source, follow [Install dotask](../README.md#install-dotask)
 to put the command on PATH for use in other projects. Building alone does not

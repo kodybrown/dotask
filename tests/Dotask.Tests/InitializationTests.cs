@@ -1,13 +1,7 @@
-using DoTask.Cli;
-using DoTask.Cli.Completion;
-using DoTask.Cli.Configuration;
-using DoTask.Cli.Execution;
-
 namespace DoTask.Tests;
 
 public class InitializationTests
 {
-  protected virtual bool NativeRunner => false;
   [Theory]
   [InlineData("MyProject")]
   [InlineData("true")]
@@ -15,7 +9,7 @@ public class InitializationTests
   [InlineData("O'Brien 日本語")]
   public async Task InitCreatesUsableLocalProjectWithQuotedDirectoryNameAndSafeReruns( string name )
   {
-    using var parent = new TestProject { NativeRunner = NativeRunner };
+    using var parent = new TestProject();
     // Initialization must not discover or load this parent project.
     var parentConfig = parent.Write(".dotasks.yaml", "invalid: [\n");
     var root = Path.Combine(parent.Root, name);
@@ -28,11 +22,6 @@ public class InitializationTests
     var configPath = Path.Combine(root, ".dotasks.yaml");
     Assert.Empty(Directory.EnumerateFileSystemEntries(tasks));
     Assert.False(File.Exists(Path.Combine(root, ".dotasks-lock.yaml")));
-    var config = ProjectConfiguration.Load(tasks, root);
-    Assert.Equal(name, config.Name);
-    Assert.Null(config.Description);
-    Assert.Empty(config.Settings.EnumerateObject());
-    Assert.Empty(config.TargetDefaults.EnumerateObject());
     var summary = await parent.RunFromAsync(root, "--verbose");
     Assert.Equal(0, summary.ExitCode);
     Assert.StartsWith(name + "\n", summary.StandardOutput.ReplaceLineEndings("\n"));
@@ -52,7 +41,7 @@ public class InitializationTests
   [Fact]
   public async Task InitPreservesExistingTasksConfigurationCommentsAndLockFile()
   {
-    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
     var task = project.Target("init", "DoesNotCompile();", "// dotask: 1\n// description: \"A handwritten task.\"\n// end-dotask\n");
     var source = File.ReadAllBytes(task);
     var first = await project.RunAsync("--init");
@@ -73,12 +62,12 @@ public class InitializationTests
   [Fact]
   public async Task InitNeedsNoSdkOrSharedTaskSourcesAndDoesNotExecuteTasks()
   {
-    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
     var task = project.Target("init", "File.WriteAllText(\"executed\", \"bad\");");
     using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
     var result = await ProcessRunner.RunAsync(new ProcessDefinition {
-      Executable = DotnetHost.Find(),
-      Arguments = [typeof(CliApplication).Assembly.Location, "--init"],
+      Executable = RustArtifacts.Binary("dotask"),
+      Arguments = ["--init"],
       WorkingDirectory = project.Root,
       Environment = new Dictionary<string, string?> {
         ["DOTNET_HOST_PATH"] = Path.Combine(project.Root, "missing-sdk"),
@@ -106,7 +95,7 @@ public class InitializationTests
   [InlineData("tasks-file")]
   public async Task ConflictsFailBeforeCreatingFiles( string conflict )
   {
-    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
     Directory.Delete(project.Tasks);
     var config = Path.Combine(project.Root, ".dotasks.yaml");
     var content = "invalid: [\n";
@@ -152,7 +141,7 @@ public class InitializationTests
   [InlineData("another-project")]
   public async Task UnexpectedArgumentsFailWithoutInitializing( string argument )
   {
-    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
     Directory.Delete(project.Tasks);
     var result = await project.RunAsync("--init", argument);
     Assert.Equal(1, result.ExitCode);
@@ -163,7 +152,7 @@ public class InitializationTests
   [Fact]
   public async Task ExplicitTaskDirectoryStaysWithinCurrentRootAndWorksInProjectHelp()
   {
-    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
     Directory.Delete(project.Tasks);
     var result = await project.RunAsync("--init", "--use-dir", "build support/tasks");
     Assert.Equal(0, result.ExitCode);
@@ -185,7 +174,7 @@ public class InitializationTests
   [InlineData(".dotasks-lock.yaml")]
   public async Task InvalidTaskLocationsFailWithoutWriting( string directory )
   {
-    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
     Directory.Delete(project.Tasks);
     var result = await project.RunAsync("--init", "--use-dir", directory);
     Assert.Equal(1, result.ExitCode);
@@ -199,8 +188,8 @@ public class InitializationTests
       return; // Creating links may require privileges on Windows.
     }
 
-    using var project = new TestProject { NativeRunner = NativeRunner };
-    using var outside = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
+    using var outside = new TestProject();
     Directory.Delete(project.Tasks);
     Directory.CreateSymbolicLink(project.Tasks, outside.Root);
     Assert.Equal(1, (await project.RunAsync("--init")).ExitCode);
@@ -221,26 +210,21 @@ public class InitializationTests
   }
 
   [Fact]
-  public async Task HelpCompletionAndCancellationDoNotInitializeOrReadConfiguration()
+  public async Task HelpAndCompletionDoNotInitializeOrReadConfiguration()
   {
-    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
     Directory.Delete(project.Tasks);
-    var missing = Path.Combine(project.Root, "does-not-exist");
+    var missing = project.Root;
     var output = new StringWriter();
-    Assert.Equal(0, await CliApplication.RunAsync(["--init", "--help"], missing, output, new StringWriter()));
+    Assert.Equal(0, await NativeCli.RunAsync(["--init", "--help"], missing, output, new StringWriter()));
     Assert.Contains("Usage: dotask --init", output.ToString());
-    Assert.False(Directory.Exists(missing));
     var config = project.Write(".dotasks.yaml", "invalid: [");
     Assert.Equal(0, (await project.RunAsync("--help", "--init")).ExitCode);
-    Assert.Contains(CompletionEngine.Complete("dotask --i", project.Root), c => c.Value == "--init");
-    var options = CompletionEngine.Complete("dotask --init --", project.Root);
+    Assert.Contains(NativeCompletion.Complete("dotask --i", project.Root), c => c.Value == "--init");
+    var options = NativeCompletion.Complete("dotask --init --", project.Root);
     Assert.Contains(options, c => c.Value == "--help");
     Assert.Contains(options, c => c.Value == "--use-dir");
     Assert.DoesNotContain(options, c => c.Value is "--init" or "--add");
-    var error = new StringWriter();
-    Assert.Equal(130, await CliApplication.RunAsync(["--init"], project.Root, new StringWriter(), error,
-      new CancellationToken(canceled: true)));
-    Assert.Contains("Cancelled", error.ToString());
     Assert.False(Directory.Exists(project.Tasks));
     Assert.Equal("invalid: [", File.ReadAllText(config));
   }
@@ -248,12 +232,12 @@ public class InitializationTests
   [Fact]
   public async Task ConcurrentInitializersNeverOverwriteOrLeaveTemporaryFiles()
   {
-    using var project = new TestProject { NativeRunner = NativeRunner };
+    using var project = new TestProject();
     Directory.Delete(project.Tasks);
     var codes = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(async () =>
-      await CliApplication.RunAsync(["--init"], project.Root, new StringWriter(), new StringWriter()))));
+      await NativeCli.RunAsync(["--init"], project.Root, new StringWriter(), new StringWriter()))));
     Assert.All(codes, code => Assert.Equal(0, code));
-    Assert.Equal(Path.GetFileName(project.Root), ProjectConfiguration.Load(project.Tasks, project.Root).Name);
+    Assert.StartsWith(Path.GetFileName(project.Root) + "\n", (await project.RunAsync("--verbose")).StandardOutput);
     Assert.Empty(Directory.EnumerateFileSystemEntries(project.Tasks));
     Assert.Equal(2, Directory.EnumerateFileSystemEntries(project.Root).Count());
   }

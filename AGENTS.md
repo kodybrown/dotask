@@ -5,8 +5,8 @@ These instructions apply to every task in this repository.
 ## Project Identity
 
 - Product and command: `dotask`
-- C# namespace: `DoTask` (including `DoTask.Cli` and `DoTask.Runtime`)
-- Project type: Rust CLI and task SDK, .NET 10 reference CLI and C# support/library
+- C# namespace: `DoTask` (including `DoTask.Runtime`)
+- Project type: Rust CLI and task SDK, .NET 10 C# task helper library
 - Integration checkout: the primary checkout on `develop`, located with `git worktree list --porcelain`
 - Integration branch: `develop`
 - Task worktree root: `../worktrees/ai` relative to the integration checkout
@@ -145,7 +145,7 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - Target existence and optional execution use the CLI catalog. Only an absent
   target is `NotFound`; ambiguity and target failures must not be silently skipped.
 - Preserve arbitrary process arguments. Normalize only explicitly portable paths.
-- Keep `Program.cs` thin and failure/cancellation behavior explicit.
+- Keep `main.rs` thin and failure/cancellation behavior explicit.
 
 ## Build And Verification
 
@@ -185,7 +185,7 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   the native command, `sdk/dotnet/Dotask.dotnet.dll` and the Rust helper source
   crate under `sdk/rust/`;
   never bundle language runtimes, SDKs, Roslyn or a managed support host.
-  Keep the C# CLI as the behavior reference. See `docs/DESIGN.md`.
+  Maintain native CLI regression coverage and C# task support. See `docs/DESIGN.md`.
 - Cargo output is configured in `.cargo/config.toml`; build tasks, staging,
   packaging, and native tests query `cargo metadata` for its evaluated target
   directory. Preserve the user's Cargo and rustfmt settings.

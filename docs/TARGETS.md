@@ -252,8 +252,8 @@ under an underscore-prefixed subdirectory such as `_support` so they are not dis
 Discovery accepts `.cs` and `.rs` executable targets and `.task` YAML groups. Files such as `.txt`, `.md`, `.target`, `.targets`, `.yaml`, `.yml`, and
 `.json` are never targets, even when stored alongside tasks. Future `.py` or `.go`
 support would require explicit language handlers, not execute arbitrary files.
-For example, this repository stores its MSBuild bootstrap hook in
-`.tasks/misc/bootstrap.targets`; it does not appear in task help or completion.
+For example, this repository stores Windows native bootstrap staging in
+`.tasks/misc/prepare-bootstrap.ps1`; it does not appear in task help or completion.
 
 For example, put `#:include _support/Helpers.cs` before `using` directives to include
 a helper source file. Keep project-specific paths in YAML so the same target can

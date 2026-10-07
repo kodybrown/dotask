@@ -11,6 +11,75 @@ pub(crate) struct Change {
   pub before: Option<String>,
   pub after: Option<Vec<u8>>,
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn partial_update_recovery_restores_files_and_tracking_atomically_and_protects_later_edits() {
+    let root = tempfile::tempdir().unwrap();
+    let project = Directory {
+      root_directory: root.path().into(),
+      invocation_directory: root.path().into(),
+      task_directory: root.path().join(".tasks"),
+    };
+    fs::create_dir_all(project.task_directory.join("tools")).unwrap();
+    let transaction = Transaction {
+      project: &project,
+      prefix: ".tasks".into(),
+    };
+    transaction.ensure_state().unwrap();
+    fs::create_dir(transaction.staging().unwrap()).unwrap();
+    // Model an interrupted batch: the first task and a newly-created task were
+    // changed, while the lockfile still has its original contents.
+    fs::write(project.task_directory.join("tools/one.cs"), b"new").unwrap();
+    fs::write(project.task_directory.join("tools/two.cs"), b"new file").unwrap();
+    fs::write(root.path().join(".dotasks-lock.yaml"), b"old lock").unwrap();
+    fs::write(transaction.staging().unwrap().join("0.original"), b"original").unwrap();
+    fs::write(transaction.staging().unwrap().join("2.original"), b"old lock").unwrap();
+    let journal = Journal {
+      version: 1,
+      entries: vec![
+        Entry {
+          path: ".tasks/tools/one.cs".into(),
+          before_hash: Some(files::hash(b"original")),
+          after_hash: Some(files::hash(b"new")),
+          backup: "0.original".into(),
+        },
+        Entry {
+          path: ".tasks/tools/two.cs".into(),
+          before_hash: None,
+          after_hash: Some(files::hash(b"new file")),
+          backup: "1.original".into(),
+        },
+        Entry {
+          path: ".dotasks-lock.yaml".into(),
+          before_hash: Some(files::hash(b"old lock")),
+          after_hash: Some(files::hash(b"new lock")),
+          backup: "2.original".into(),
+        },
+      ],
+    };
+    fs::write(
+      transaction.journal().unwrap(),
+      files::dotnet_json(&serde_json::to_value(journal).unwrap()),
+    )
+    .unwrap();
+    fs::write(project.task_directory.join("tools/one.cs"), b"later edit").unwrap();
+    assert!(transaction.recover().is_err());
+    assert_eq!(fs::read(project.task_directory.join("tools/one.cs")).unwrap(), b"later edit");
+    assert!(project.task_directory.join("tools/two.cs").exists());
+    assert!(transaction.pending().unwrap());
+    fs::write(project.task_directory.join("tools/one.cs"), b"new").unwrap();
+    transaction.recover().unwrap();
+    assert_eq!(fs::read(project.task_directory.join("tools/one.cs")).unwrap(), b"original");
+    assert_eq!(fs::read(root.path().join(".dotasks-lock.yaml")).unwrap(), b"old lock");
+    assert!(!project.task_directory.join("tools/two.cs").exists());
+    assert!(!transaction.pending().unwrap());
+    assert!(!transaction.state().unwrap().exists());
+  }
+}
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Journal {

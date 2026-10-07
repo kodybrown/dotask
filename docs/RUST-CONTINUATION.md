@@ -13,16 +13,18 @@ contracts; [VERIFICATION.md](VERIFICATION.md) owns dated acceptance evidence.
   help and completion never compile or execute a task. Generated Cargo manifests,
   source/SDK snapshots, lockfiles, and outputs stay in an external per-user cache.
   See [Rust authoring](TARGETS.md#rust-tasks).
-- Repository orchestration is Rust: `installer-engine`, `rust-cli`,
-  `create-installer`, `pack`, `verify`, `verify-docs`, `catalog`, and `shim`.
+- Repository orchestration uses Rust tasks and declarative groups: `build`,
+  `build-sdks`, `test-sdks`, `create-installer`, `pack`, `verify`, `verify-docs`,
+  `catalog`, and `check`.
   Shared C# tasks and the C# authoring library remain maintained.
-- `build.cmd` and `build.sh` stage a native runner, `sdk/rust/` sources, and `sdk/dotnet/Dotask.dotnet.dll`
-  helpers into a fresh temporary directory. Repository operations remain tasks.
+- `build.cmd` and `build.sh` minimally bootstrap a temporary native runner and
+  forward all arguments. No arguments list tasks; `verify` explicitly verifies.
+  `build-sdks` prepares YAML-selected helper files. Repository operations remain tasks.
 - `create-installer.rs` builds native binaries and publishes the C# helper DLL
   from evaluated `PublishDir`. A fresh payload contains native `dotask[.exe]`,
   `sdk/rust/`, and `sdk/dotnet/Dotask.dotnet.dll`. The existing Rust
   installer creates packages and preserves immutable builds, receipts, and
-  activation recovery. `pack.rs` uses the same creator.
+  activation recovery.
 - Installer wiring uses `settings.installer.config` and `output`, with optional
   `engine`. Stable metadata/options live in `.tasks/installer.yaml`. The local
   wrapper stages the executable, helper DLL and SDK, fills dynamic fields, and
@@ -33,11 +35,12 @@ contracts; [VERIFICATION.md](VERIFICATION.md) owns dated acceptance evidence.
   `--app-version`, `--git-hash`, and `--build-stamp` override local creator choices;
   the generic engine accepts other version conventions and missing Git metadata.
   Repeated requested minutes advance with a warning before the app is compiled.
-- The C# CLI remains the behavior reference. Explicit `dotnet/pack` packages
-  that reference; the local `pack` target packages the native application.
+- The C# executable is removed. Native process tests, fixed pre-removal output
+  baselines, and Rust unit tests maintain regression coverage. The C# helper
+  and consumer tasks remain supported. `create-installer` packages the native app.
 - Shared catalogs, lockfiles, and installed shared task copies retain their
-  current C# schema and ownership rules. Rust variants, `--lang`, and
-  extension-qualified task calls remain future work.
+  schema and ownership rules for C# and Rust entries. Coexisting language
+  variants, `--lang`, and extension-qualified task calls remain future work.
 
 ## Windows verification and package acceptance
 
@@ -49,15 +52,15 @@ active user roots, publish, or push without separate authorization.
 From the source checkout:
 
 ```powershell
-.\build.cmd
-.\build.cmd pack
+.\build.cmd verify
 .\build.cmd help create-installer
 ```
 
 The full gate checks all Rust workspace members, standalone Rust task formatting,
-.NET tests, C# formatting, documentation, shared catalog freshness, bundled shim
-hashes, and Git whitespace. `pack` creates an installer package without installing
-it. Copy the entire printed package directory outside the checkout before testing
+.NET tests, documentation, shared catalog freshness, external adapter integration,
+and Git whitespace. Check C# formatting separately with `dotnet format dotask.slnx
+whitespace --verify-no-changes`. `create-installer` creates a package without
+installing it. Copy the entire printed package directory outside the checkout before testing
 it. Use explicit fresh temporary install/bin roots and `--non-interactive --set
 add-to-path=false` for unattended acceptance; never use active defaults or modify
 the user's PATH. Test console prompts separately from a staged installer copy.
@@ -67,7 +70,7 @@ changed-build activation, installed native arguments/streams, C# and Rust tasks,
 nested calls, launcher ownership, and uninstall. Verify help/completion for both languages with all toolchain paths absent.
 Rust execution needs Cargo/Rust and C# execution needs the selected .NET SDK.
 Neither toolchain is bundled. Query Cargo's output path rather than guessing.
-Verify evaluated .NET output paths for all three projects after tooling changes.
+Verify evaluated .NET output paths for the helper and tests after tooling changes.
 
 ## Remaining work
 

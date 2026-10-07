@@ -108,7 +108,7 @@ public sealed class RustCliTests
     }
     project.Write(".dotasks.yaml", "targets: { broken: { defaults: { invalid: value } } }");
     var invalid = await Run(project, ["broken", "--help"]);
-    // Match the reference CLI: target help reports default diagnostics in the
+    // Target help reports default diagnostics in the
     // target description, while remaining a successful metadata-only request.
     Assert.Equal(0, invalid.ExitCode);
     Assert.Contains("no option 'invalid'", invalid.StandardOutput);

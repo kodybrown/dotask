@@ -61,11 +61,12 @@ Expect exit code 1 and a message saying to choose `Debug, Release`.
 
 From the checkout root:
 
-```text
-dotnet build dotask.slnx -c Release
-dotnet run --project src/Dotask.Cli -c Release --no-build -- --use-dir examples/basic/.tasks hello
-dotnet run --project src/Dotask.Cli -c Release --no-build -- --use-dir examples/basic/.tasks write
+```powershell
+.\build.cmd --use-dir examples/basic/.tasks hello
+.\build.cmd --use-dir examples/basic/.tasks write
 ```
+
+On Linux/macOS, replace `.\build.cmd` with `./build.sh`.
 
 When using an installed CLI, you can instead change into `examples/basic` and
 run `dotask hello`; normal upward discovery finds its `.tasks` directory.

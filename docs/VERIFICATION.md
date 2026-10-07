@@ -1,5 +1,63 @@
 # Verification
 
+Dated entries describe the revision tested. Older executable names, commands,
+and implementation references below are historical, not current instructions.
+
+## C# executable removal (2026-10-07)
+
+On Windows x64 with .NET SDK 10.0.400 and Rust/Cargo 1.95.0,
+`build.cmd verify` passed 250 .NET Release tests and 34 Rust tests (23 native CLI
+units, 10 SDK units, and one CLI build-metadata test), rustfmt, clippy,
+required documentation, catalog freshness, and Git whitespace. The separate
+`dotnet format dotask.slnx whitespace --no-restore --verify-no-changes` check
+passed. All 83 relative links/anchors checked in the changed authoritative
+Markdown files resolved.
+
+The dependency audit found the retired executable in the solution, test project,
+fixture process/nested-call transport, direct internal API tests, root project
+setting, unused MSBuild bootstrap hook, Rust completion-script includes, and
+current usage/development instructions. Those dependencies were removed;
+completion adapters moved byte-for-byte into the native crate. The .NET solution
+now contains only the maintained `Dotask.dotnet.dll` helper and tests.
+
+| Coverage formerly tied to the managed CLI | Maintained native coverage |
+| --- | --- |
+| Help, completion, YAML comparison oracle | 23 fixed pre-removal output baselines plus native help/completion process tests; no executable oracle remains. |
+| Discovery, metadata, configuration, binding | Native Rust tests cover supported languages/groups, exclusions, invocation/root anchoring, filename/shortcut collisions, typed values, precedence, invalid input, and metadata isolation. |
+| Compilation and execution | Every published C# task compiles through the native compiler without executing it. Process tests cover C# SDK/package/project/include support, external outputs, concurrent immutable snapshots, streams, arguments, failures, nested calls, and cancellation. |
+| Groups and wizard internals | Native process group tests and Rust wizard tests cover sequencing, optional absence versus failures, typed/manual parameters, canonical names, back/cancel/EOF, ordering, preview/save, and destination protection. |
+| Shared management and recovery | Native process ownership/sync/remove/cache cases, independent test-only wire-format readers, and native partial-batch recovery tests preserve local edits and original tracking bytes. |
+| Bootstrap and C# helper process APIs | Argument-forwarding/cleanup fixtures and SDK-built process probes no longer use a managed CLI compiler. An isolated source-runner test covers consumer overrides, nested C# context, same-name tasks across roots, and preparation exit codes. |
+
+The .NET count decreased because duplicate reference/native suites were removed
+and internal cases moved into parameterized Rust tests. The removed injected
+C# HTTP-client test was not a native network test; local selective-download and
+hash-verification cases remain, while live HTTPS acceptance remains pending.
+
+The migration exposed and fixed optional null identity handling, precise
+full-name collision diagnostics, recognizable orphan cleanup during an empty
+no-op sync, and C# source bootstrap preparation with `--use-dir`. SDK preparation
+uses the source checkout's tasks/YAML, with an independent settings snapshot and
+call chain; the consumer retains its selected root, settings, and nested calls.
+
+The bare source launcher listed available tasks. The documented source examples
+`build.cmd --use-dir examples/basic/.tasks hello -n Ada -c Release` and
+`build.cmd --use-dir examples/basic/.tasks write` passed, including the greeting,
+nested calls, configuration, and expected `Written by dotask.` output file.
+Evaluated `BaseOutputPath`, `BaseIntermediateOutputPath`, and `PublishDir` for the
+helper and tests stayed beneath `C:\tmp\_dotnet`; Cargo's evaluated target directory
+remained `C:/tmp/_rust/dotask/target`.
+
+This is Windows automated/source-example evidence, not a claim of complete
+cross-platform parity. Native Linux/macOS/ARM64, live HTTPS, and interactive
+terminal/shell acceptance remain pending. Wizard input/rendering tests and help
+Unicode preservation tests do not replace real terminal cancellation and display
+width checks. Doinstall and Inno task sources were unchanged; external tools were
+executed only for existing verification. No active installation, publication,
+or push changed. The CI pin is unchanged; remote acceptance depends on the referenced doinstall
+commit being available in its independent repository.
+
+
 ## Independent doinstall extraction (2026-10-07)
 
 Dotask's complete `build.cmd verify` gate passed 419 .NET Release tests and 15

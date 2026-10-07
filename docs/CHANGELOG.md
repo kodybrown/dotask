@@ -613,3 +613,30 @@ acceptance, installation, and publication.
   bytes remain unchanged and their integrity test now lives in doinstall. No active
   installation, user PATH, publication, or push changed; native Linux/macOS/ARM64
   acceptance remains pending.
+
+### 2026-10-07 Remove the retained C# executable
+
+- Remove `src/Dotask.Cli`, its solution/test references, obsolete root project
+  setting, unused managed bootstrap hook, and retired friend assemblies. Retain
+  `src/Dotask` as `Dotask.dotnet.dll` and preserve C# consumer task support.
+- Move canonical completion scripts into the Rust CLI without changing their
+  bytes. Run all CLI fixtures and nested calls against immutable native runner
+  snapshots; retain 23 fixed pre-removal help/completion/YAML output baselines.
+- Migrate discovery/configuration/binding, help wrapping, wizard, transaction,
+  compile-all published C# task, process, and concurrent compilation coverage
+  into native tests and SDK-built helper probes. Remove duplicate reference
+  suites and test-only dependencies on executable internals.
+- Preserve optional null project identity, report full-name collisions with
+  their file-level diagnostic, and clean recognizable orphan staging on empty
+  no-op syncs while preserving dry-run and unknown-file protections.
+- Prepare source C# SDKs from the bootstrap checkout even with a consumer
+  `--use-dir`, keeping settings and call chains independent and preserving
+  preparation failures. Launchers remain minimal and forward every argument;
+  SDK file selections remain in YAML. Refresh current development/usage docs.
+- Verification: `build.cmd verify` passed 250 .NET Release tests and 34 Rust tests,
+  rustfmt/clippy/docs/catalog/whitespace gates on Windows x64. The separate .NET
+  formatting check, 83 local Markdown links/anchors, bare-launcher listing,
+  source greeting and nested-write examples passed. Evaluated .NET/Cargo outputs
+  remain external. Native Linux/macOS/ARM64, live HTTPS, and interactive terminal
+  acceptance remain pending. Doinstall/Inno task sources and the active user
+  installation were untouched; nothing was published or pushed.

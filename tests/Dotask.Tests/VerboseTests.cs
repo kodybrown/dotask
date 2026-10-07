@@ -1,7 +1,3 @@
-using DoTask.Cli;
-using DoTask.Cli.Completion;
-using DoTask.Cli.Parsing;
-
 namespace DoTask.Tests;
 
 public sealed class VerboseTests
@@ -19,17 +15,17 @@ public sealed class VerboseTests
     project.Target("run", "DoesNotCompile();", "// dotask: 1\n// description: \"Run things.\"\n// options:\n//   - {\"name\": \"mode\", \"default\": \"Debug\"}\n// end-dotask\n");
     using var output = new StringWriter();
     using var error = new StringWriter();
-    Assert.Equal(0, await CliApplication.RunAsync(command.Split(' ', StringSplitOptions.RemoveEmptyEntries), project.Root, output, error));
+    Assert.Equal(0, await NativeCli.RunAsync(command.Split(' ', StringSplitOptions.RemoveEmptyEntries), project.Root, output, error));
     var text = output.ToString();
     Assert.Contains("Targets:", text);
     Assert.Contains("Run things.", text);
-    Assert.EndsWith("See `dotask help <target>` for detailed information on each target." + Environment.NewLine, text);
+    Assert.EndsWith("See `dotask help <target>` for detailed information on each target." + "\n", text);
     Assert.Empty(error.ToString());
     foreach (var detail in new[] { "Project identity", "Project description", "Settings:", "Target options:" }) {
       Assert.Equal(command.Contains("--verbose"), text.Contains(detail));
     }
     if (!command.Contains("--verbose")) {
-      Assert.StartsWith("Targets:" + Environment.NewLine, text);
+      Assert.StartsWith("Targets:" + "\n", text);
     }
   }
 
@@ -53,15 +49,15 @@ public sealed class VerboseTests
   }
 
   [Fact]
-  public void VerboseIsGlobalAndCompletionWorksBeforeAndAfterIt()
+  public async Task VerboseIsGlobalAndCompletionWorksBeforeAndAfterIt()
   {
-    var command = CommandLine.Parse(["--verbose", "run", "-v", "true", "--verbose"]);
-    Assert.True(command.Verbose);
-    Assert.Equal("run", command.Command);
-    Assert.Equal(["-v", "true"], command.Arguments);
     using var project = new TestProject();
-    project.Target("run");
-    Assert.Contains(CompletionEngine.Complete("dotask --verbose r", project.Root), c => c.Value == "run");
-    Assert.Contains(CompletionEngine.Complete("dotask help --ver", project.Root), c => c.Value == "--verbose");
+    project.Target("run", "Console.WriteLine(BuildContext.Current.Parameters.Get<bool>(\"flag\"));",
+      "// dotask: 1\n// options: [{name: flag, alias: v, type: bool}]\n// end-dotask");
+    var result = await project.RunAsync("--verbose", "run", "-v", "true", "--verbose");
+    Assert.Equal(0, result.ExitCode);
+    Assert.Contains("True", result.StandardOutput);
+    Assert.Contains(NativeCompletion.Complete("dotask --verbose r", project.Root), c => c.Value == "run");
+    Assert.Contains(NativeCompletion.Complete("dotask help --ver", project.Root), c => c.Value == "--verbose");
   }
 }

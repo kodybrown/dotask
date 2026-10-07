@@ -1,0 +1,117 @@
+{
+  "help:": {
+    "ExitCode": 0,
+    "StandardOutput": "Targets:\n  group              Group description\n  run                Run a useful task.\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardError": ""
+  },
+  "help:help": {
+    "ExitCode": 0,
+    "StandardOutput": "Targets:\n  group              Group description\n  run                Run a useful task.\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardError": ""
+  },
+  "help:--verbose": {
+    "ExitCode": 0,
+    "StandardOutput": "Example\nShared project\n\nSettings:\n  nested:\n    flag: true\n  phrase: 'two words'\n  solution: example.slnx\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Release)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardError": ""
+  },
+  "help:help run": {
+    "ExitCode": 0,
+    "StandardOutput": "Target:\n  run             Run a useful task.\n                  Source: ./.tasks/tools/run.cs\n\n  Metadata only.\n\nOptions:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Release)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nRequires:\n  - tool: missing-tool-must-not-be-called\n\nCapabilities:\n  - process\n\nExamples:\n  dotask run -c Release\n",
+    "StandardError": ""
+  },
+  "help:run --help": {
+    "ExitCode": 0,
+    "StandardOutput": "Target:\n  run             Run a useful task.\n                  Source: ./.tasks/tools/run.cs\n\n  Metadata only.\n\nOptions:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Release)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nRequires:\n  - tool: missing-tool-must-not-be-called\n\nCapabilities:\n  - process\n\nExamples:\n  dotask run -c Release\n",
+    "StandardError": ""
+  },
+  "help:help group": {
+    "ExitCode": 0,
+    "StandardOutput": "Target:\n  group           Group description\n                  Source: ./.tasks/group.task\n\nSteps:\n  Require at least one step: false\n  - tools/run (optional)\n    with flag: true\n",
+    "StandardError": ""
+  },
+  "complete:bash:dotask ": {
+    "ExitCode": 0,
+    "StandardOutput": "--add\toption\tAdd shared project tasks\n--create-task\toption\tInteractively create a YAML task group\n--help\toption\tShow help\n--init\toption\tInitialize a project in the current directory\n--list\toption\tList shared tasks\n--remove\toption\tRemove unchanged shared project tasks\n--save\toption\tDownload shared tasks\n--sync\toption\tSync shared project tasks\n--use-dir\toption\tSelect a task directory\n--verbose\toption\tShow full summaries and execution diagnostics\n--version\toption\tShow version\ncompletion\tcommand\tPrint shell integration\ngroup\ttarget\tGroup description\nhelp\tcommand\tShow target help\nrun\ttarget\tRun a useful task.\ntools-run\ttarget\tRun a useful task.\ntools/run\ttarget\tRun a useful task.\n",
+    "StandardError": ""
+  },
+  "complete:bash:dotask --verbose ru": {
+    "ExitCode": 0,
+    "StandardOutput": "run\ttarget\tRun a useful task.\n",
+    "StandardError": ""
+  },
+  "complete:zsh:dotask help r": {
+    "ExitCode": 0,
+    "StandardOutput": "run\ttarget\tRun a useful task.\n",
+    "StandardError": ""
+  },
+  "complete:fish:dotask run --": {
+    "ExitCode": 0,
+    "StandardOutput": "--add\toption\tAdd shared project tasks\n--configuration\toption\tBuild configuration.\n--create-task\toption\tInteractively create a YAML task group\n--flag\toption\tBoolean flag.\n--help\toption\tShow help\n--init\toption\tInitialize a project in the current directory\n--input\toption\tInput file.\n--label\toption\tLabel.\n--list\toption\tList shared tasks\n--remove\toption\tRemove unchanged shared project tasks\n--save\toption\tDownload shared tasks\n--sync\toption\tSync shared project tasks\n--use-dir\toption\tSelect a task directory\n--verbose\toption\tShow full summaries and execution diagnostics\n--version\toption\tShow version\n",
+    "StandardError": ""
+  },
+  "complete:powershell:dotask run -c R": {
+    "ExitCode": 0,
+    "StandardOutput": "Release\tvalue\tBuild configuration.\n",
+    "StandardError": ""
+  },
+  "complete:bash:dotask run --configuration=R": {
+    "ExitCode": 0,
+    "StandardOutput": "--configuration=Release\tvalue\tBuild configuration.\n",
+    "StandardError": ""
+  },
+  "complete:bash:dotask run --flag ": {
+    "ExitCode": 0,
+    "StandardOutput": "false\tvalue\tBoolean flag.\ntrue\tvalue\tBoolean flag.\n",
+    "StandardError": ""
+  },
+  "complete:bash:dotask run --flag --": {
+    "ExitCode": 0,
+    "StandardOutput": "--add\toption\tAdd shared project tasks\n--configuration\toption\tBuild configuration.\n--create-task\toption\tInteractively create a YAML task group\n--help\toption\tShow help\n--init\toption\tInitialize a project in the current directory\n--input\toption\tInput file.\n--label\toption\tLabel.\n--list\toption\tList shared tasks\n--remove\toption\tRemove unchanged shared project tasks\n--save\toption\tDownload shared tasks\n--sync\toption\tSync shared project tasks\n--use-dir\toption\tSelect a task directory\n--verbose\toption\tShow full summaries and execution diagnostics\n--version\toption\tShow version\n",
+    "StandardError": ""
+  },
+  "complete:powershell:dotask run --input 'with s": {
+    "ExitCode": 0,
+    "StandardOutput": "with spaces.txt\tfile\tFile\n",
+    "StandardError": ""
+  },
+  "complete:bash:dotask --use-dir .tasks run --": {
+    "ExitCode": 0,
+    "StandardOutput": "--add\toption\tAdd shared project tasks\n--configuration\toption\tBuild configuration.\n--create-task\toption\tInteractively create a YAML task group\n--flag\toption\tBoolean flag.\n--help\toption\tShow help\n--init\toption\tInitialize a project in the current directory\n--input\toption\tInput file.\n--label\toption\tLabel.\n--list\toption\tList shared tasks\n--remove\toption\tRemove unchanged shared project tasks\n--save\toption\tDownload shared tasks\n--sync\toption\tSync shared project tasks\n--use-dir\toption\tSelect a task directory\n--verbose\toption\tShow full summaries and execution diagnostics\n--version\toption\tShow version\n",
+    "StandardError": ""
+  },
+  "complete:fish:dotask --init --": {
+    "ExitCode": 0,
+    "StandardOutput": "--help\toption\tShow help\n--use-dir\toption\tSelect a task directory\n--verbose\toption\tShow full summaries and execution diagnostics\n--version\toption\tShow version\n",
+    "StandardError": ""
+  },
+  "complete:powershell:echo ignored | dotask run --": {
+    "ExitCode": 0,
+    "StandardOutput": "--add\toption\tAdd shared project tasks\n--configuration\toption\tBuild configuration.\n--create-task\toption\tInteractively create a YAML task group\n--flag\toption\tBoolean flag.\n--help\toption\tShow help\n--init\toption\tInitialize a project in the current directory\n--input\toption\tInput file.\n--label\toption\tLabel.\n--list\toption\tList shared tasks\n--remove\toption\tRemove unchanged shared project tasks\n--save\toption\tDownload shared tasks\n--sync\toption\tSync shared project tasks\n--use-dir\toption\tSelect a task directory\n--verbose\toption\tShow full summaries and execution diagnostics\n--version\toption\tShow version\n",
+    "StandardError": ""
+  },
+  "yaml:settings: { item: &item { first: 1 }, alias: *item }": {
+    "ExitCode": 0,
+    "StandardOutput": "<project>\n\nSettings:\n  alias:\n    first: 1\n  item:\n    first: 1\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardError": ""
+  },
+  "yaml:settings: { quoted: 'true', number: 0x10, quotedNumber: !!str 12 }": {
+    "ExitCode": 0,
+    "StandardOutput": "<project>\n\nSettings:\n  number: 0x10\n  quoted: true\n  quotedNumber: 12\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardError": ""
+  },
+  "yaml:SETTINGS: { Flag: true }\nNAME: Native": {
+    "ExitCode": 0,
+    "StandardOutput": "Native\n\nSettings:\n  Flag: true\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardError": ""
+  },
+  "yaml:targets: { tools/run: { defaults: { configuration: release, flag: true } } }": {
+    "ExitCode": 0,
+    "StandardOutput": "<project>\n\nSettings:\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: release)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag. (default: true)\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardError": ""
+  },
+  "yaml:targets: { tools/run: { defaults: { label: été } } }": {
+    "ExitCode": 0,
+    "StandardOutput": "<project>\n\nSettings:\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardError": ""
+  }
+}

@@ -1,6 +1,4 @@
 using System.Text.Json;
-using DoTask.Cli;
-using DoTask.Cli.SharedTasks;
 
 namespace DoTask.Tests;
 
@@ -8,12 +6,12 @@ public sealed class RustCliParityTests
 {
   private static string Normalize( string value ) => value.Replace("\r\n", "\n", StringComparison.Ordinal);
 
-  private static async Task<ProcessResult> Reference( TestProject project, params string[] args )
+  private static ProcessResult Baseline( string key )
   {
-    using var output = new StringWriter();
-    using var error = new StringWriter();
-    var code = await CliApplication.RunAsync(args, project.Root, output, error);
-    return new(code, output.ToString(), error.ToString());
+    // Captured from 34f7e27 before removing the executable. These expectations
+    // are fixed data, so a native regression cannot change both sides of a comparison.
+    using var stream = typeof(RustCliParityTests).Assembly.GetManifestResourceStream("NativeCliBaseline.json")!;
+    return JsonSerializer.Deserialize<Dictionary<string, ProcessResult>>(stream)![key];
   }
 
   [Theory]
@@ -33,10 +31,10 @@ public sealed class RustCliParityTests
       targets: { tools/run: { defaults: { configuration: Release } } }
       """);
     var args = command.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-    var reference = await Reference(project, args);
+    var reference = Baseline("help:" + command);
     var native = await RustArtifacts.Run(project.Root, args);
     Assert.Equal(reference.ExitCode, native.ExitCode);
-    Assert.Equal(Normalize(reference.StandardOutput), Normalize(native.StandardOutput));
+    Assert.Equal(Normalize(reference.StandardOutput), Normalize(native.StandardOutput).Replace(Path.GetFileName(project.Root), "<project>", StringComparison.Ordinal));
     Assert.Equal(Normalize(reference.StandardError), Normalize(native.StandardError));
     Assert.False(File.Exists(Path.Combine(project.Root, "executed")));
   }
@@ -60,10 +58,10 @@ public sealed class RustCliParityTests
     project.Write(".dotasks.yaml", "invalid: [");
     project.Write("with spaces.txt", "example");
     var args = new[] { "__complete", "--line", line, "--shell", shell };
-    var reference = await Reference(project, args);
+    var reference = Baseline("complete:" + shell + ":" + line);
     var native = await RustArtifacts.Run(project.Root, args);
     Assert.Equal(0, native.ExitCode);
-    Assert.Equal(Normalize(reference.StandardOutput), Normalize(native.StandardOutput));
+    Assert.Equal(Normalize(reference.StandardOutput), Normalize(native.StandardOutput).Replace(Path.GetFileName(project.Root), "<project>", StringComparison.Ordinal));
     Assert.Empty(native.StandardError);
     Assert.False(File.Exists(Path.Combine(project.Root, "executed")));
   }
@@ -78,14 +76,14 @@ public sealed class RustCliParityTests
   {
     using var project = Project();
     project.Write(".dotasks.yaml", config);
-    var reference = await Reference(project, "--verbose");
+    var reference = Baseline("yaml:" + config);
     var native = await RustArtifacts.Run(project.Root, ["--verbose"]);
     Assert.True(native.ExitCode == 0, native.StandardError);
-    Assert.Equal(Normalize(reference.StandardOutput), Normalize(native.StandardOutput));
+    Assert.Equal(Normalize(reference.StandardOutput), Normalize(native.StandardOutput).Replace(Path.GetFileName(project.Root), "<project>", StringComparison.Ordinal));
   }
 
   [Fact]
-  public async Task NativeAndReferenceShareRevisionsAndPreserveNoOpTrackingBytes()
+  public async Task NativeRevisionsUseStableWireFormatAndPreserveNoOpTrackingBytes()
   {
     using var project = new TestProject();
     var source = project.Write("online/tools/check.cs", "// a source snapshot\n");
@@ -95,7 +93,7 @@ public sealed class RustCliParityTests
     var options = new SharedTaskOptions(Path.Combine(project.Root, "cache"), Path.Combine(project.Root, "private"), Path.Combine(project.Root, "online"));
     using var output = new StringWriter();
     using var error = new StringWriter();
-    Assert.Equal(0, await CliApplication.RunAsync(["--add", "tools/check"], project.Root, output, error, sharedTaskOptions: options));
+    Assert.Equal(0, await NativeCli.RunAsync(["--add", "tools/check"], project.Root, output, error, sharedTaskOptions: options));
     var lockPath = Path.Combine(project.Root, ".dotasks-lock.yaml");
     File.AppendAllText(lockPath, "# retained user note\n");
     var original = File.ReadAllBytes(lockPath);
@@ -112,13 +110,13 @@ public sealed class RustCliParityTests
   }
 
   [Fact]
-  public async Task NativeRecoveryUnderstandsReferenceJournalAndPreservesLaterEdits()
+  public async Task NativeRecoveryUnderstandsPersistedJournalAndPreservesLaterEdits()
   {
     using var project = new TestProject();
     var target = project.Write(".tasks/tools/check.cs", "later edit");
     project.Write(".tasks/.dotask/owner", "dotask shared-task transaction state v1\n");
     project.Write(".tasks/.dotask/transaction/0.original", "original");
-    var journal = new ProjectTaskTransaction.Journal(1,
+    var journal = new TransactionJournal(1,
       [new(".tasks/tools/check.cs", SharedTaskFiles.Hash("original"), SharedTaskFiles.Hash("incoming"), "0.original")]);
     var journalPath = project.Write(".tasks/.dotask/transaction/journal.json", JsonSerializer.Serialize(journal, SharedTaskJson.Options));
     var options = new SharedTaskOptions(Path.Combine(project.Root, "cache"), Path.Combine(project.Root, "private"));
