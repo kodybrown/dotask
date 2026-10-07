@@ -63,7 +63,7 @@ pub fn prepare(
     });
     Ok(())
   };
-  for (index, command) in package.commands.iter().enumerate() {
+  for (index, command) in package.runtime.commands.iter().enumerate() {
     let target = build.join(&command.executable);
     let mut directories = vec![root.to_path_buf()];
     if config::enabled(values, "additional-command") {
@@ -92,7 +92,7 @@ pub fn prepare(
       }
     }
   }
-  for (index, shortcut) in package.shortcuts.iter().enumerate() {
+  for (index, shortcut) in package.runtime.shortcuts.iter().enumerate() {
     let shortcut = Shortcut {
       name: config::expand(&shortcut.name, values)?,
       ..shortcut.clone()

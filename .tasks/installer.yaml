@@ -1,6 +1,4 @@
-# Dotask-specific installer metadata and installation defaults. The local
-# creator supplies the built app version, build stamp/revision, host platform,
-# architecture, and payload path without rewriting this source configuration.
+# Build-machine steps are not distributed. runtime owns destination behavior.
 schema: 1
 application:
   id: dotask
@@ -8,22 +6,52 @@ application:
   author: Kody Brown
   copyright: Copyright (C) 2026 Kody Brown
   description: Portable project tasks, in the language of your choice, for any platform.
-interactive: true
-commands:
-  - name: dotask
-    executable: '${app-executable}'
-shortcuts: []
-inputs:
-  install-dir:
-    type: path
-    required: true
-    prompt: Install dotask in
-  additional-command:
-    type: boolean
-    default: false
-    prompt: Place an additional dotask command in another directory?
-defaults:
-  common:
-    additional-command: false
-  windows:
-    add-to-path: true
+build-steps:
+  - run: build-installer
+    with:
+      stage-dir: '${staging}/tools'
+  - run: build
+    with:
+      build-info: '${build-info}'
+      stage-dir: '${staging}/app'
+    gather:
+      - from: '${staging}/app'
+        files: ['dotask${exe-extension}', 'sdk/**']
+        to: .
+  - run: _/simple-installer/assemble
+    with:
+      builder: '${staging}/tools/simple-installer-builder${exe-extension}'
+      installer: '${staging}/tools/dotask-installer${exe-extension}'
+      config: '${config}'
+      output: '${package}'
+  # Enable either step, or substitute another archive task such as a RAR creator.
+  - run: _/archive/create-zip
+    enabled: false
+    with:
+      source: '${package}'
+      output: '${package}.zip'
+  - run: _/archive/create-7z
+    enabled: false
+    with:
+      source: '${package}'
+      output: '${package}.7z'
+runtime:
+  interactive: true
+  commands:
+    - name: dotask
+      executable: 'dotask${exe-extension}'
+  shortcuts: []
+  inputs:
+    install-dir:
+      type: path
+      required: true
+      prompt: Install dotask in
+    additional-command:
+      type: boolean
+      default: false
+      prompt: Place an additional dotask command in another directory?
+  defaults:
+    common:
+      additional-command: false
+    windows:
+      add-to-path: true

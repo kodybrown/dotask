@@ -555,3 +555,32 @@ acceptance, installation, and publication.
   Evaluated outputs remain external; Bash syntax and document links passed.
   No active installation or user PATH changed; nothing was published or pushed.
   Linux/macOS acceptance remains deferred.
+
+### 2026-10-07 Configure installer build steps and preserve nested runtime settings
+
+- Separate source installer YAML into application metadata, ordered `build-steps`,
+  and destination `runtime` configuration. Run producer tasks, gather their
+  expected files, and fail on producer errors, missing files, or payload conflicts.
+  Preserve the same nested runtime mapping in distributed YAML; reject source
+  build steps and old root-level runtime fields in the destination installer.
+- Replace shared installer tasks with Rust under `simple-installer`, move assembly
+  into a separate build-machine executable, and remove the shipped installer's
+  packaging command. Add optional ZIP/7z tasks preserving the top-level directory
+  and publishing completed archives without overwriting an existing output.
+- Configure SDK selections in YAML and prepare them through `build-sdks`. Keep
+  bootstrap native and minimal, forward all arguments including an empty list,
+  use `build` and `build-installer`, and remove the local `pack` task. Keep NuGet
+  tasks in the consumer catalog. Read application version/Git naming settings
+  during installer creation, support UTC version tokens including ordinal day,
+  and refuse an existing version directory without advancing the timestamp.
+- Support Rust shared catalog entries and source-prefixed support files. Refresh
+  the catalog and generate tracking for the reviewed, identical repository task
+  copies through the native shared manager. Preserve the user's Rust verification
+  placeholders and run SDK integration tests from a Rust-authored direct SDK task.
+- Verification: `build.cmd verify` passed all 420 .NET Release tests and 65 Rust
+  tests, formatting/clippy, docs, catalog, shim, and whitespace gates on Windows
+  x64. Temporary application creation, matching embedded build metadata, ZIP/7z
+  directory structure, collision refusal, GUI launch/shortcuts, retained uninstall,
+  and bootstrap argument forwarding passed. Evaluated .NET and Cargo outputs
+  remain external. No active installation, user PATH, publication, or push changed.
+  Linux/macOS acceptance remains pending.

@@ -2,40 +2,35 @@
   "version": 1,
   "tasks": [
     {
-      "id": "dotask-installer/create-installer",
-      "entryPoint": "dotask-installer/create-installer.cs",
-      "description": "Package an application payload and YAML with the standalone Rust installer.",
-      "runtime": "csharp",
+      "id": "archive/create-7z",
+      "entryPoint": "archive/create-7z.rs",
+      "description": "Create a 7z archive containing the named source directory.",
+      "runtime": "rust",
       "files": [
         {
-          "path": "dotask-installer/create-installer.cs",
-          "sha256": "990d50f3fef7e2f85a407f95b0aa749990895d82e616dd63ad47457cacb11543"
+          "path": "archive/_support/Archive.rs",
+          "sha256": "05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e"
+        },
+        {
+          "path": "archive/create-7z.rs",
+          "sha256": "24f5ae3393feddcf1539ef6bcf09f402ef9a0a5f636173f0b504fd5d4f5aaf02"
         }
       ],
       "requires": []
     },
     {
-      "id": "dotask-installer/install",
-      "entryPoint": "dotask-installer/install.cs",
-      "description": "Create and run the project's installer for this OS and architecture.",
-      "runtime": "csharp",
+      "id": "archive/create-zip",
+      "entryPoint": "archive/create-zip.rs",
+      "description": "Create a ZIP archive containing the named source directory.",
+      "runtime": "rust",
       "files": [
         {
-          "path": "dotask-installer/install.cs",
-          "sha256": "ddbd0b85c8c07a3262b7f0e8382c5f3d3318d10ddda71151b5113ab3f09900d1"
-        }
-      ],
-      "requires": []
-    },
-    {
-      "id": "dotask-installer/uninstall",
-      "entryPoint": "dotask-installer/uninstall.cs",
-      "description": "Run the retained installer to uninstall an application without rebuilding it.",
-      "runtime": "csharp",
-      "files": [
+          "path": "archive/_support/Archive.rs",
+          "sha256": "05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e"
+        },
         {
-          "path": "dotask-installer/uninstall.cs",
-          "sha256": "770745c3050c03b69562cb704638bf9b86c69762f57a86be3adfd0614dbaa3c6"
+          "path": "archive/create-zip.rs",
+          "sha256": "7d7701fa1e484c689de35fb5895c6411e72534d015ff3e7192aaa6d0c419b97f"
         }
       ],
       "requires": []
@@ -174,13 +169,69 @@
     },
     {
       "id": "git/check",
-      "entryPoint": "git/check.cs",
+      "entryPoint": "git/check.rs",
       "description": "Check that Git is available, optionally checking repository whitespace.",
-      "runtime": "csharp",
+      "runtime": "rust",
       "files": [
         {
-          "path": "git/check.cs",
-          "sha256": "4ebafe62dfca12d472776c990e7fbe5afc75fb2fff47be08fddeb16cf7ec4b75"
+          "path": "git/check.rs",
+          "sha256": "4ee12848d5ac3f12dd7d38e6091e8423515f5e300e72f3a4f198b50c5bfc227d"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "simple-installer/assemble",
+      "entryPoint": "simple-installer/assemble.rs",
+      "description": "Assemble a distributable installer directory from resolved configuration and payload.",
+      "runtime": "rust",
+      "files": [
+        {
+          "path": "simple-installer/assemble.rs",
+          "sha256": "292f2d239fc1445f0aa8ae1aeb66e2cda4a9c92c248d451163dfad8c73ff6e09"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "simple-installer/create-installer",
+      "entryPoint": "simple-installer/create-installer.rs",
+      "description": "Run configured build steps and gather files to create an application installer.",
+      "runtime": "rust",
+      "files": [
+        {
+          "path": "simple-installer/_support/BuildInfo.rs",
+          "sha256": "ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53"
+        },
+        {
+          "path": "simple-installer/create-installer.rs",
+          "sha256": "25dbc8c890d7f4eec0c57c192e0704d13089a78cc7ff3aa57ebf81cf8fa5c59b"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "simple-installer/install",
+      "entryPoint": "simple-installer/install.rs",
+      "description": "Create and run the project's installer for this OS and architecture.",
+      "runtime": "rust",
+      "files": [
+        {
+          "path": "simple-installer/install.rs",
+          "sha256": "0c34f54789de6e37495ccba92dc2290464c207075927cc6e1ca4cedc5fa92a53"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "simple-installer/uninstall",
+      "entryPoint": "simple-installer/uninstall.rs",
+      "description": "Run the retained installer to uninstall an application without rebuilding it.",
+      "runtime": "rust",
+      "files": [
+        {
+          "path": "simple-installer/uninstall.rs",
+          "sha256": "5ebf40c0fda9a4814dfdcf07992e12ed9be04b8130aba9ae858ba699c2ca997a"
         }
       ],
       "requires": []

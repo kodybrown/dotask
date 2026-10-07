@@ -1,5 +1,4 @@
 using System.Text.Json;
-using DoTask.Cli;
 
 namespace DoTask.Tests;
 
@@ -8,9 +7,10 @@ public sealed class RustInstallerWorkflowTests
   [Fact]
   public async Task SharedTasksPackageInstallLaunchAndUninstallGuiPayloadWithoutOriginalPackage()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = true };
     var engine = RustArtifacts.Binary("dotask-installer");
-    Assert.True(File.Exists(engine), "Build the Rust engine first: build.cmd installer-engine (Unix: ./build.sh installer-engine).");
+    var builder = RustArtifacts.Binary("simple-installer-builder");
+    Assert.True(File.Exists(engine) && File.Exists(builder), "Build the installer first: build.cmd build-installer (Unix: ./build.sh build-installer).");
     project.WriteBuildProperties();
     var source = project.Write("GuiProbe/GuiProbe.csproj", """
       <Project Sdk="Microsoft.NET.Sdk">
@@ -47,8 +47,8 @@ public sealed class RustInstallerWorkflowTests
       await stream.CopyToAsync(output);
     }
     var added = await ProcessRunner.RunAsync(new ProcessDefinition {
-      Executable = "dotnet",
-      Arguments = [typeof(CliApplication).Assembly.Location, "--add", "_/dotask-installer/*"],
+      Executable = RustArtifacts.Binary("dotask"),
+      Arguments = ["--add", "_/simple-installer/*"],
       // --add prefers a cached catalog even when the online source is overridden.
       // Keep all shared-task locations fixture-owned so an older user catalog
       // cannot hide the installer tasks or receive test downloads and locks.
@@ -69,25 +69,46 @@ public sealed class RustInstallerWorkflowTests
     var bin = Path.Combine(project.Root, "commands");
     var desktop = Path.Combine(project.Root, "desktop");
     var marker = Path.Combine(project.Root, "launched");
-    var config = project.Write("installer.yaml", JsonSerializer.Serialize(new {
+    var sourceConfig = JsonSerializer.SerializeToNode(new {
       schema = 1,
       application = new { id = "gui-probe", name = "GUI Probe", version = "1.0.0" },
-      platform = OperatingSystem.IsWindows() ? "windows" : OperatingSystem.IsMacOS() ? "macos" : "linux",
-      architecture = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? "arm64" : "x64",
-      payload,
-      interactive = false,
-      commands = new[] { new { name = "gui-probe", executable = OperatingSystem.IsWindows() ? "gui-probe.exe" : "gui-probe" } },
-      shortcuts = new[] { new { name = "GUI Probe", executable = OperatingSystem.IsWindows() ? "gui-probe.exe" : "gui-probe", arguments = new[] { marker }, desktop = true, local = true, terminal = OperatingSystem.IsMacOS() } },
-      values = new Dictionary<string, object> { ["install-dir"] = installed, ["bin-dir"] = bin, ["additional-command"] = true, ["add-to-path"] = false, ["desktop-dir"] = desktop, ["desktop-shortcuts"] = true, ["local-shortcuts"] = true }
-    }));
+      runtime = new {
+        interactive = false,
+        commands = new[] { new { name = "gui-probe", executable = OperatingSystem.IsWindows() ? "gui-probe.exe" : "gui-probe" } },
+        shortcuts = new[] { new { name = "GUI Probe", executable = OperatingSystem.IsWindows() ? "gui-probe.exe" : "gui-probe", arguments = new[] { marker }, desktop = true, local = true, terminal = OperatingSystem.IsMacOS() } },
+        values = new Dictionary<string, object> { ["install-dir"] = installed, ["bin-dir"] = bin, ["additional-command"] = true, ["add-to-path"] = false, ["desktop-dir"] = desktop, ["desktop-shortcuts"] = true, ["local-shortcuts"] = true }
+      }
+    })!;
+    sourceConfig["build-steps"] = JsonSerializer.SerializeToNode(new object[] {
+      new { gather = new[] { new { from = payload, files = Directory.EnumerateFiles(payload).Select(Path.GetFileName).ToArray() } } },
+      new {
+        run = "_/simple-installer/assemble",
+        with = new Dictionary<string, object> {
+          ["builder"] = builder, ["installer"] = engine, ["config"] = "${config}", ["output"] = "${package}"
+        }
+      }
+    });
+    var config = project.Write("installer.yaml", sourceConfig.ToJsonString());
+    project.Write(".tasks/create-installer.rs", """
+      use dotask_sdk::{json, BuildContext, Result};
+      fn main() { dotask_sdk::run(task); }
+      fn task(project: &BuildContext) -> Result<()> {
+        let artifact = project.create_installer("_/simple-installer/create-installer", json!({}))?;
+        project.set_installer_result(&artifact)
+      }
+      """);
     project.Write(".dotasks.yaml", JsonSerializer.Serialize(new {
       version = 1,
       settings = new Dictionary<string, object> {
-        ["installer"] = new { config, engine, output = Path.Combine(project.Root, "packages") }
+        ["installer"] = new { config, output = Path.Combine(project.Root, "packages") }
       }
     }));
     var installation = await project.RunAsync("install");
     Assert.True(installation.ExitCode == 0, installation.StandardOutput + installation.StandardError);
+    var packagedConfig = Assert.Single(Directory.EnumerateFiles(Path.Combine(project.Root, "packages"), "installer.yaml", SearchOption.AllDirectories));
+    var shippedConfig = File.ReadAllText(packagedConfig);
+    Assert.Contains("runtime:", shippedConfig);
+    Assert.DoesNotContain("build-steps:", shippedConfig);
     var launcher = Path.Combine(installed, OperatingSystem.IsWindows() ? "gui-probe.exe" : "gui-probe");
     var launched = await Run(launcher, marker);
     Assert.True(launched.ExitCode == 0, launched.StandardError);

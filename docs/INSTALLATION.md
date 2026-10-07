@@ -1,103 +1,158 @@
 # Application installers
 
 `dotask install` creates and runs a fresh installer for console and GUI applications.
-The shared tasks live under `_/dotask-installer/`; their C# implementation does not
+The shared tasks live under `_/simple-installer/`; their Rust implementation does not
 restrict application payloads to .NET. Application builds remain project-specific.
 Custom `create-installer` targets and other installer technologies remain supported.
 
 ## Where installer configuration comes from
 
-The standalone installer reads `installer.yaml` beside its executable, or the
-file selected with `--config`. It never discovers or reads `.dotasks.yaml` on
-the destination machine. The project-owned `create-installer` task builds that
-package and supplies its application metadata, permitted shortcuts, prompt
-labels, and defaults.
+The source `.tasks/installer.yaml` separates three responsibilities:
 
-In dotask's source project, `.dotasks.yaml` owns project identity and nested task
-settings under `settings.installer`. Its `config` points to `.tasks/installer.yaml`,
-which owns dotask-specific application identity, description, copyright, commands,
-prompt labels, and defaults. Top-level project name/description are not copied
-automatically. The local Rust creator builds and stages `dotask[.exe]`,
-`sdk/dotnet/Dotask.dotnet.dll`, and the Rust SDK sources under `sdk/rust/`, fills
-build-time fields in a temporary config, then calls the shared creator to package
-that payload.
-For other applications, the shared creator reads the complete YAML selected by
-`installer.config` and packages the already-built payload.
+- `application` declares application identity and banner metadata.
+- `build-steps` runs producer tasks, gathers their expected files, assembles the
+  installer directory, and optionally runs archive tasks.
+- `runtime` defines destination behavior: `interactive`, `inputs`, `defaults`,
+  `profiles`, `values`, `commands`, `shortcuts`, and application-owned `settings`.
+
+The creator removes `build-steps`, supplies the resolved version/build, platform,
+architecture, and payload location, and preserves the nested `runtime` mapping
+in the distributed `installer.yaml`. The standalone installer reads that file
+beside its executable, or the file selected with `--config`. It never discovers
+`.dotasks.yaml`, runs build tasks, or accepts source-only `build-steps`.
+Old root-level runtime fields are rejected; there is no compatibility loader.
+
+In dotask's source project, `.dotasks.yaml` points `settings.installer.config`
+to `.tasks/installer.yaml`. Top-level project name/description are not copied
+automatically. Application version policy lives in `settings.app`:
 
 ```yaml
 settings:
+  app:
+    version: '0.1.yyDDD.HHmm'
+    git-hash: short           # none, short (7 characters), or full
+    dirty-suffix: true
   installer:
     config: .tasks/installer.yaml
     output: artifacts/installers
-    # engine: tools/dotask-installer.exe
 ```
 
-`installer.engine` selects a prebuilt engine for the shared creator. Dotask's
-local wrapper can use that override; otherwise it builds its engine and queries
-Cargo's evaluated output directory, avoiding a machine-specific checked-in path.
-Its source YAML is a partial template: the wrapper supplies app version/build,
-platform, architecture, and payload, and resolves `${app-executable}` in command
-and shortcut entries. The shared creator receives complete configuration; it
-does not build an application or interpret dotask-specific template tokens.
+Version tokens use UTC: `yyyy`, `yy`, `MM` (month), `dd` (day), `DDD` (day of
+year), `HH` or `hh` (24-hour clock), and `mm` (minute). Other characters are
+literal. For example, `0.1.yyMM.ddhh` retains the requested calendar shape,
+and `0.1.yyDDD.HHmm` includes ordinal day and minute. An existing destination
+version directory stops creation with an error; the creator never advances the
+clock or overwrites an earlier build.
+
+A source configuration can compose ordinary tasks:
+
+```yaml
+schema: 1
+application:
+  id: example
+  name: Example App
+build-steps:
+  - run: build
+    with:
+      stage-dir: '${staging}/app'
+    gather:
+      - from: '${staging}/app'
+        files: ['example${exe-extension}', 'sdk/**']
+        to: .
+  - run: _/simple-installer/assemble
+    with:
+      builder: tools/simple-installer-builder.exe
+      installer: tools/dotask-installer.exe
+      config: '${config}'
+      output: '${package}'
+  - run: _/archive/create-zip
+    enabled: false
+    with:
+      source: '${package}'
+      output: '${package}.zip'
+runtime:
+  interactive: true
+  commands:
+    - name: example
+      executable: 'example${exe-extension}'
+  shortcuts: []
+  inputs: {}
+  defaults: {}
+```
+
+Build steps run in order. A task failure stops the sequence; missing expected
+files and payload collisions are errors. `gather.files` accepts exact portable
+relative file paths and directory selections ending in `/**`, preserving their
+structure beneath `to` (payload root by default). Producers need no output
+registration: their parameters and the expected-file declarations establish the
+relationship. Configure SDK file selections in `.tasks/sdks.yaml` for the reusable
+`build-sdks` task; installer payload selections belong in `build-steps`.
+
+Available build values are `${staging}`, `${payload}`, `${config}`, `${package}`,
+`${version}`, `${build-info}`, `${exe-extension}`, and `${settings.NAME}`.
+`build-info` is JSON metadata for a producer that embeds the same application
+version/stamp. Runtime input placeholders, such as `${shortcut-name}`, remain for
+the destination installer. Only command/shortcut executable paths resolve build
+placeholders inside `runtime`.
 
 | Installer YAML | Purpose |
 | --- | --- |
-| `application.name`, `description`, `copyright` | Console banner metadata; copyright/description are optional |
-| `shortcuts[].start-menu`, `desktop`, `local` | Permit shortcut locations; a location with no permitted shortcut cannot be enabled |
-| `defaults.*.start-menu-shortcuts`, `desktop-shortcuts`, `local-shortcuts` | Choose whether permitted shortcuts are enabled by default |
-| `defaults.*.additional-command` | Default for the second command/shim, initially false; it is always permitted by the engine |
-| `defaults.*.add-to-path` | Default for Windows user PATH addition |
-| `interactive`, `inputs`, `defaults`, `values` | Prompt mode, labels, defaults, and supplied values; command-line options override them |
+| `application.name`, `description`, `copyright` | Console banner metadata |
+| `runtime.shortcuts[].start-menu`, `desktop`, `local` | Permit shortcut locations |
+| `runtime.defaults.*.start-menu-shortcuts`, `desktop-shortcuts`, `local-shortcuts` | Default selection of permitted shortcuts |
+| `runtime.defaults.*.additional-command` | Default for a second command/shim, initially false |
+| `runtime.defaults.*.add-to-path` | Default for Windows user PATH addition |
+| `runtime.interactive`, `inputs`, `defaults`, `values` | Prompt mode, labels, defaults, and supplied values |
 
-An additional-command default of false hides no capability: it sets the initial
-No answer. The engine currently has no separate permission flag to forbid an
-additional shim. Dotask's package declares no shortcuts, so it offers no Start
-Menu or desktop shortcut questions.
+An additional-command default of false sets the initial No answer. The engine
+has no separate permission flag to forbid that additional shim. Dotask declares
+no shortcuts, so it offers no Start Menu or desktop shortcut questions.
 
 ## Shared tasks
 
-Use the tool to install the new group and remove the old tracked task:
+Install the Rust group using the tool:
 
 ```sh
-dotask --add "_/dotask-installer/*"
-dotask --remove _/dotnet/install
+dotask --add "_/simple-installer/*"
 ```
 
-Review conflicts rather than deleting locally modified tasks. Do not retain both
-install tasks: their short name would be ambiguous. An exact project `install`
-can wrap `_/dotask-installer/install` explicitly. Existing projects should sync
-tracked copies with `dotask --sync "_/dotask-installer/*"`.
-Until published, use the [local catalog override](SHARED-TASKS.md#official-catalog-and-unpublished-preview).
-Updating the CLI alone does not update committed task copies.
+Review conflicts rather than deleting locally modified tasks. Remove obsolete
+tracked installer tasks explicitly so short names do not become ambiguous.
+An exact project `install` can wrap `_/simple-installer/install`. Updating the CLI
+alone does not update committed task copies. Until published, use the
+[local catalog override](SHARED-TASKS.md#official-catalog-and-unpublished-preview).
 
-The shared creator reads these settings, with matching CLI overrides:
+The shared creator accepts `installer.config` (`--config`) and
+`installer.output` (`--output`), with optional `--app-version` and `--build-stamp`
+overrides. Paths are project-relative or absolute. A project `create-installer`
+can call the shared creator and forward its `InstallerArtifact`. The shared
+`install` task requires that creator, waits for it to succeed, then runs the
+returned artifact with its exact argument tokens.
 
-| Setting | Override | Meaning |
-| --- | --- | --- |
-| `installer.config` | `--config` | Installer YAML file |
-| `installer.engine` | `--engine` | Prebuilt host Rust installer executable |
-| `installer.output` | `--output` | Parent directory for complete packages |
-
-Paths in task settings/options are project-relative or absolute. Build the payload
-before calling the creator. The creator never invokes an application compiler.
-A project wrapper can call `CreateInstallerAsync("_/dotask-installer/create-installer",
-parameters)` and forward the artifact using `SetInstallerResultAsync`.
-A YAML task group can wrap the creator too. Packages are independently copied into
-`<output>/<os>-<architecture>/<app-id>-<app-version>-<stamp>[-<git7>][-dirty]/`, and contain:
+Packages live beneath
+`<output>/<os>-<architecture>/<app-id>-<version>[-<revision>][-dirty]/` and contain:
 
 ```text
 installer.exe             # installer on Linux/macOS
-installer.yaml
-payload/                  # or payload.zip
+installer.yaml            # resolved application and nested runtime settings
+payload/
 ```
 
-Distribute the entire directory. There is one installer executable, without a
-companion .NET runtime. The destination does not need dotask, Rust, or an SDK.
-Application runtime requirements still depend on the payload. Supply a binary
-matching the host OS/architecture; cross-platform engine release distribution is
-not yet automated. Windows builds statically link the CRT; Unix system-library
-requirements depend on the build host/target. Native acceptance is recorded in
-[VERIFICATION.md](VERIFICATION.md), separately from implementation support.
+Distribute the entire directory. It contains one installer executable without a
+companion language runtime. The destination does not need dotask, Rust, or an SDK
+to install; application runtime requirements depend on the payload. Build-machine
+assembly belongs to the separate `simple-installer-builder` executable, which is
+not distributed. The shipped installer has no `package` command.
+
+ZIP and 7z creation are ordinary optional `build-steps` using
+`_/archive/create-zip` and `_/archive/create-7z`. Each uses a configurable `7z`
+executable and includes the installer directory as the archive's top-level
+folder. Enable one or both, or substitute a project task for another format.
+Archive flags do not belong to the destination installer.
+
+Supply binaries matching the host OS/architecture; cross-platform release
+production is not automated. Native acceptance is recorded separately in
+[VERIFICATION.md](VERIFICATION.md).
 
 ## Installer YAML schema 1
 
@@ -121,43 +176,44 @@ application:
 platform: windows
 architecture: x64
 payload: ./published
-interactive: true
-commands:
-  - name: example
-    executable: example.exe
-shortcuts:
-  - name: '${shortcut-name}'
-    executable: example.exe
-    arguments: []
-    terminal: false
-    desktop: true
-    start-menu: true
-    local: true
-inputs:
-  channel:
-    type: choice
-    choices: [stable, preview]
-    required: true
-    default: stable
-    prompt: Choose a channel
-defaults:
-  common:
-    additional-command: false
-    confirm-install: true
-    desktop-shortcuts: false
-    local-shortcuts: true
-  windows:
-    add-to-path: true
-    start-menu-shortcuts: true
-    start-menu-nested: false
-    shortcut-name: Example App
-profiles:
-  omarchy:
-    values:
+runtime:
+  interactive: true
+  commands:
+    - name: example
+      executable: example.exe
+  shortcuts:
+    - name: '${shortcut-name}'
+      executable: example.exe
+      arguments: []
+      terminal: false
+      desktop: true
+      start-menu: true
+      local: true
+  inputs:
+    channel:
+      type: choice
+      choices: [stable, preview]
+      required: true
+      default: stable
+      prompt: Choose a channel
+  defaults:
+    common:
+      additional-command: false
+      confirm-install: true
       desktop-shortcuts: false
-values: {}
-settings:
-  - '${local-app-data}/Example/settings'
+      local-shortcuts: true
+    windows:
+      add-to-path: true
+      start-menu-shortcuts: true
+      start-menu-nested: false
+      shortcut-name: Example App
+  profiles:
+    omarchy:
+      values:
+        desktop-shortcuts: false
+  values: {}
+  settings:
+    - '${local-app-data}/Example/settings'
 ```
 
 The engine finds same-basename YAML beside itself, independent of working directory.
@@ -422,55 +478,36 @@ There is no Windows Installed Apps registration or Inno Setup dependency.
 
 ## Build and install dotask itself
 
-The Rust `create-installer.rs` task builds the native CLI and installer engine,
-publishes the C# helper library using evaluated MSBuild `PublishDir`, and packages
-a fresh payload containing `dotask[.exe]`, `sdk/dotnet/Dotask.dotnet.dll`, and
-`sdk/rust/`. It delegates packaging to the shared creator and returns the normal
-`InstallerArtifact`.
-The Rust `pack` task uses the same creator. Compiler output remains external;
-final packages go beneath `settings.installer.output`. Stable installer options
-are authored in `.tasks/installer.yaml`; the local wrapper forwards the staged
-payload/configuration to `_/dotask-installer/create-installer` and returns its
-structured artifact. The generic creator and launcher remain shared tasks.
+The local Rust `create-installer` task delegates to
+`_/simple-installer/create-installer`. Its `.tasks/installer.yaml` build steps
+run `build-installer` to prepare the installer and build-machine builder, run
+`build` to prepare the native app and SDKs, gather the declared files, and call
+`_/simple-installer/assemble`. Optional archive steps follow. There is no local
+`pack` task; `_/dotnet/pack` remains a NuGet task for consuming C# projects.
 
-Dotask's default public version is `major.minor.yyMM.ddhh`, preserving the major
-and minor from its Cargo package version. For example, a UTC build on October 6,
-2026 at 06:12 displays
-`dotask 0.1.2610.0606 (build 26279-0612, commit abcdef7)` and produces
-`dotask-0.1.2610.0606-26279-0612-abcdef7`; installation uses
-`app/0.1.2610.0606-26279-0612-abcdef7`. Git revisions are omitted when unavailable
-or disabled. Technical Cargo and C# helper-library versions remain independent.
-
-The creator selects the minute before compiling the app. If an output already
-uses that minute, it advances one minute and warns, continuing until an unused
-minute is found. A lock serializes creation in the same output directory. The
-assigned stamp can therefore be ahead of wall-clock time; it is embedded in the
-binary and carried unchanged through package/installation metadata. The creator
-checks the compiled app's structured build information before packaging.
-
-Use `--app-version VERSION` on `create-installer` or `pack` to override dotask's
-calendar default, `--git-hash false` to omit Git information, and `--build-stamp
-YYDDD-HHMM` to request a reproducible UTC minute (still advanced on collision).
-These choices apply to dotask's local creator; other applications supply their
-own version/build metadata in installer YAML. No version-format convention is
-imposed by the shared creator or engine.
-Rust 1.95 or newer, Cargo, rustfmt, and clippy are required for source verification.
-The required gate includes Rust tests and the .NET suite. Destination machines
-need Rust/Cargo only to execute Rust tasks and the .NET SDK only to execute C#
-tasks. Neither toolchain is needed for task metadata, CLI help, initialization,
-or completion. No language runtime, SDK, Roslyn or support host is bundled.
+`build-sdks` publishes the maintained C# helper using evaluated MSBuild
+`PublishDir`, then copies the Rust SDK selections from `.tasks/sdks.yaml`.
+Compiler output stays external. Only the final independent installer directory
+is created beneath `settings.installer.output`. Destination machines need
+Rust/Cargo to execute Rust tasks and the .NET SDK to execute C# tasks; neither is
+needed for metadata, help, initialization, completion, or installer execution.
+No language runtime, SDK, Roslyn, or managed support host is bundled.
 
 ```powershell
-.\build.cmd
+.\build.cmd                         # Bootstrap and list available tasks.
+.\build.cmd verify                  # Explicit repository verification.
 .\build.cmd create-installer
 # Use fresh, isolated locations for acceptance:
 .\build.cmd install --installer-args '["--non-interactive","--set","add-to-path=false","--install-dir","C:/Temp/dotask-acceptance/apps/dotask","--bin-dir","C:/Temp/dotask-acceptance/bin"]'
 ```
 
-Unix uses `./build.sh` and absolute temporary paths. All packages use the user's
-installed language toolchains; there is no self-contained packaging option.
-`build.cmd installer-engine` builds only
-the host engine. `build.cmd installer-engine --verify` runs Rust checks.
+Unix uses `./build.sh`. Both launchers forward arbitrary arguments to a temporary
+native runner; no task whitelist is maintained. The Rust source SDK is available
+to bootstrapped Rust tasks. The launcher prepares the C# helper through
+`build-sdks` only when a C# task is executed. `build` calls `build-sdks` explicitly
+for a distributable native app. `build-installer --verify` runs installer Rust
+tests, formatting, and clippy. Rust 1.95+, rustfmt, and clippy are required for
+source verification. Native Linux/macOS acceptance remains pending.
 
 ## Installer library contract
 

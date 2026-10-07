@@ -2,94 +2,48 @@
 version: 1
 directory: .tasks
 tasks:
-  _/dotask-installer/create-installer:
+  _/archive/create-7z:
     source: _
-    revision: e033bcd9579b47173224cf4dc33893a83ac9f0a133016378a7f9de5eeb2a52f4
+    revision: 0c9f3006dd99c267b11dc0a809c23b910fed7e0cad465e32b0d998b0fedd39fd
     requires: []
     files:
-      _/dotask-installer/create-installer.cs: 68faf24d3f86f67dec885aed2d5738d0bc17ad3b96b196a21a9a2e157209bd21
-  _/dotask-installer/install:
+      _/archive/_support/Archive.rs: 05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e
+      _/archive/create-7z.rs: 24f5ae3393feddcf1539ef6bcf09f402ef9a0a5f636173f0b504fd5d4f5aaf02
+  _/archive/create-zip:
     source: _
-    revision: df3ff16fd62bbcf6a1eecf01338205b7040e6e3c6b237b7c0ac93e6d59407f21
+    revision: f8bb98d27df54671519f17a77958e9269f438d7fd45c5660cf0306c7bf07b5f1
     requires: []
     files:
-      _/dotask-installer/install.cs: fbf34f42c6f61a81b17ae24300dbabb9291c4c5738069684456e7cadf46eb88e
-  _/dotask-installer/uninstall:
-    source: _
-    revision: 02625ff1559cbba27f8127ccead8bbbb92a8973e0050030eca911a85cd74cccc
-    requires: []
-    files:
-      _/dotask-installer/uninstall.cs: 4474317cb4c183d37a8f5df0e49218b258b7301aedd76ce03bd95a5637574cc2
-  _/dotnet/build:
-    source: _
-    revision: 5f2cc44738ce47d410fe36a1f30670614b7bba3fb2701a47588c70c0117ca37b
-    requires:
-    - _/dotnet/restore
-    files:
-      _/dotnet/build.cs: ff0d138f301ea8717a7b649b4ea210f960e7b61b12ebb43215d9cc16a121b8b7
-  _/dotnet/check:
-    source: _
-    revision: bffda71051a47b318d245396cce41fb446e683bff124b543a032d9b4ffcfe000
-    requires: []
-    files:
-      _/dotnet/check.cs: 5271de609544ccd428cb01a710da20f670236c68185e8ad2bab987b93305521d
-  _/dotnet/clean:
-    source: _
-    revision: d3ac9497926e7f2cff5b0ec724cccf44acdc94a3e643152e32f5594f1296063b
-    requires: []
-    files:
-      _/dotnet/clean.cs: 49c33b2bdb77c4675b01d62293ece03bd803cdf9b43326219e6fb51bef69aa64
-  _/dotnet/format:
-    source: _
-    revision: f23050da3bbebca820699efc4e96715466849f5a7c9a74691cc00d48f57d6b5e
-    requires: []
-    files:
-      _/dotnet/format.cs: afa96372cfefffe8c2ba829b0156f076159e80676ebc80caaefb963a61ab9500
-  _/dotnet/pack:
-    source: _
-    revision: 80cd3f24e7a40e3a089d845f80eb24cf840b53b338019565d5fd13f3f9d58ac2
-    requires: []
-    files:
-      _/dotnet/pack.cs: 9272f1880bf3a05237a513b3ba02f4e064ff062fcf6931749bbdfc6e4179caf8
-  _/dotnet/publish:
-    source: _
-    revision: 350e454529d9ae1e540750c4bf95b927046f9cf19981d04747caa6ef2ab77055
-    requires: []
-    files:
-      _/dotnet/publish.cs: 471803f7615b4dc443a2cae67a0b8cf108a00af5e83a767145d3d6d3f8fd21af
-  _/dotnet/restore:
-    source: _
-    revision: 00ad1833a9b36f15b19ab6d02e2cb31b931a5ece1b0d152628a010226e3a88b2
-    requires: []
-    files:
-      _/dotnet/restore.cs: c9b9e9603ba82820482cdf4ce4452a811a143193cbe84d5faeea6413e13c3b01
-  _/dotnet/run:
-    source: _
-    revision: 973d54d0e4ad9fca46da1a3ba4094b607407cc958759cb384f12bdc89bf241cc
-    requires: []
-    files:
-      _/dotnet/run.cs: 648ffdf0e97ce1267f9c7ec5aff5fdf0e02ddef919bb4cbadb34e1596202f716
-  _/dotnet/test:
-    source: _
-    revision: ba83c6f4d0c8cd2b0db8fb079ab7b91b0e7a30591414aa370e8dd1d32f25f025
-    requires: []
-    files:
-      _/dotnet/test.cs: 57cfa1d1f229d3d8b0b5443c4191ecab39e748746ae74c2dfec42b48389fef09
-  _/dotnet/verify:
-    source: _
-    revision: 5a74df894bd06738cf52a6735d19446a40f1d23fe68c9acd86117887ad335905
-    requires: []
-    files:
-      _/dotnet/verify.cs: 2f18e13096df82fa9668352f67a20dbba035ead6d2aebc94f45e966b63cdd424
+      _/archive/_support/Archive.rs: 05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e
+      _/archive/create-zip.rs: 7d7701fa1e484c689de35fb5895c6411e72534d015ff3e7192aaa6d0c419b97f
   _/git/check:
     source: _
-    revision: 9959b6ae5f93b99202a7da0c4b49dfc483a6791975b2b85ab31f7a4ef0c427f9
+    revision: ad2aca63684e1d59cda111c494c15147116cda41e019c54854e469aac1502874
     requires: []
     files:
-      _/git/check.cs: eae0a3cab76d0b16406bb8748a89ba7734f83df0cbe48e5c0d6e31d93f52014a
-  _/text/fixeol:
+      _/git/check.rs: 4ee12848d5ac3f12dd7d38e6091e8423515f5e300e72f3a4f198b50c5bfc227d
+  _/simple-installer/assemble:
     source: _
-    revision: 3cf8286cda62333c72db79b00e127c63777a17ae583c685660505177dcca077e
+    revision: c8ac7d9f2fa4ccb2fd3ae0c658029856783fbdd2166e9577019af0146b91990d
     requires: []
     files:
-      _/text/fixeol.cs: 436be36f0a59d8a9c0ae0d2a12b37c4df8a6b402c6fc0488a7f6e657cb62c922
+      _/simple-installer/assemble.rs: 292f2d239fc1445f0aa8ae1aeb66e2cda4a9c92c248d451163dfad8c73ff6e09
+  _/simple-installer/create-installer:
+    source: _
+    revision: db5b320b19da0beed52b66d38b760d44d19c0aa544cb694ed22e020905813991
+    requires: []
+    files:
+      _/simple-installer/_support/BuildInfo.rs: ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53
+      _/simple-installer/create-installer.rs: 25dbc8c890d7f4eec0c57c192e0704d13089a78cc7ff3aa57ebf81cf8fa5c59b
+  _/simple-installer/install:
+    source: _
+    revision: 14ece3e9af15a64a9afcebd4bbf74d21f7497a5e33d5a31abda37f688a332e90
+    requires: []
+    files:
+      _/simple-installer/install.rs: 0c34f54789de6e37495ccba92dc2290464c207075927cc6e1ca4cedc5fa92a53
+  _/simple-installer/uninstall:
+    source: _
+    revision: f0d3051504dd6bc3b147155e75d8436385af1c594ceebee0ba0b7005fd58a204
+    requires: []
+    files:
+      _/simple-installer/uninstall.rs: 5ebf40c0fda9a4814dfdcf07992e12ed9be04b8130aba9ae858ba699c2ca997a

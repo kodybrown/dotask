@@ -46,7 +46,7 @@ jobs:
       - name: Bootstrap and verify
         # Rust CLI, installer, SDK, and native integration tests use this gate.
         shell: ${{ matrix.shell }}
-        run: ${{ matrix.launcher }}
+        run: ${{ matrix.launcher }} verify
       - name: Package
         shell: ${{ matrix.shell }}
-        run: ${{ matrix.launcher }} pack
+        run: ${{ matrix.launcher }} create-installer

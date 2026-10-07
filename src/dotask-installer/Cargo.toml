@@ -5,6 +5,10 @@ edition = "2024"
 rust-version = "1.95"
 license = "MIT"
 
+[[bin]]
+name = "simple-installer-builder"
+path = "src/builder.rs"
+
 [dependencies]
 anyhow = "1"
 ctrlc = "3.5"

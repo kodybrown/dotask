@@ -1,6 +1,7 @@
 // dotask: 1
-// description: Build the host Rust installer, or run its tests and formatting checks.
+// description: Build the standalone installer and its build-machine creator.
 // options:
+//   - { name: stage-dir, type: path, description: Copy the installer and builder into this directory. }
 //   - { name: verify, type: bool, default: false, description: 'Run Rust tests, formatting, and clippy.' }
 // requires:
 //   - { kind: tool, value: cargo }
@@ -57,6 +58,15 @@ fn task(project: &BuildContext) -> Result<()> {
       ],
       "Cargo.toml",
     )?;
+  }
+  if let Ok(stage) = project.string("stage-dir") {
+    let stage = project.path(stage);
+    std::fs::create_dir_all(&stage)?;
+    let output = rust_build::target_directory(project)?.join("release");
+    for binary in ["dotask-installer", "simple-installer-builder"] {
+      let name = format!("{binary}{}", if cfg!(windows) { ".exe" } else { "" });
+      std::fs::copy(output.join(&name), stage.join(name))?;
+    }
   }
   println!(
     "{}",

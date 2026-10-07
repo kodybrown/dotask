@@ -316,12 +316,15 @@ minus one column; unattended output stays plain. Shortcut declarations grant
 location permissions, while defaults set initial answers. The additional command
 is always available today; its false default is a preference, not a permission.
 
-Use nested installer settings (`installer.config`, `installer.engine`, and
-`installer.output`) shared across creation/packaging/installation. Stable
-dotask-specific options live in `.tasks/installer.yaml`. The local Rust creator
-owns its native executable/helper DLL/SDK build, creates a complete temporary
-configuration from that template, and delegates packaging to the generic shared
-creator. The shared creator never assumes an application's build pipeline.
+Use nested task settings (`installer.config` and `installer.output`) to locate
+the source YAML and deliverables. `.tasks/installer.yaml` keeps `application`,
+ordered `build-steps`, and destination `runtime` settings separate. Producer tasks
+and their expected gathered files belong in `build-steps`; there is no producer
+registration or hard-coded installer SDK inventory. The Rust shared creator runs
+those ordinary tasks, propagates failures, removes build steps, and preserves the
+same nested runtime schema in distributed YAML. Destination installers reject
+build steps and old root-level runtime fields. Installer assembly runs in a
+separate build-machine executable; it is not a shipped installer subcommand.
 
 Launcher preferences may change during an update. Ownership comes from the
 receipt's actual launcher inventory, not a required match against old preference

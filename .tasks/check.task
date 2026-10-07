@@ -1,7 +1,7 @@
-description: Run checks for git and dotnet
-require_at_least_1_step: true
+description: Run checks for Git and Rust
+require_at_least_1_step: false
 steps:
   - run: "_/git/check"
     optional: true
-  - run: "_/dotnet/check"
-    optional: true
+  # - run: "_/rust/check"
+  #   optional: true

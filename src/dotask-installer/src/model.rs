@@ -9,6 +9,14 @@ pub struct Package {
   pub platform: String,
   pub architecture: String,
   pub payload: String,
+  pub runtime: Runtime,
+}
+
+/// Options used on the destination machine. The creator preserves this layout
+/// when writing the package, so source and distributed YAML share one schema.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "kebab-case")]
+pub struct Runtime {
   #[serde(default = "interactive_default")]
   pub interactive: bool,
   #[serde(default)]
@@ -19,6 +27,7 @@ pub struct Package {
   pub defaults: BTreeMap<String, BTreeMap<String, serde_json::Value>>,
   #[serde(default)]
   pub profiles: BTreeMap<String, Profile>,
+  #[serde(default)]
   pub commands: Vec<Command>,
   #[serde(default)]
   pub shortcuts: Vec<Shortcut>,
@@ -49,6 +58,8 @@ pub struct Application {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Build {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub name: Option<String>,
   pub stamp: String,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub commit: Option<String>,

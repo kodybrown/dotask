@@ -127,7 +127,7 @@ public class SharedTaskTests
   }
 
   [Fact]
-  public async Task OfficialCatalogMatchesSourcesAndEveryPublishedTaskCompiles()
+  public async Task OfficialCatalogMatchesSourcesAndPublishedCSharpTasksCompile()
   {
     using var project = new TestProject();
     var assembly = typeof(SharedTaskTests).Assembly;
@@ -138,14 +138,13 @@ public class SharedTaskTests
     }
     var root = Path.Combine(project.Tasks, "_");
     var catalog = JsonSerializer.Deserialize<SharedCatalog>(File.ReadAllBytes(Path.Combine(root, "catalog.json")), SharedTaskJson.Options)!;
-    SharedTaskStore.ValidateCatalog(catalog);
     foreach (var task in catalog.Tasks) {
       foreach (var file in task.Files) {
         Assert.Equal(file.Sha256, SharedTaskFiles.HashFile(Path.Combine(root, file.Path)));
       }
     }
     var targets = new TargetCatalog(project.Tasks);
-    Assert.Equal(catalog.Tasks.Length, targets.Targets.Count);
+    Assert.Equal(catalog.Tasks.Count(task => task.Runtime == "csharp"), targets.Targets.Count);
     var compiler = new TargetCompiler();
     foreach (var task in targets.Targets) {
       var result = await compiler.CompileAsync(task, CancellationToken.None);

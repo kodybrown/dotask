@@ -110,7 +110,10 @@ impl Tracking {
           bail!("Invalid or conflicting tracked file '{path}'.");
         }
       }
-      if !task.files.contains_key(&format!("{id}.cs")) {
+      if !["cs", "rs"]
+        .iter()
+        .any(|extension| task.files.contains_key(&format!("{id}.{extension}")))
+      {
         bail!("Missing entry point tracking for '{id}'.");
       }
     }
@@ -266,7 +269,10 @@ impl Store {
       });
     }
     files::check_link(&self.private)?;
-    let paths = crate::catalog::sources(&self.private, false, false)?;
+    let paths: Vec<_> = crate::catalog::sources(&self.private, false, true)?
+      .into_iter()
+      .filter(|p| p.extension().is_some_and(|e| e == "cs" || e == "rs"))
+      .collect();
     let targets: Vec<_> = paths.iter().map(|p| crate::task_metadata::metadata(p, &self.private)).collect();
     let mut tasks = vec![];
     for target in targets {
@@ -312,9 +318,14 @@ impl Store {
         .collect::<Result<_>>()?;
       tasks.push(SharedTask {
         id,
-        entry_point: relative,
+        entry_point: relative.clone(),
         description: target.description,
-        runtime: "csharp".into(),
+        runtime: if relative.ends_with(".rs") {
+          "rust"
+        } else {
+          "csharp"
+        }
+        .into(),
         files: assets,
         requires,
       });
@@ -500,15 +511,12 @@ fn validate_catalog(catalog: &SharedCatalog) -> Result<()> {
   for t in &catalog.tasks {
     files::id(&t.id, 2)?;
     if !ids.insert(t.id.to_lowercase())
-      || t.runtime != "csharp"
-      || t.entry_point != format!("{}.cs", t.id)
+      || !["csharp", "rust"].contains(&t.runtime.as_str())
+      || t.entry_point != format!("{}.{}", t.id, if t.runtime == "rust" { "rs" } else { "cs" })
       || t.files.is_empty()
       || t.files.len() > 128
     {
-      bail!(
-        "Invalid or unsupported shared task '{}'. Only C# tasks are supported in this version.",
-        t.id
-      );
+      bail!("Invalid or unsupported shared task '{}'. Expected a C# or Rust task.", t.id);
     }
     let mut paths = BTreeSet::new();
     for f in &t.files {
@@ -518,12 +526,12 @@ fn validate_catalog(catalog: &SharedCatalog) -> Result<()> {
         || !files::is_hash(&f.sha256)
         || parts.len() < 2
         || parts.iter().any(|p| p.starts_with('.'))
-        || f.path.to_lowercase().ends_with(".cs")
+        || (f.path.to_lowercase().ends_with(".cs") || f.path.to_lowercase().ends_with(".rs"))
           && f.path != t.entry_point
           && !parts[..parts.len() - 1].iter().any(|p| p.starts_with('_'))
       {
         bail!(
-          "Invalid file '{}' in shared task '{}'. C# support files must be inside an _support directory.",
+          "Invalid file '{}' in shared task '{}'. Code support files must be inside an _support directory.",
           f.path,
           t.id
         );
@@ -923,7 +931,7 @@ fn listing(
     crate::process::check_cancelled()?;
     let source = id.split('/').next().unwrap();
     let installed = tracking.tasks.get(id);
-    let present = files::resolve(&project.task_directory, &format!("{id}.cs"))?.is_file();
+    let present = files::resolve(&project.task_directory, &format!("{source}/{}", task.entry_point))?.is_file();
     let status = if !present {
       "—"
     } else if installed.is_some() {

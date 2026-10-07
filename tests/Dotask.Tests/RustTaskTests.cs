@@ -5,6 +5,27 @@ namespace DoTask.Tests;
 public sealed class RustTaskTests
 {
   [Fact]
+  public async Task SharedRustSupportFilesResolveWithinTheirInstalledSource()
+  {
+    using var project = new TestProject();
+    project.Write(".tasks/helpers/_support/message.rs", "pub fn message() -> &'static str { \"unowned root copy\" }");
+    foreach (var source in new[] { "_", "company" }) {
+      project.Write($".tasks/{source}/helpers/_support/message.rs", $"pub fn message() -> &'static str {{ \"{source}\" }}");
+      project.Write($".tasks/{source}/helpers/run.rs", """
+        // dotask: 1
+        // requires: [{ kind: file, value: helpers/_support/message.rs }]
+        // end-dotask
+        #[path = "_support/message.rs"] mod helper;
+        fn main() { println!("support:{}", helper::message()); }
+        """);
+      var result = await RustArtifacts.Run(project.Root, [$"{source}/helpers/run"]);
+      Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
+      Assert.Contains("support:" + source, result.StandardOutput);
+      Assert.DoesNotContain("unowned root copy", result.StandardOutput);
+    }
+  }
+
+  [Fact]
   public async Task RustTasksBindTypedDefaultsAndPreserveContextArgumentsAndSupportSources()
   {
     using var project = new TestProject();

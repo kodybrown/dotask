@@ -26,10 +26,10 @@ impl Fixture {
     let package = json!({ "schema":1, "application":{"id":"probe","name":"Probe","version":"1.0.0"},
         "platform":if cfg!(windows){"windows"}else if cfg!(target_os="macos"){"macos"}else{"linux"},
         "architecture":if cfg!(target_arch="aarch64"){"arm64"}else{"x64"}, "payload":"payload",
-        "commands":[{"name":"probe","executable":executable}],
+        "runtime":{"commands":[{"name":"probe","executable":executable}],
         "shortcuts":[{"name":"Probe","executable":executable,"terminal":true,"local":true,"desktop":true,"start-menu":true}],
         "values":{"install-dir":root,"bin-dir":bin,"additional-command":true,"add-to-path":false},
-        "settings":[temp.path().join("settings").to_str().unwrap()]
+        "settings":[temp.path().join("settings").to_str().unwrap()]}
     });
     fs::write(&config, serde_saphyr::to_string(&package).unwrap()).unwrap();
     Self {
@@ -41,6 +41,16 @@ impl Fixture {
     }
   }
   fn run(&self, args: &[&str]) -> Output {
+    if args.first() == Some(&"package") {
+      return Command::new(env!("CARGO_BIN_EXE_simple-installer-builder"))
+        .arg("--installer")
+        .arg(env!("CARGO_BIN_EXE_dotask-installer"))
+        .arg("--config")
+        .arg(&self.config)
+        .args(&args[1..])
+        .output()
+        .unwrap();
+    }
     let mut command = Command::new(env!("CARGO_BIN_EXE_dotask-installer"));
     if !args.iter().any(|arg| ["--interactive", "--non-interactive"].contains(arg)) {
       command.arg("--non-interactive");
@@ -245,13 +255,13 @@ fn retained_engine_uninstalls_without_original_package() {
 fn inputs_require_values_and_follow_explicit_precedence() {
   let f = Fixture::new();
   let mut package: Value = serde_saphyr::from_str(&fs::read_to_string(&f.config).unwrap()).unwrap();
-  package["inputs"] = json!({"channel":{"type":"choice","required":true,"choices":["stable","preview"]}});
+  package["runtime"]["inputs"] = json!({"channel":{"type":"choice","required":true,"choices":["stable","preview"]}});
   fs::write(&f.config, serde_saphyr::to_string(&package).unwrap()).unwrap();
   assert!(!f.run(&[]).status.success());
   assert!(!f.root.exists());
-  package["defaults"] = json!({"common":{"channel":"preview"}});
-  package["profiles"] = json!({"test":{"values":{"channel":"stable"}}});
-  package["values"]["channel"] = "preview".into();
+  package["runtime"]["defaults"] = json!({"common":{"channel":"preview"}});
+  package["runtime"]["profiles"] = json!({"test":{"values":{"channel":"stable"}}});
+  package["runtime"]["values"]["channel"] = "preview".into();
   fs::write(&f.config, serde_saphyr::to_string(&package).unwrap()).unwrap();
   f.good(&["--profile", "test"]);
   assert_eq!(f.receipt()["values"]["channel"], "preview");
@@ -264,6 +274,18 @@ fn package_snapshot_runs_after_source_is_removed() {
   let f = Fixture::new();
   let output = f._temp.path().join("delivery");
   f.good(&["package", "--output", output.to_str().unwrap()]);
+  let source: Value = serde_saphyr::from_str(&fs::read_to_string(&f.config).unwrap()).unwrap();
+  let shipped: Value = serde_saphyr::from_str(&fs::read_to_string(output.join("installer.yaml")).unwrap()).unwrap();
+  // Serialization makes omitted defaults explicit, but preserves every supplied
+  // runtime field under the same mapping.
+  for key in ["commands", "values", "settings"] {
+    assert_eq!(shipped["runtime"][key], source["runtime"][key]);
+  }
+  for (key, value) in source["runtime"]["shortcuts"][0].as_object().unwrap() {
+    assert_eq!(&shipped["runtime"]["shortcuts"][0][key], value);
+  }
+  assert!(shipped.get("build-steps").is_none());
+  assert!(shipped.get("commands").is_none());
   fs::remove_dir_all(&f.payload).unwrap();
   fs::remove_file(&f.config).unwrap();
   let engine = output.join(if cfg!(windows) {
@@ -327,7 +349,7 @@ fn previous_formats_and_migration_flags_are_rejected_without_mutation() {
 fn yaml_shortcut_permissions_cannot_be_overridden() {
   let f = Fixture::new();
   let mut package: Value = serde_saphyr::from_str(&fs::read_to_string(&f.config).unwrap()).unwrap();
-  package["shortcuts"] = json!([]);
+  package["runtime"]["shortcuts"] = json!([]);
   fs::write(&f.config, serde_saphyr::to_string(&package).unwrap()).unwrap();
   assert!(!f.run(&["--desktop-shortcuts"]).status.success());
   assert!(!f.root.exists());
@@ -391,8 +413,8 @@ fn root_only_install_and_parent_command_directory_preserve_unowned_files() {
   for additional in [false, true] {
     let f = Fixture::new();
     let mut package: Value = serde_saphyr::from_str(&fs::read_to_string(&f.config).unwrap()).unwrap();
-    package["values"]["additional-command"] = additional.into();
-    package["values"].as_object_mut().unwrap().remove("bin-dir");
+    package["runtime"]["values"]["additional-command"] = additional.into();
+    package["runtime"]["values"].as_object_mut().unwrap().remove("bin-dir");
     fs::write(&f.config, serde_saphyr::to_string(&package).unwrap()).unwrap();
     let unrelated = f._temp.path().join("another application.exe");
     fs::write(&unrelated, "keep").unwrap();
@@ -423,7 +445,7 @@ fn default_interaction_requires_terminal_and_yaml_can_select_unattended() {
   assert!(String::from_utf8_lossy(&output.stderr).contains("--non-interactive"));
   assert!(!f.root.exists());
   let mut package: Value = serde_saphyr::from_str(&fs::read_to_string(&f.config).unwrap()).unwrap();
-  package["interactive"] = false.into();
+  package["runtime"]["interactive"] = false.into();
   fs::write(&f.config, serde_saphyr::to_string(&package).unwrap()).unwrap();
   let output = Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
     .args(["--config", f.config.to_str().unwrap()])
@@ -511,9 +533,9 @@ fn named_start_menu_shortcuts_can_move_between_flat_and_owned_nested_folders() {
   let f = Fixture::new();
   let menu = f._temp.path().join("Start Menu 日本語");
   f.configure(|p| {
-    p["shortcuts"] = json!([{"name":"${shortcut-name}","executable":"probe.exe","start-menu":true}]);
-    p["values"]["start-menu-dir"] = menu.to_string_lossy().into_owned().into();
-    p["values"]["start-menu-shortcuts"] = true.into();
+    p["runtime"]["shortcuts"] = json!([{"name":"${shortcut-name}","executable":"probe.exe","start-menu":true}]);
+    p["runtime"]["values"]["start-menu-dir"] = menu.to_string_lossy().into_owned().into();
+    p["runtime"]["values"]["start-menu-shortcuts"] = true.into();
   });
   let custom = "Build Tools 日本語";
   f.good(&["--shortcut-name", custom]);
@@ -541,10 +563,10 @@ fn uninstall_removes_only_installer_created_empty_shortcut_folders() {
       fs::create_dir_all(&directory).unwrap();
     }
     f.configure(|p| {
-      p["shortcuts"] = json!([{"name":"${shortcut-name}","executable":"probe.exe","start-menu":true}]);
-      p["values"]["start-menu-dir"] = menu.to_string_lossy().into_owned().into();
-      p["values"]["start-menu-shortcuts"] = true.into();
-      p["values"]["start-menu-nested"] = true.into();
+      p["runtime"]["shortcuts"] = json!([{"name":"${shortcut-name}","executable":"probe.exe","start-menu":true}]);
+      p["runtime"]["values"]["start-menu-dir"] = menu.to_string_lossy().into_owned().into();
+      p["runtime"]["values"]["start-menu-shortcuts"] = true.into();
+      p["runtime"]["values"]["start-menu-nested"] = true.into();
     });
     f.good(&[]);
     assert!(directory.join("Probe.lnk").exists());
@@ -627,23 +649,32 @@ fn arbitrary_version_text_is_preserved_and_unsafe_path_characters_are_encoded() 
 }
 
 #[test]
-fn creator_transport_reads_partial_yaml_without_installation_or_prompts() {
+fn installer_rejects_build_commands_and_source_only_sections() {
   let f = Fixture::new();
-  fs::write(&f.config,"schema: 1\napplication: {id: probe, name: 'Custom Probe'}\ninteractive: false\ndefaults: {common: {additional-command: false}}\n").unwrap();
-  let output = Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
-    .args(["__config", f.config.to_str().unwrap()])
-    .output()
-    .unwrap();
-  assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-  let config: Value = serde_json::from_slice(&output.stdout).unwrap();
-  assert_eq!(config["application"]["name"], "Custom Probe");
-  assert_eq!(config["interactive"], false);
+  for args in [&["package"][..], &["__config"], &["--output", "unused"]] {
+    let result = Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
+      .arg("--config")
+      .arg(&f.config)
+      .args(args)
+      .output()
+      .unwrap();
+    assert!(!result.status.success());
+    assert!(String::from_utf8_lossy(&result.stderr).contains("Unknown argument"));
+    assert!(!f.root.exists());
+  }
+  f.configure(|p| p["build-steps"] = json!([{ "run": "build" }]));
+  let result = f.run(&["--validate"]);
+  assert!(!result.status.success());
+  assert!(String::from_utf8_lossy(&result.stderr).contains("build-steps"));
   assert!(!f.root.exists());
-  fs::write(&f.config, "- invalid\n").unwrap();
-  let output = Command::new(env!("CARGO_BIN_EXE_dotask-installer"))
-    .args(["__config", f.config.to_str().unwrap()])
-    .output()
-    .unwrap();
-  assert!(!output.status.success());
+}
+
+#[test]
+fn runtime_fields_at_root_are_rejected_before_installing() {
+  let f = Fixture::new();
+  f.configure(|p| p["interactive"] = false.into());
+  let result = f.run(&["--validate"]);
+  assert!(!result.status.success());
+  assert!(String::from_utf8_lossy(&result.stderr).contains("interactive"));
   assert!(!f.root.exists());
 }

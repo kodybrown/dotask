@@ -8,8 +8,9 @@ namespace DoTask.Tests;
 internal static class RustArtifacts
 {
   private static readonly Lazy<string> TargetDirectory = new(Locate);
+  private static readonly Lazy<string> SnapshotDirectory = new(Stage);
 
-  public static string Binary( string name ) => Path.Combine(TargetDirectory.Value, "release",
+  public static string Binary( string name ) => Path.Combine(SnapshotDirectory.Value,
     name + (OperatingSystem.IsWindows() ? ".exe" : ""));
 
   public static async Task<ProcessResult> Run( string directory, string[] args, SharedTaskOptions? options = null )
@@ -45,6 +46,34 @@ internal static class RustArtifacts
         await process.WaitForExitAsync();
       }
     }
+  }
+
+  private static string Stage()
+  {
+    // Tests execute an immutable physical snapshot. Repository verification can
+    // rebuild normal Cargo output on Windows without locking a live executable.
+    var source = Path.Combine(TargetDirectory.Value, "release");
+    var destination = Path.Combine(Path.GetTempPath(), "dotask-native-tests", Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(destination);
+    foreach (var name in new[] { "dotask", "dotask-installer", "simple-installer-builder" }) {
+      var file = name + (OperatingSystem.IsWindows() ? ".exe" : "");
+      var input = Path.Combine(source, file);
+      if (File.Exists(input)) {
+        File.Copy(input, Path.Combine(destination, file));
+      }
+    }
+    var sdk = Path.Combine(source, "sdk");
+    foreach (var input in Directory.EnumerateFiles(sdk, "*", SearchOption.AllDirectories)) {
+      var output = Path.Combine(destination, "sdk", Path.GetRelativePath(sdk, input));
+      Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+      File.Copy(input, output);
+    }
+    AppDomain.CurrentDomain.ProcessExit += (_, _) => {
+      try { Directory.Delete(destination, recursive: true); }
+      catch (IOException) { /* Preserve a snapshot still used by a descendant. */ }
+      catch (UnauthorizedAccessException) { /* A locked snapshot remains recoverable. */ }
+    };
+    return destination;
   }
 
   private static string Locate()

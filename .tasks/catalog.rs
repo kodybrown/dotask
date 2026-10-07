@@ -34,7 +34,7 @@ fn task(project: &BuildContext) -> Result<()> {
     reject_link(&group.path())?;
     for entry in fs::read_dir(group.path())? {
       let source = entry?.path();
-      if hidden(&source) || !source.extension().is_some_and(|e| e == "cs") {
+      if hidden(&source) || !source.extension().is_some_and(|e| e == "cs" || e == "rs") {
         continue;
       }
       reject_link(&source)?;
@@ -54,7 +54,7 @@ fn task(project: &BuildContext) -> Result<()> {
   let mut tasks = vec![];
   for source in &sources {
     let relative = source.strip_prefix(root)?.to_string_lossy().replace('\\', "/");
-    let id = relative.strip_suffix(".cs").unwrap();
+    let id = &relative[..relative.len() - 3];
     if id.split('/').count() != 2 || !id.split('/').all(identifier) {
       bail!("Invalid task ID: {id}");
     }
@@ -84,7 +84,7 @@ fn task(project: &BuildContext) -> Result<()> {
       .filter(|r| r["Kind"] == "task")
       .map(|r| r["Value"].clone())
       .collect();
-    tasks.push(json!({"id":id,"entryPoint":relative,"description":metadata["Description"],"runtime":"csharp","files":records,"requires":requires}));
+    tasks.push(json!({"id":id,"entryPoint":relative,"description":metadata["Description"],"runtime":if source.extension().is_some_and(|e| e == "rs") { "rust" } else { "csharp" },"files":records,"requires":requires}));
   }
   let mut ids = BTreeSet::new();
   for task in &tasks {

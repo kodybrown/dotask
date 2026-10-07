@@ -1,5 +1,33 @@
 # Verification
 
+## Configurable creation and nested runtime schema (2026-10-07)
+
+`build.cmd verify` passed all 420 .NET Release tests and 65 Rust tests on Windows
+x64, together with formatting, clippy, required docs, catalog, shim hashes, and
+Git whitespace. SDK integration verification is now a Rust task invoking the
+installed .NET SDK directly. Native test binaries use immutable physical copies
+so tests do not lock Cargo's normal output while verification rebuilds it.
+
+Source `.tasks/installer.yaml` uses application metadata, `build-steps`, and
+nested `runtime`. The shared Rust creator runs producers and gathers declared
+files; the standalone build-machine builder retains `runtime` in the delivered
+configuration. Destination executables reject build steps, root-level runtime
+fields, and the removed packaging/config-transport commands. Existing install,
+ownership, shortcut, recovery, and uninstall regressions pass with the new shape.
+
+The shared consumer test adds the Rust group through the native manager, creates
+and installs a GUI application, launches it, verifies shortcuts, deletes the
+original package, and uninstalls from retained metadata. Dotask itself was also
+created in a temporary output root with matching version/stamp/commit/dirty
+metadata. ZIP and 7z retained its named top-level directory; repeating creation
+refused the existing directory before executing producers. SDK output selections
+are configured in YAML. MSBuild's evaluated bin/obj/publish paths and Cargo's
+evaluated target directory remain external. No active installation or user PATH
+changed, and nothing was published or pushed. Native Linux/macOS acceptance
+remains pending. The retained C# reference CLI is still present in this checkout;
+this verification does not claim that its separate removal is complete.
+
+
 ## Installer source configuration and language-specific SDK layout (2026-10-06)
 
 `build.cmd` passed 419 .NET Release tests and 53 Rust tests on Windows x64:

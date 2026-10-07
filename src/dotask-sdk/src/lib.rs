@@ -2,6 +2,7 @@
 //! context; nested calls return through that CLI, including calls to C# tasks.
 pub use anyhow::{anyhow, bail, Context, Result};
 pub use serde_json::{self, json, Value};
+pub use serde_saphyr;
 pub use sha2;
 use std::{
   fs,
@@ -162,6 +163,47 @@ impl BuildContext {
     validate_installer(&artifact, self)?;
     Ok(artifact)
   }
+  /// Launch the returned installer with exact argument tokens and its own directory.
+  pub fn run_installer(&self, artifact: &Value, arguments: Option<&[String]>) -> Result<()> {
+    validate_installer(artifact, self)?;
+    let file = Path::new(artifact["FilePath"].as_str().unwrap());
+    let defaults: Vec<_> = artifact["DefaultArguments"]
+      .as_array()
+      .into_iter()
+      .flatten()
+      .map(|v| v.as_str().unwrap().to_owned())
+      .collect();
+    let arguments = arguments.unwrap_or(&defaults);
+    if arguments.iter().any(|arg| arg.contains('\0')) {
+      bail!("Installer arguments cannot contain NUL");
+    }
+    let mut command = match artifact["Kind"].as_i64().unwrap() {
+      0 => self.command(file),
+      1 => {
+        let mut command = self.command("msiexec.exe");
+        command.arg("/i").arg(file);
+        command
+      }
+      2 => {
+        let mut command = self.command("/bin/sh");
+        command.arg(file);
+        command
+      }
+      3 => {
+        let mut command = self.command("dotnet");
+        command.arg(file);
+        command
+      }
+      _ => unreachable!(),
+    };
+    command.current_dir(file.parent().unwrap()).args(arguments);
+    let code = command.status().context("Cannot start installer")?.code().unwrap_or(130);
+    if artifact["Kind"] == 1 && matches!(code, 1641 | 3010) {
+      println!("Installer succeeded; restart required ({code}).");
+      return Ok(());
+    }
+    check(code)
+  }
   fn call(&self, target: &str, parameters: Value, operation: u8) -> Result<Value> {
     if target.trim().is_empty() || !parameters.is_object() {
       bail!("A target and parameter mapping are required.");
@@ -197,8 +239,13 @@ impl BuildContext {
     } else {
       directory.path().join("request.json.result")
     };
-    let value =
-      serde_json::from_slice(&fs::read(&reply).with_context(|| format!("Target '{target}' returned no result"))?)?;
+    let value = serde_json::from_slice(&fs::read(&reply).with_context(|| {
+      if operation == 3 {
+        format!("Target '{target}' did not return an installer")
+      } else {
+        format!("Target '{target}' returned no result")
+      }
+    })?)?;
     if operation == 3 {
       validate_installer(&value, self)?;
     }
@@ -274,9 +321,10 @@ fn validate_installer(value: &Value, context: &BuildContext) -> Result<()> {
   {
     bail!("Installer kind is incompatible with this platform.");
   }
-  if !value["DefaultArguments"]
-    .as_array()
-    .is_some_and(|a| a.iter().all(|v| v.as_str().is_some_and(|s| !s.contains('\0'))))
+  if !value["DefaultArguments"].is_null()
+    && !value["DefaultArguments"]
+      .as_array()
+      .is_some_and(|a| a.iter().all(|v| v.as_str().is_some_and(|s| !s.contains('\0'))))
   {
     bail!("Installer arguments must be strings without NUL characters.");
   }

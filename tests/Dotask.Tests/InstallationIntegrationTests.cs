@@ -115,7 +115,9 @@ public sealed class InstallationIntegrationTests
         platform = project.Context().OS.ToString().ToLowerInvariant(),
         architecture = project.Context().Architecture.ToString().ToLowerInvariant(),
         payload = Path.Combine(project.OutputRoot, "custom published files"),
-        commands = new[] { new { name = "probe", executable = OperatingSystem.IsWindows() ? "installed-probe.exe" : "installed-probe" } }
+        runtime = new {
+          commands = new[] { new { name = "probe", executable = OperatingSystem.IsWindows() ? "installed-probe.exe" : "installed-probe" } }
+        }
       }));
       var engine = RustArtifacts.Binary("dotask-installer");
       return await ProcessRunner.RunAsync(new ProcessDefinition {

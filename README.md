@@ -47,19 +47,19 @@ From the repository checkout, bootstrap and verify the project:
 
 ```sh
 # Linux or macOS
-./build.sh
+./build.sh verify
 ```
 
 ```powershell
 # Windows (PowerShell or cmd.exe)
-.\build.cmd
+.\build.cmd verify
 ```
 
 The .NET SDK, Git, and Rust 1.95+ with rustfmt, clippy, and the host linker are
 required; dotask does not need to be installed.
 The launchers compile this checkout, stage a temporary runner, and use it to run
-the repository's `verify` task in Release. That task checks prerequisites, builds
-and tests the Rust CLI, installer, SDK, and .NET solution, and checks formatting,
+the requested tasks. Use `verify` explicitly for the repository gate, which builds
+and tests the Rust CLI, installer, and SDK, and checks formatting,
 documentation, and the shared catalog.
 The temporary runner is removed when the launcher finishes normally or reports a failure.
 
@@ -113,7 +113,7 @@ Pass installer options through `--installer-args` as a JSON array; see the
 
 For a custom command directory, substitute its path. The installer prints the
 selected installation location; it never edits shell profiles. Then run `dotask
---version`; the Rust application reports `dotask major.minor.yyMM.ddhh (build
+--version`; the Rust application reports `dotask <configured-version> (build
 YYDDD-HHMM[, commit git7])` using its embedded UTC build information. Git builds
 with local changes include a `-dirty` marker.
 
@@ -371,26 +371,26 @@ Tab: it should offer `Debug` and `Release`. See [completion details](docs/USAGE.
 ./build.sh catalog --verify        # Check shared source hashes/metadata
 ./build.sh catalog                 # Regenerate the shared catalog
 ./build.sh shim --verify           # Verify bundled shim source/binary hashes
-./build.sh rust-cli                # Build the native Rust CLI preview
-./build.sh rust-cli --verify       # Rust CLI tests, rustfmt, and clippy
-./build.sh pack                    # Create the native CLI standalone installer package
+./build.sh build                   # Build the native CLI and prepare SDKs
+./build.sh build --verify          # Rust CLI tests, rustfmt, and clippy
+./build.sh create-installer        # Create the standalone installer directory
 ./build.sh install                 # Install the current source for this user
 ./build.sh help                    # Project task help
 ```
 
 On Windows use `.\build.cmd` with the same arguments. With no arguments the
-launchers run `verify`; with arguments they forward them unchanged to dotask.
+launchers list available tasks. Every supplied argument is forwarded unchanged.
 `./build.sh help` displays project help, while `./build.sh --help` displays CLI help.
 Both launchers select the checkout containing the script even when called from
 another directory; relative task paths and `--use-dir` start at that checkout.
 
-The bootstrap builds the native runner in Release with Cargo and publishes the
-C# helper DLL. A task's `-c Debug` selects its C# configuration independently.
-The native executable, SDK sources, and evaluated C# publish output are copied
-into a unique OS temporary directory, allowing tasks to rebuild or clean the
-original outputs on Windows. Bootstrapping alone does not install anything;
-the explicit `install` task does. First use can restore
-NuGet packages and requires access to the configured feeds.
+The bootstrap builds the native runner in Release with Cargo and copies it into
+a unique temporary directory, allowing tasks to rebuild the original outputs on
+Windows. Rust tasks use the source SDK. Executing a C# task prepares the maintained
+helper through `build-sdks`, using evaluated MSBuild `PublishDir`; `build` also
+prepares SDKs for a distributable app. A task's `-c Debug` selects its C#
+configuration independently. First C# use can restore NuGet packages.
+The explicit `install` task creates and runs the application installer.
 
 Windows staging lives in `.tasks/misc/prepare-bootstrap.ps1`; Bash stages the
 same layout. These launchers only build/stage the runner. Discovery accepts
@@ -399,7 +399,7 @@ same layout. These launchers only build/stage the runner. Discovery accepts
 After adding, editing, renaming, or removing a shared task or one of its declared
 support files, run `./build.sh catalog` **after your final edits/formatting and
 before committing**. Commit the regenerated `shared-tasks/catalog.json` with the
-sources. Run `./build.sh` afterward; its catalog verification fails if the index
+sources. Run `./build.sh verify` afterward; its catalog verification fails if the index
 is stale and never rewrites it. `catalog.rs` uses the CLI's compiler-free metadata
 transport. All metadata is read natively from ordinary-comment YAML headers.
 
@@ -439,7 +439,7 @@ replacement stages and future task-language selection.
 Build and try the Rust CLI on Windows:
 
 ```powershell
-.\build.cmd rust-cli
+.\build.cmd build
 & 'C:\tmp\_rust\dotask\target\release\dotask.exe' --help
 & 'C:\tmp\_rust\dotask\target\release\dotask.exe' --version
 & 'C:\tmp\_rust\dotask\target\release\dotask.exe' --use-dir .\examples\basic\.tasks hello --name Rust
@@ -448,7 +448,7 @@ Build and try the Rust CLI on Windows:
 On Linux/macOS:
 
 ```sh
-./build.sh rust-cli
+./build.sh build
 /tmp/_rust/dotask/target/release/dotask --help
 /tmp/_rust/dotask/target/release/dotask --version
 /tmp/_rust/dotask/target/release/dotask --use-dir ./examples/basic/.tasks hello --name Rust
@@ -471,7 +471,7 @@ and recovery journals are preserved. Rust tasks use the bundled `sdk/rust/` sour
 see [Rust authoring](docs/TARGETS.md#rust-tasks). Shared Rust language variants and
 language selection remain pending. These build commands do not install or replace an active CLI.
 
-Use `rust-cli --verify` through the launcher for its tests, rustfmt, and clippy.
+Use `build --verify` through the launcher for its tests, rustfmt, and clippy.
 The complete repository gate requires those checks too. `.cargo/config.toml`
 sets the target directory to `/tmp/_rust/dotask/target` (on Windows, under the
 current drive's `tmp` directory). Build tasks, support staging, packaging, and

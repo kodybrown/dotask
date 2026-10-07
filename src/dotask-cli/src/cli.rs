@@ -29,6 +29,21 @@ fn run_inner(arguments: Vec<OsString>) -> Result<i32> {
       })
     })
     .collect::<Result<Vec<_>>>()?;
+  if args.first().is_some_and(|s| s == "__stage-runner") {
+    if args.len() != 2 {
+      bail!("__stage-runner requires a fresh bootstrap directory");
+    }
+    let destination = Path::new(&args[1]).join(if cfg!(windows) {
+      "dotask.exe"
+    } else {
+      "dotask"
+    });
+    if destination.exists() {
+      bail!("Bootstrap runner already exists: {}", destination.display());
+    }
+    std::fs::copy(std::env::current_exe()?, destination)?;
+    return Ok(0);
+  }
   if args.first().is_some_and(|s| s == "__metadata") {
     if args.len() != 3 {
       bail!("__metadata requires request and response files.");

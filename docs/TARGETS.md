@@ -85,7 +85,7 @@ or `exec_if_exists`. The optional reply contains `Exists`, `ExitCode`, and `Erro
 only absence is `Exists: false`. Both languages share immutable configuration
 snapshots and cycle detection. `create_installer` returns the existing JSON
 artifact contract; `installer_artifact` constructs an executable artifact for
-the current host, and `set_installer_result` returns it to the invocation's caller.
+the current host, and `set_installer_result` returns it to the invocation's caller. `run_installer` launches a returned artifact with exact argument tokens.
 
 ## Target names
 
@@ -284,9 +284,9 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `_/dotnet/check`   | Checks solution presence and SDK/MSBuild/formatter versions                                      |
 | `_/dotnet/verify`  | Runs installed official check/test/format tasks; skips missing ones and stops on failure         |
 | `_/dotnet/publish` | `settings.project`; publishes for the requested OS/architecture                                  |
-| `_/dotask-installer/install` | Executes `create-installer`, validates its result, and runs its installer |
-| `_/dotask-installer/create-installer` | Packages a prepared payload and YAML with a supplied Rust engine |
-| `_/dotask-installer/uninstall` | Runs the retained engine without rebuilding the application |
+| `_/simple-installer/install` | Executes `create-installer`, validates its result, and runs its installer |
+| `_/simple-installer/create-installer` | Runs YAML build steps and gathers their expected files into an installer |
+| `_/simple-installer/uninstall` | Runs the retained engine without rebuilding the application |
 | `_/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
 | `_/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
 

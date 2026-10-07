@@ -17,17 +17,18 @@ and YAML-only projects need no .NET host. Shared Rust variants, `--lang`, group-
 [agreed future behavior](DESIGN.md#rust-cli-transition), not implemented commands.
 
 In the dotask source checkout, use `./build.sh` (Windows: `.\build.cmd`) to
-bootstrap and run the required repository verification. These launchers accept
+bootstrap the checkout and list tasks. Use `./build.sh verify` (Windows:
+`.\build.cmd verify`) for repository verification. These launchers accept
 dotask arguments and need no installed dotask; `./build.sh help` lists tasks.
 The source repository's `verify` requires all stages, including documentation and
 catalog checks. The reusable `dotnet/verify` task's optional behavior described
 below applies to consuming projects, not that repository gate.
 
 After final edits/formatting to any shared task or declared support file, run
-`./build.sh catalog`, then `./build.sh`; its catalog check detects stale output
+`./build.sh catalog`, then `./build.sh verify`; its catalog check detects stale output
 without rewriting it. Commit the generated `shared-tasks/catalog.json` with
 those sources. The generator is `.tasks/catalog.rs`, using the native CLI's
-compiler-free metadata transport for C# catalog entries.
+compiler-free metadata transport for C# and Rust catalog entries.
 Repository `verify-docs` checks required documents and delegates Git whitespace
 checks to its declared `git/check` dependency with `Whitespace = true`.
 Ordinary `git/check` remains a tool-availability check; `--whitespace` checks
@@ -154,13 +155,13 @@ the library before claiming it exists. Ordinary .NET APIs can fill gaps.
 ## Rules that prevent common mistakes
 
 For installation tasks, read [the installation contract](INSTALLATION.md).
-The shared `_/dotask-installer/install` always invokes `create-installer`,
+The shared `_/simple-installer/install` always invokes `create-installer`,
 then runs its returned `InstallerArtifact`. It does not publish or copy the
 application itself. `create-installer` must build only, then call
 `SetInstallerResultAsync` once. Use `CreateInstallerAsync` and `RunInstallerAsync`
 for custom orchestration; do not scrape stdout or guess artifact paths.
 `installer-args` is a JSON string array replacing default installer arguments.
-An exact project `install` can delegate to `_/dotask-installer/install` explicitly.
+An exact project `install` can delegate to `_/simple-installer/install` explicitly.
 The console installer prompts by default. For unattended execution, pass
 `--installer-args '["--non-interactive"]'` to install, or `--non-interactive` to
 uninstall. Installer YAML owns defaults, prompt mode, and labels; Windows PATH
@@ -254,7 +255,7 @@ launcher to bypass conflicts.
 
 In the DoTask source repository, `shared-tasks/` is the canonical source of
 reusable tasks; `.tasks/` contains the copies used by the repository itself.
-Keep the `dotnet/format.cs`, `dotask-installer/*.cs`, `dotnet/pack.cs`, and `git/check.cs` copies
+Keep the `dotnet/format.cs`, `simple-installer/*.rs`, `dotnet/pack.cs`, and `git/check.rs` copies
 identical when updating them, and regenerate the catalog. The standard formatter
 formats the solution and C# files throughout the selected tasks directory;
 `--verify` checks both without running optional `_/text/fixeol`.

@@ -4,6 +4,12 @@ description: Portable, cross-platform tasks written in the language of your choi
 settings:
   solution: dotask.slnx
   project: src/Dotask.Cli/Dotask.Cli.csproj
+  sdks:
+    config: .tasks/sdks.yaml
+  app:
+    version: '0.1.yyDDD.HHmm'
+    git-hash: short
+    dirty-suffix: true
   installer:
     config: .tasks/installer.yaml
     output: artifacts/installers

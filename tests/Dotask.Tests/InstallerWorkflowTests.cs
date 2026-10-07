@@ -8,7 +8,7 @@ public sealed class InstallerWorkflowTests
   [Fact]
   public async Task MissingFailedAmbiguousAndResultlessCreatorsNeverFallBackToDirectInstallation()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = true };
     CopyInstall(project);
     var result = await project.RunAsync("install");
     Assert.NotEqual(0, result.ExitCode);
@@ -25,7 +25,7 @@ public sealed class InstallerWorkflowTests
     result = await project.RunAsync("install");
     Assert.NotEqual(0, result.ExitCode);
     Assert.Contains("did not return an installer", result.StandardError);
-    project.Target("create-installer", "await BuildContext.Current.ExecTargetAsync(\"_/dotask-installer/install\");", async: true);
+    project.Target("create-installer", "await BuildContext.Current.ExecTargetAsync(\"_/simple-installer/install\");", async: true);
     result = await project.RunAsync("install");
     Assert.NotEqual(0, result.ExitCode);
     Assert.Contains("Target cycle", result.StandardError);
@@ -34,7 +34,7 @@ public sealed class InstallerWorkflowTests
   [Fact]
   public async Task SharedInstallAlwaysBuildsAndRunsReturnedInstallerWithExactArgumentsAndCustomOverride()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = true };
     CopyInstall(project);
     project.WriteBuildProperties();
     project.Write("installer/Probe.csproj", """
@@ -72,15 +72,15 @@ public sealed class InstallerWorkflowTests
     Assert.True(result.ExitCode == 0, result.StandardError);
     Assert.Equal(arguments, ReadArguments());
     project.Target("install", """
-      await BuildContext.Current.ExecTargetAsync("_/dotask-installer/install", new Dictionary<string, string> { ["installer-args"] = "[]" });
+      await BuildContext.Current.ExecTargetAsync("_/simple-installer/install", new Dictionary<string, string> { ["installer-args"] = "[]" });
       """, async: true);
     result = await project.RunAsync("install");
     Assert.True(result.ExitCode == 0, result.StandardError);
     Assert.Empty(ReadArguments());
-    result = await project.RunAsync("_/dotask-installer/install", "--installer-args", "[\"fail\"]");
+    result = await project.RunAsync("_/simple-installer/install", "--installer-args", "[\"fail\"]");
     Assert.Equal(23, result.ExitCode);
     Assert.Equal(4, File.ReadAllLines(Path.Combine(project.Root, "builds")).Length);
-    result = await project.RunAsync("_/dotask-installer/install", "--installer-args", "not json");
+    result = await project.RunAsync("_/simple-installer/install", "--installer-args", "not json");
     Assert.NotEqual(0, result.ExitCode);
     Assert.Equal(4, File.ReadAllLines(Path.Combine(project.Root, "builds")).Length);
     // Exercise native apphost launch too (Windows uses shell activation for EXEs).
@@ -104,7 +104,7 @@ public sealed class InstallerWorkflowTests
   [Fact]
   public async Task ResultValidationRejectsMissingArtifactsWrongPlatformsAndDuplicateResults()
   {
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = true };
     var context = project.Context();
     var file = project.Write(OperatingSystem.IsWindows() ? "installer.exe" : "installer", "not executed");
     var artifact = new InstallerArtifact { FilePath = file, Kind = InstallerKind.Executable, OS = context.OS, Architecture = context.Architecture };
@@ -132,7 +132,7 @@ public sealed class InstallerWorkflowTests
       return;
     }
 
-    using var project = new TestProject();
+    using var project = new TestProject { NativeRunner = true };
     var file = project.Write("installer with spaces.sh", "printf '%s' \"$1\" > result\nexit 19\n");
     var context = project.Context();
     var error = await Assert.ThrowsAsync<ProcessFailedException>(() => context.RunInstallerAsync(new InstallerArtifact {
@@ -148,8 +148,8 @@ public sealed class InstallerWorkflowTests
 
   private static void CopyInstall( TestProject project )
   {
-    using var stream = typeof(InstallerWorkflowTests).Assembly.GetManifestResourceStream("Shared/dotask-installer/install.cs")!;
+    using var stream = typeof(InstallerWorkflowTests).Assembly.GetManifestResourceStream("Shared/simple-installer/install.rs")!;
     using var reader = new StreamReader(stream);
-    project.Write(".tasks/_/dotask-installer/install.cs", reader.ReadToEnd());
+    project.Write(".tasks/_/simple-installer/install.rs", reader.ReadToEnd());
   }
 }

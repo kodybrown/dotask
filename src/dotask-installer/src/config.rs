@@ -13,10 +13,6 @@ use std::{
 
 #[derive(Default, Debug)]
 pub struct Options {
-  pub package: bool,
-  pub output: Option<PathBuf>,
-  pub output_parent: Option<PathBuf>,
-  pub result_file: Option<PathBuf>,
   pub uninstall: bool,
   pub interactive: Option<bool>,
   pub validate: bool,
@@ -33,12 +29,6 @@ impl Options {
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
       match arg.as_str() {
-        "package" => result.package = true,
-        "--output" => result.output = Some(args.next().context("--output requires a directory")?.into()),
-        "--output-parent" => {
-          result.output_parent = Some(args.next().context("--output-parent requires a directory")?.into())
-        }
-        "--result-file" => result.result_file = Some(args.next().context("--result-file requires a path")?.into()),
         "install" => (),
         "uninstall" => result.uninstall = true,
         "--help" | "-h" => result.help = true,
@@ -84,7 +74,7 @@ impl Options {
     Ok(result)
   }
   pub fn prompts(&self, package: &Package) -> Result<bool> {
-    let interactive = !self.package && !self.validate && self.interactive.unwrap_or(package.interactive);
+    let interactive = !self.validate && self.interactive.unwrap_or(package.runtime.interactive);
     ensure!(
       !interactive || (std::io::stdin().is_terminal() && std::io::stdout().is_terminal()),
       "Interactive installation requires a terminal. Use --non-interactive for unattended execution."
@@ -172,10 +162,10 @@ pub fn validate(package: &Package) -> Result<()> {
     architecture()
   );
   ensure!(
-    !package.commands.is_empty() || !package.shortcuts.is_empty(),
+    !package.runtime.commands.is_empty() || !package.runtime.shortcuts.is_empty(),
     "At least one command or shortcut is required"
   );
-  for command in &package.commands {
+  for command in &package.runtime.commands {
     files::name(&command.name)?;
     ensure!(
       !["app", "installer"].contains(&command.name.to_ascii_lowercase().as_str()),
@@ -184,7 +174,7 @@ pub fn validate(package: &Package) -> Result<()> {
     files::relative(&command.executable)?;
     ensure!(!command.name.ends_with(".exe"), "Command names omit .exe");
   }
-  for shortcut in &package.shortcuts {
+  for shortcut in &package.runtime.shortcuts {
     ensure!(
       !shortcut.arguments.iter().any(|a| a.contains('\0')),
       "Shortcut arguments cannot contain NUL"
@@ -279,13 +269,14 @@ fn resolve_with_io(
   on_path: impl Fn(&Path) -> Result<bool>,
 ) -> Result<BTreeMap<String, Value>> {
   let mut inputs = standard_inputs();
-  inputs.extend(package.inputs.clone());
+  inputs.extend(package.runtime.inputs.clone());
   for key in package
+    .runtime
     .values
     .keys()
     .chain(options.values.keys())
-    .chain(package.defaults.values().flat_map(|v| v.keys()))
-    .chain(package.profiles.values().flat_map(|p| p.values.keys()))
+    .chain(package.runtime.defaults.values().flat_map(|v| v.keys()))
+    .chain(package.runtime.profiles.values().flat_map(|p| p.values.keys()))
   {
     ensure!(inputs.contains_key(key), "Unknown input: {key}");
   }
@@ -328,18 +319,19 @@ fn resolve_with_io(
     }
   }
   for layer in ["common", platform()] {
-    if let Some(defaults) = package.defaults.get(layer) {
+    if let Some(defaults) = package.runtime.defaults.get(layer) {
       values.extend(defaults.clone());
     }
   }
   let detected = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default();
   let matches: Vec<_> = package
+    .runtime
     .profiles
     .iter()
     .filter(|(_, p)| p.detect.iter().any(|d| detected.split(':').any(|s| s.eq_ignore_ascii_case(d))))
     .collect();
   let profile = if let Some(name) = &options.profile {
-    Some(package.profiles.get(name).context("Unknown --profile")?)
+    Some(package.runtime.profiles.get(name).context("Unknown --profile")?)
   } else {
     ensure!(matches.len() <= 1, "Multiple environment profiles match; specify --profile");
     matches.first().map(|(_, p)| *p)
@@ -347,7 +339,7 @@ fn resolve_with_io(
   if let Some(profile) = profile {
     values.extend(profile.values.clone());
   }
-  values.extend(package.values.clone());
+  values.extend(package.runtime.values.clone());
   values.extend(options.values.clone());
   if options.values.contains_key("bin-dir") && !options.values.contains_key("additional-command") {
     values.insert("additional-command".into(), true.into());
@@ -372,19 +364,21 @@ fn resolve_with_io(
       "Invalid input type: {key}"
     );
     let allowed = match key {
-      "desktop-shortcuts" => package.shortcuts.iter().any(|s| s.desktop),
-      "start-menu-shortcuts" => package.shortcuts.iter().any(|s| s.start_menu),
-      "local-shortcuts" => package.shortcuts.iter().any(|s| s.local),
+      "desktop-shortcuts" => package.runtime.shortcuts.iter().any(|s| s.desktop),
+      "start-menu-shortcuts" => package.runtime.shortcuts.iter().any(|s| s.start_menu),
+      "local-shortcuts" => package.runtime.shortcuts.iter().any(|s| s.local),
       "desktop-dir" => enabled(&values, "desktop-shortcuts"),
       "start-menu-dir" => enabled(&values, "start-menu-shortcuts"),
       "start-menu-nested" => {
-        cfg!(windows) && enabled(&values, "start-menu-shortcuts") && package.shortcuts.iter().any(|s| s.start_menu)
+        cfg!(windows)
+          && enabled(&values, "start-menu-shortcuts")
+          && package.runtime.shortcuts.iter().any(|s| s.start_menu)
       }
       "shortcut-name" => {
         (enabled(&values, "start-menu-shortcuts")
           || enabled(&values, "desktop-shortcuts")
           || enabled(&values, "local-shortcuts"))
-          && package.shortcuts.iter().any(|s| s.name.contains("${shortcut-name}"))
+          && package.runtime.shortcuts.iter().any(|s| s.name.contains("${shortcut-name}"))
       }
       "bin-dir" => enabled(&values, "additional-command"),
       "add-to-path" => cfg!(windows),
@@ -506,18 +500,18 @@ mod tests {
   use serde_json::json;
   fn package() -> Package {
     serde_json::from_value(json!({"schema":1,"application":{"id":"test","name":"Test","version":"1"},
-      "platform":platform(),"architecture":architecture(),"payload":"payload","commands":[{"name":"test","executable":"test.exe"}]})).unwrap()
+      "platform":platform(),"architecture":architecture(),"payload":"payload","runtime":{"commands":[{"name":"test","executable":"test.exe"}]}})).unwrap()
   }
   #[test]
   fn interaction_flags_override_yaml_and_reject_conflicts() {
-    assert!(package().interactive);
+    assert!(package().runtime.interactive);
     assert_eq!(Options::parse(["--non-interactive".into()]).unwrap().interactive, Some(false));
     assert_eq!(Options::parse(["--interactive".into()]).unwrap().interactive, Some(true));
     assert!(Options::parse(["--interactive".into(), "--non-interactive".into()]).is_err());
     let mut package = package();
-    package.interactive = false;
+    package.runtime.interactive = false;
     assert!(!Options::default().prompts(&package).unwrap());
-    package.interactive = true;
+    package.runtime.interactive = true;
     assert!(!Options {
       validate: true,
       ..Options::default()
@@ -605,7 +599,7 @@ mod tests {
   fn start_menu_questions_retry_invalid_names_and_allow_nesting() {
     let temp = tempfile::tempdir().unwrap();
     let mut package = package();
-    package.shortcuts =
+    package.runtime.shortcuts =
       serde_json::from_value(json!([{"name":"${shortcut-name}","executable":"test.exe","start-menu":true}])).unwrap();
     let options = Options {
       values: BTreeMap::from([

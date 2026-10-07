@@ -14,7 +14,7 @@ public sealed class BootstrapTests
       Assert.True(result.ExitCode == expected, result.StandardOutput + result.StandardError);
       var report = result.StandardOutput.Split('\n').Single(line => line.StartsWith("REPORT:", StringComparison.Ordinal))[7..];
       using var json = JsonDocument.Parse(report);
-      Assert.Equal(args.Length == 0 ? ["verify"] : args,
+      Assert.Equal(args,
         json.RootElement.GetProperty("args").EnumerateArray().Select(item => item.GetString()!).ToArray());
       // macOS can canonicalize /var to /private/var; compare directory identity
       // through a unique marker instead of comparing path spellings.
@@ -25,8 +25,9 @@ public sealed class BootstrapTests
       Assert.Equal(fixture.Identity, File.ReadAllText(Path.Combine(Path.GetDirectoryName(stagedDirectory)!, "bootstrap-owner")));
       Assert.False(File.Exists(assembly));
       Assert.DoesNotContain("stale-publish-file.txt", json.RootElement.GetProperty("supportFiles").EnumerateArray().Select(item => item.GetString()));
-      Assert.True(json.RootElement.GetProperty("dotnetSdk").GetBoolean());
-      Assert.True(json.RootElement.GetProperty("rustSdk").GetBoolean());
+      Assert.False(json.RootElement.GetProperty("dotnetSdk").GetBoolean());
+      Assert.False(json.RootElement.GetProperty("rustSdk").GetBoolean());
+      Assert.True(json.RootElement.GetProperty("sourceRustSdk").GetBoolean());
       Assert.DoesNotContain("Dotask.dotnet.dll", json.RootElement.GetProperty("supportFiles").EnumerateArray().Select(item => item.GetString()));
       Assert.Empty(Directory.EnumerateDirectories(fixture.Temporary, "dotask-bootstrap*"));
     }
@@ -88,10 +89,16 @@ public sealed class BootstrapTests
       Project.Write("src/main.rs", """
         fn main() {
           let args: Vec<_> = std::env::args().skip(1).collect();
+          if args.first().is_some_and(|arg| arg == "__stage-runner") {
+            let destination = std::path::Path::new(&args[1]).join(if cfg!(windows) { "dotask.exe" } else { "dotask" });
+            std::fs::copy(std::env::current_exe().unwrap(), destination).unwrap();
+            return;
+          }
           println!("REPORT:{}", serde_json::json!({
             "args":args, "cwd":std::env::current_dir().unwrap(), "assembly":std::env::current_exe().unwrap(),
             "dotnetSdk":std::env::current_exe().unwrap().parent().unwrap().join("sdk/dotnet/Dotask.dotnet.dll").is_file(),
             "rustSdk":std::env::current_exe().unwrap().parent().unwrap().join("sdk/rust/Cargo.toml").is_file(),
+            "sourceRustSdk":std::path::Path::new(&std::env::var("DOTASK_SOURCE_RUST_SDK").unwrap()).join("Cargo.toml").is_file(),
             "supportFiles":std::fs::read_dir(std::env::current_exe().unwrap().parent().unwrap()).unwrap()
               .map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect::<Vec<_>>()
           }));

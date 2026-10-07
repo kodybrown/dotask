@@ -1,6 +1,7 @@
 // dotask: 1
-// description: Build the native CLI with its Rust task crate and C# helper DLL.
+// description: Build the native dotask executable and prepare its task SDKs.
 // options:
+//   - { name: stage-dir, type: path, description: Copy the built executable to this directory. }
 //   - { name: verify, type: bool, default: false, description: 'Run Rust tests, formatting, and clippy.' }
 //   - { name: build-info, description: 'JSON build metadata supplied by create-installer before compiling.' }
 // requires:
@@ -16,23 +17,7 @@ fn main() {
   dotask_sdk::run(task);
 }
 fn task(project: &BuildContext) -> Result<()> {
-  let (published, _) = rust_build::publish_library(
-    project,
-    &[
-      "-p:Configuration=Release".into(),
-      "-p:SelfContained=false".into(),
-      "-p:UseAppHost=false".into(),
-    ],
-  )?;
   let output = rust_build::target_directory(project)?.join("release");
-  // Build and stage from physical copies. The running bootstrap is independent
-  // of this output and remains usable while repository tasks rebuild it.
-  std::fs::create_dir_all(output.join("sdk/dotnet"))?;
-  std::fs::copy(
-    published.path().join("Dotask.dotnet.dll"),
-    output.join("sdk/dotnet/Dotask.dotnet.dll"),
-  )?;
-  rust_build::stage_sdk(project, &output.join("sdk/rust"))?;
   if project.boolean("verify")? {
     let mut format = project.command("rustfmt");
     format.args(["--check", "--edition", "2024"]);
@@ -101,6 +86,19 @@ fn task(project: &BuildContext) -> Result<()> {
       "Cargo.toml",
       build.as_ref(),
     )?;
+  }
+  if let Ok(stage) = project.string("stage-dir") {
+    let stage = project.path(stage);
+    std::fs::create_dir_all(&stage)?;
+    let executable = if cfg!(windows) {
+      "dotask.exe"
+    } else {
+      "dotask"
+    };
+    std::fs::copy(output.join(executable), stage.join(executable))?;
+    project.exec_target("build-sdks", dotask_sdk::json!({"stage-dir":stage.join("sdk")}))?;
+  } else {
+    project.exec_target("build-sdks", dotask_sdk::json!({"stage-dir":output.join("sdk")}))?;
   }
   println!(
     "{}",

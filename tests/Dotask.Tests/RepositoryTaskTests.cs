@@ -158,7 +158,7 @@ public sealed class RepositoryTaskTests
     using var project = new TestProject();
     Copy(project, "verify.rs");
     project.Target("check", "File.AppendAllText(\"order\", \"check;\");");
-    project.Target("_/dotnet/test", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
+    project.Target("test-sdks", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
       "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
     project.Target("_/dotnet/format", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
       "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
@@ -170,29 +170,29 @@ public sealed class RepositoryTaskTests
       "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     project.Target("shim", "File.AppendAllText(\"order\", \";shim:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\"));",
       "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    project.Target("installer-engine", "File.AppendAllText(\"order\", \"rust:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
+    project.Target("build-installer", "File.AppendAllText(\"order\", \"rust:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
       "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    project.Target("rust-cli", "File.AppendAllText(\"order\", \"cli:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
+    project.Target("build", "File.AppendAllText(\"order\", \"cli:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
       "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     var result = await RustArtifacts.Run(project.Root, ["verify", "-c", "Debug"]);
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
-    Assert.Equal("check;rust:True;cli:True;Debug;True;docs;True;shim:True", File.ReadAllText(order));
+    Assert.Equal("check;rust:True;cli:True;Debug;docs;True;shim:True", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify-docs.cs"));
     result = await RustArtifacts.Run(project.Root, ["verify"]);
     Assert.Equal(1, result.ExitCode);
-    Assert.Equal("check;rust:True;cli:True;Release;True;", File.ReadAllText(order));
-    File.Delete(order);
-    project.Target("_/dotnet/format", "Environment.Exit(23);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
     Assert.Equal("check;rust:True;cli:True;Release;", File.ReadAllText(order));
     File.Delete(order);
-    project.Target("rust-cli", "Environment.Exit(24);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
+    project.Target("build", "Environment.Exit(23);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
+    Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
+    Assert.Equal("check;rust:True;", File.ReadAllText(order));
+    File.Delete(order);
+    project.Target("build", "Environment.Exit(24);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
     Assert.Equal(24, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
     Assert.Equal("check;rust:True;", File.ReadAllText(order));
     File.Delete(order);
-    File.Delete(Path.Combine(project.Tasks, "rust-cli.cs"));
+    File.Delete(Path.Combine(project.Tasks, "build.cs"));
     Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
     Assert.Equal("check;rust:True;", File.ReadAllText(order));
   }
@@ -241,9 +241,9 @@ public sealed class RepositoryTaskTests
   public async Task GitCheckOptionChecksBothDiffsWithoutChangingFilesAndDefaultWorksOutsideRepository()
   {
     using var project = new TestProject();
-    using (var stream = typeof(RepositoryTaskTests).Assembly.GetManifestResourceStream("Shared/git/check.cs")!)
+    using (var stream = typeof(RepositoryTaskTests).Assembly.GetManifestResourceStream("Shared/git/check.rs")!)
     using (var reader = new StreamReader(stream)) {
-      project.Write(".tasks/git/check.cs", reader.ReadToEnd());
+      project.Write(".tasks/git/check.rs", reader.ReadToEnd());
     }
     var version = await RustArtifacts.Run(project.Root, ["git/check"]);
     Assert.True(version.ExitCode == 0, version.StandardError);

@@ -29,7 +29,13 @@ pub(crate) fn compile(target: &Target, root: &Path, snapshot: &Path) -> Result<P
     bail!("Rust tasks require Rust 1.95+ and Cargo. Install/select the toolchain and retry.");
   }
   let exe = std::env::current_exe()?;
-  let sdk = exe.parent().context("CLI has no parent directory")?.join("sdk/rust");
+  // Source bootstrapping supplies the Rust SDK before any task can prepare the
+  // distribution. Installed commands use their own packaged SDK instead.
+  let sdk = if crate::execution::source_sdk_stage()?.is_some() {
+    PathBuf::from(std::env::var_os("DOTASK_SOURCE_RUST_SDK").context("Source bootstrap requires the Rust SDK path")?)
+  } else {
+    exe.parent().unwrap().join("sdk/rust")
+  };
   if !sdk.join("Cargo.toml").is_file() {
     bail!("Bundled Rust SDK is missing. Build/stage the complete dotask CLI.");
   }
@@ -44,11 +50,15 @@ pub(crate) fn compile(target: &Target, root: &Path, snapshot: &Path) -> Result<P
     .filter(|r| r["Kind"] == "file")
   {
     let name = r["Value"].as_str().unwrap();
-    inputs.push((PathBuf::from("task").join(name), fs::read(support(root, name)?)?));
+    let relative = support_name(target, root, name)?;
+    let portable = relative.to_string_lossy().replace('\\', "/");
+    inputs.push((
+      PathBuf::from("task").join(&relative),
+      fs::read(support(root, &portable)?)
+        .with_context(|| format!("Required Rust support file is missing: {portable}"))?,
+    ));
   }
-  for name in ["Cargo.toml", "src/lib.rs"] {
-    inputs.push((PathBuf::from("sdk").join(name), fs::read(sdk.join(name))?));
-  }
+  sdk_sources(&sdk, &sdk, &mut inputs)?;
   let mut hash = Sha256::new();
   // Include the source identity as well as bytes: distinct tasks with identical
   // contents still have separate package identities and safe Cargo locking.
@@ -109,6 +119,37 @@ pub(crate) fn compile(target: &Target, root: &Path, snapshot: &Path) -> Result<P
   let destination = snapshot.join(if cfg!(windows) { "task.exe" } else { "task" });
   fs::copy(binary, &destination)?;
   Ok(destination)
+}
+fn support_name(target: &Target, root: &Path, name: &str) -> Result<PathBuf> {
+  // Catalog file requirements are group-relative (group/_support/file.rs).
+  // Installed copies live under a source prefix, which must also be retained
+  // in the immutable snapshot for Rust's relative module paths to resolve.
+  let parent = target.file_path.strip_prefix(root)?.parent().unwrap();
+  if let Some(group) = parent.file_name().and_then(|name| name.to_str())
+    && name.starts_with(&format!("{group}/"))
+  {
+    return Ok(parent.parent().unwrap_or(Path::new("")).join(name));
+  }
+  Ok(name.into())
+}
+fn sdk_sources(root: &Path, directory: &Path, inputs: &mut Vec<(PathBuf, Vec<u8>)>) -> Result<()> {
+  let mut entries = fs::read_dir(directory)?.collect::<std::io::Result<Vec<_>>>()?;
+  entries.sort_by_key(|entry| entry.file_name());
+  for entry in entries {
+    let metadata = fs::symlink_metadata(entry.path())?;
+    if crate::initialization::is_link(&metadata) {
+      bail!("Rust SDK cannot contain links: {}", entry.path().display());
+    }
+    if metadata.is_dir() {
+      sdk_sources(root, &entry.path(), inputs)?;
+    } else if metadata.is_file() {
+      inputs.push((
+        PathBuf::from("sdk").join(entry.path().strip_prefix(root)?),
+        fs::read(entry.path())?,
+      ));
+    }
+  }
+  Ok(())
 }
 fn create_source(path: &Path, bytes: &[u8]) -> Result<()> {
   fs::create_dir_all(path.parent().unwrap())?;

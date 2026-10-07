@@ -41,6 +41,21 @@ pub(crate) struct Executor {
   pub verbose: bool,
 }
 
+pub(crate) fn source_sdk_stage() -> Result<Option<PathBuf>> {
+  let Some(stage) = std::env::var_os("DOTASK_SOURCE_SDK_STAGE").map(PathBuf::from) else {
+    return Ok(None);
+  };
+  // Bootstrap variables are inherited by child tools and test binaries. Only
+  // the physical runner beside this SDK directory may use source preparation.
+  let executable = std::env::current_exe()?;
+  let matches = stage
+    .parent()
+    .and_then(|path| std::fs::canonicalize(path).ok())
+    .zip(executable.parent().and_then(|path| std::fs::canonicalize(path).ok()))
+    .is_some_and(|(stage, executable)| stage == executable);
+  Ok(matches.then_some(stage))
+}
+
 impl Executor {
   pub fn catalog(&self, session: &Path) -> Result<Catalog> {
     let mut catalog = crate::catalog::load(&self.directory.task_directory, session)?;
@@ -100,6 +115,27 @@ impl Executor {
     let snapshot = tempfile::Builder::new().prefix("execution-").tempdir_in(session)?;
     self.trace(&format!("Compiling: {}", target.name));
     let rust = target.file_path.extension().is_some_and(|e| e.eq_ignore_ascii_case("rs"));
+    if !rust
+      && let Some(stage) = source_sdk_stage()?
+      && !stage.join("dotnet/Dotask.dotnet.dll").is_file()
+    {
+      // The source launcher needs no .NET work for help or Rust-only tasks.
+      // Compile SDK preparation with the source Rust SDK, then execute the
+      // original target normally; failures retain their task exit code.
+      let catalog = self.catalog(session)?;
+      let prepare = catalog
+        .find("build-sdks")?
+        .ok_or_else(|| anyhow::anyhow!("Source bootstrap requires build-sdks"))?;
+      let code = self.execute(
+        prepare,
+        &[format!("stage-dir={}", Path::new(&stage).display())],
+        &chain,
+        session,
+      )?;
+      if code != 0 {
+        return Ok(code);
+      }
+    }
     let host = if rust { None } else { Some(Host::locate()?) };
     let mut command = if rust {
       Command::new(crate::rust_tasks::compile(

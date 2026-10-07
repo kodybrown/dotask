@@ -1,0 +1,8 @@
+# SDK preparation is shared by the source runner, builds, and installer creation.
+# These are the only SDK file selections; tasks interpret this configuration.
+dotnet:
+  project: src/Dotask/Dotask.csproj
+  files: [Dotask.dotnet.dll]
+rust:
+  directory: src/dotask-sdk
+  files: [Cargo.toml, src/lib.rs]
