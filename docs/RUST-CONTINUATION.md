@@ -40,7 +40,8 @@ contracts; [VERIFICATION.md](VERIFICATION.md) owns dated acceptance evidence.
   and consumer tasks remain supported. `create-installer` packages the native app.
 - Shared catalogs, lockfiles, and installed shared task copies retain their
   schema and ownership rules for C# and Rust entries. Coexisting language
-  variants, `--lang`, and extension-qualified task calls remain future work.
+  variants, `--lang`, group selections, and extension-qualified task calls are
+  implemented. Existing recorded identities remain stable when a sibling appears.
 
 ## Windows verification and package acceptance
 
@@ -77,18 +78,13 @@ Verify evaluated .NET output paths for the helper and tests after tooling change
 1. Verify live HTTPS shared-catalog/file downloads with a fresh isolated cache;
    current management tests use local fixtures. Record unavailable publication
    separately from runtime failure; do not publish merely to satisfy acceptance.
-2. Add shared Rust catalog variants and exact installed-file tracking without
-   silently adopting untracked files or adding legacy migrations. Implement
-   extension-qualified selection and `--lang csharp|rust` consistently across
-   help, completion, defaults, nested calls, and cycle detection.
-3. Duplicate a useful shared set beginning with `git/check.rs`, then Rust-toolchain
-   tasks under `shared-tasks/rust/`. Retain C# implementations and keep installed
-   copies identical to canonical sources. Regenerate the catalog after formatting.
-4. Broaden Rust authoring APIs only as concrete tasks require them. Per-task
+2. Add reusable Rust-toolchain build/test/format tasks as concrete consumers need
+   them; keep shared copies identical to their canonical sources.
+3. Broaden Rust authoring APIs only as concrete tasks require them. Per-task
    arbitrary crate dependencies are not supported by the initial SDK.
-5. Obtain Linux/macOS and Windows ARM64 acceptance when those platforms become
+4. Obtain Linux/macOS and Windows ARM64 acceptance when those platforms become
    relevant. Existing CI definitions do not establish successful execution.
-6. Active installation and public release remain separate authorized actions.
+5. Active installation and public release remain separate authorized actions.
 
 Record exact commands, tool versions, counts, package acceptance, and limitations
 in [VERIFICATION.md](VERIFICATION.md). Update the changelog for completed work;

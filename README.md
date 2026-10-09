@@ -204,6 +204,21 @@ On Unix, use `./build.sh install` and absolute temporary install/bin paths in th
 same JSON argument array. Uninstall through the retained installer inside the
 chosen application's `installer/` directory. Do not use `dotnet tool install`
 for the native payload. The maintained C# project is a task helper library.
+## Select task implementations
+
+C# and Rust tasks can coexist as `git/check.cs` and `git/check.rs`. Choose an
+implementation explicitly when the extensionless name is ambiguous:
+
+```sh
+dotask --add git --lang rust
+dotask git/check.rs --whitespace
+```
+
+`--add git` selects all available group implementations. `--lang csharp|rust`
+filters shared list/save/add/sync/remove selections; declared dependencies can
+use another language. Sync updates recorded variants and preserves ownership,
+local edits, and no-op tracking bytes. See [shared tasks](docs/SHARED-TASKS.md).
+
 ## Initialize a project
 
 With the current `dotask` installed, run this **from the project directory you

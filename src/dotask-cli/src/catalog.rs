@@ -59,19 +59,32 @@ pub(crate) fn load(root: &Path, _session: &Path) -> Result<Catalog> {
       end += 1;
     }
     if end - start > 1 {
-      let error = format!(
-        "Ambiguous full target name '{}': {}.",
-        targets[start].name,
-        targets[start..end]
-          .iter()
-          .map(|t| t.file_path.strip_prefix(root).unwrap_or(&t.file_path).display().to_string())
-          .collect::<Vec<_>>()
-          .join(", ")
-      );
-      for target in &mut targets[start..end] {
-        target.error = Some(error.clone());
+      let extensions: std::collections::BTreeSet<_> = targets[start..end]
+        .iter()
+        .map(|t| t.file_path.extension().unwrap().to_string_lossy().to_ascii_lowercase())
+        .collect();
+      if extensions.len() == end - start {
+        for target in &mut targets[start..end] {
+          let extension = target.file_path.extension().unwrap().to_string_lossy();
+          target.name = format!("{}.{extension}", target.name);
+          target.short_name = target.short_name.as_ref().map(|s| format!("{s}.{extension}"));
+        }
+      } else {
+        let error = format!(
+          "Ambiguous full target name '{}': {}.",
+          targets[start].name,
+          targets[start..end]
+            .iter()
+            .map(|t| t.file_path.strip_prefix(root).unwrap_or(&t.file_path).display().to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+        );
+        for target in &mut targets[start..end] {
+          target.error = Some(error.clone());
+        }
       }
     }
+
     start = end;
   }
   Ok(Catalog {

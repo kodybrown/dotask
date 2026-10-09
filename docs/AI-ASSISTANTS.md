@@ -13,8 +13,12 @@ native executable's directory.
 C# execution uses the installed .NET SDK; Rust uses Rust 1.95+/Cargo. Metadata for
 both languages is an ordinary-comment YAML header and needs no toolchain.
 Native initialization
-and YAML-only projects need no .NET host. Shared Rust variants, `--lang`, group-only `--add`, and extension-qualified calls are
-[agreed future behavior](DESIGN.md#rust-cli-transition), not implemented commands.
+and YAML-only projects need no .NET host. Use `.cs`/`.rs` task names when variants
+coexist; extensionless calls must be unambiguous. Shared selection supports
+group-only `--add git`, `--lang csharp|rust`, and exact files such as `git/check.rs`.
+Language filters select roots; dependencies retain their declared implementation.
+Use explicit implementation names in dependencies, YAML steps and nested calls
+when ambiguity is possible. No-op sync must preserve existing tracking bytes.
 
 In the dotask source checkout, use `./build.sh` (Windows: `.\build.cmd`) to
 bootstrap the checkout and list tasks. Use `./build.sh verify` (Windows:

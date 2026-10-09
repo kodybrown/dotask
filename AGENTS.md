@@ -124,6 +124,12 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   `_` directory is exempt from underscore-prefixed discovery exclusions.
   Exact names precede unique shortcuts; old space-grouped filenames remain supported.
   Use source-qualified paths for nested shared-task calls, YAML defaults, and identity.
+- Coexisting C#, Rust, and YAML implementations use extension-qualified names;
+  extensionless calls must be unambiguous. Defaults for a qualified name override
+  base-name defaults, and nested calls/cycle detection distinguish implementations.
+- Shared management supports group selections and `--lang csharp|rust` filters
+  for selected roots. Declared dependencies retain their implementation; sync
+  updates only tracked variants and preserves their existing ownership identities.
 - Shared management copies files into projects and tracks original SHA-256 hashes in
   `.dotasks-lock.yaml`. Never overwrite/adopt untracked files or remove local edits.
   Private task originals are user data. See `docs/SHARED-TASKS.md`.

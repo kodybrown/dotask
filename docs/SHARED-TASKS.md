@@ -23,9 +23,34 @@ uses `~/Library/Caches/dotask/tasks` for the local cache and
 Neither directory is the compiler cache, which remains separate.
 
 The first version supports **Official tasks (_)** and **private-tasks**. Named third-party
-GitHub repositories, authenticated private repositories, other task languages,
-and CLI self-update are future features. Reserving a source component in IDs and
+GitHub repositories, authenticated private repositories, additional task languages,
+and CLI self-update are future features. C# and Rust tasks are supported. Reserving a source component in IDs and
 paths does not mean arbitrary remote sources are already supported.
+
+## Language variants and ownership
+
+`dotask --add git` selects the whole group, like `--add "_/git/*"`. Both C# and
+Rust implementations are selected when available. Choose one language with
+`--lang csharp` or `--lang rust`, or one exact file with `--add git/check.rs`.
+The filter is available for list/save/add/sync/remove, with separated or equals
+syntax. It applies to selected roots; explicitly declared dependencies retain
+their chosen implementation even if it uses another language. Ambiguous
+extensionless dependencies are rejected before project mutation.
+
+Catalog and lockfile version 1 remain in use. A single implementation retains
+its extensionless catalog ID. Coexisting implementations get extension-qualified
+IDs and separate entry-file hashes. An existing tracked entry keeps its recorded
+key/revision identity when a sibling appears; the entry file proves which
+implementation it owns. No migration, untracked-file adoption, or replacement of
+another implementation occurs. A no-op sync preserves lockfile bytes/comments.
+
+`--sync --lang rust` updates recorded Rust roots and their declared dependencies;
+it does not add newly published siblings. Another `--add` explicitly installs
+new variants. `--remove git/check.rs` removes only the owned Rust variant;
+`--remove git` selects the group's recorded variants. Local edits, missing files,
+shared support ownership, dependencies, dry runs, recovery, and reviewed merges
+retain their existing protections. Group/wildcard selections cannot be accepted
+as reviewed merges; name the implementation explicitly.
 
 ## Add selected tasks
 
@@ -109,6 +134,12 @@ or claim that a matching local cache is the latest published version.
 Use `--save` to refresh cached task files.
 
 ## Names and calls between tasks
+
+Use extension-qualified names when implementations coexist, including for
+nested calls and YAML steps. For example, `_/git/check.cs` and `_/git/check.rs`
+identify distinct implementations. Extensionless execution never guesses a
+language. Completion stays local and offers `--lang` values and matching
+implementations without reading project YAML or downloading source files.
 
 Every source has its own destination directory. Shared-task identities include
 the source, group, and task. A basename or `group/task` shortcut works only when

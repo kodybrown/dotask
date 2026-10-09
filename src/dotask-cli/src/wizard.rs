@@ -258,7 +258,7 @@ fn step(input: &Input, catalog: &Catalog, config: &Value, root: &Path, group: &s
   let optional = input.yes_no("Optional (skip only when absent)? [y/N]: ", false)?;
   let mut parameters = serde_json::Map::new();
   if let Some(target) = target {
-    let defaults = Value::Object(configuration::defaults(config, &target.name)?);
+    let defaults = Value::Object(configuration::target_defaults(config, target)?);
     for option in &target.options {
       let name = option["Name"].as_str().unwrap();
       println!(

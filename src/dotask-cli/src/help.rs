@@ -228,7 +228,7 @@ pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) 
   }
 }
 fn entries(target: &Target, config: &Value) -> Vec<(Value, Option<String>)> {
-  let Ok(defaults) = configuration::defaults(config, &target.name) else {
+  let Ok(defaults) = configuration::target_defaults(config, target) else {
     return vec![];
   };
   let defaults = Value::Object(defaults);

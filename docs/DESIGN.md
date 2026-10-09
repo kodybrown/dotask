@@ -60,8 +60,7 @@ resuming them. On Unix it creates process groups and forwards Ctrl+C. After a
 short cooperative cancellation interval, it terminates its child group and
 returns 130. Native platform acceptance is recorded in [verification](VERIFICATION.md).
 
-The following decisions describe the overall transition, including later stages
-that are not yet available consumer APIs:
+The following decisions describe the implemented transition:
 
 1. Replace the CLI with Rust while preserving existing C# task authoring,
    metadata, compilation, nested calls, and observable CLI behavior. Retain the
@@ -108,7 +107,10 @@ content-addressed manifests/source snapshots outside the project. SDK dependenci
 are pinned; Cargo retains a lockfile per snapshot and checks compiler fingerprints.
 Support modules must be declared as task-root-relative file requirements. Help
 never compiles or runs tasks. Catalog generation still emits existing C# shared
-entries; shared Rust variants and language selection are subsequent work.
+and Rust entries, with extension-qualified IDs for coexisting variants. Language
+selection filters shared roots; dependencies use explicitly resolved files.
+Existing tracking identities and revision serialization remain stable on no-op
+sync. No untracked files are adopted and no language is chosen implicitly.
 Linux/macOS and live remote catalog acceptance remain pending independently of
 the Windows cutover. Installation and publication are separate user actions.
 

@@ -15,8 +15,9 @@ requires the .NET 10 SDK and `sdk/dotnet/Dotask.dotnet.dll`. Rust execution requ
 Cargo/Rust 1.95+ and the bundled `sdk/rust/` source directory.
 
 The native CLI is the sole executable, repository bootstrap, and installer
-payload; see [verification](VERIFICATION.md). Shared Rust variants, `--lang`, and
-extension-qualified task calls remain future work. Existing shared-task catalogs,
+payload; see [verification](VERIFICATION.md). C# and Rust implementations may
+coexist: use `git/check.cs` or `git/check.rs` when `git/check` is ambiguous. Shared
+management accepts `--lang csharp|rust`. Existing shared-task catalogs,
 hashes, lockfiles, and recovery journals retain their wire formats. A no-op sync
 preserves the existing lockfile's bytes and comments.
 

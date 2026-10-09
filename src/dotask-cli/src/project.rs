@@ -110,7 +110,11 @@ pub(crate) struct Catalog {
 impl Catalog {
   pub fn names(&self, target: &Target) -> Vec<String> {
     let mut names = vec![target.name.clone()];
-    for alias in target.aliases() {
+    for alias in target
+      .aliases()
+      .into_iter()
+      .filter(|a| !a.contains('.') || target.name.contains('.'))
+    {
       if !self.targets.iter().any(|t| t.name.eq_ignore_ascii_case(&alias))
         && self.find(&alias).is_ok_and(|t| t.is_some())
         && !names.iter().any(|n| n.eq_ignore_ascii_case(&alias))
@@ -120,11 +124,25 @@ impl Catalog {
     }
     names
   }
+  pub fn explicit_names(&self, target: &Target) -> Vec<String> {
+    std::iter::once(target.qualified_name())
+      .chain(target.aliases().into_iter().filter(|s| s.contains('.')))
+      .filter(|name| {
+        self
+          .find(name)
+          .is_ok_and(|t| t.is_some_and(|t| t.file_path == target.file_path))
+      })
+      .collect()
+  }
   pub fn display_name(&self, target: &Target) -> String {
     self.names(target).get(1).cloned().unwrap_or_else(|| target.name.clone())
   }
   pub fn find(&self, name: &str) -> Result<Option<&Target>> {
-    let exact: Vec<_> = self.targets.iter().filter(|t| t.name.eq_ignore_ascii_case(name)).collect();
+    let exact: Vec<_> = self
+      .targets
+      .iter()
+      .filter(|t| t.name.eq_ignore_ascii_case(name) || t.qualified_name().eq_ignore_ascii_case(name))
+      .collect();
     if exact.len() > 1 {
       // No full-name spelling can disambiguate colliding files. Report the
       // catalog's file-level diagnostic instead of suggesting the same command
@@ -156,6 +174,22 @@ impl Catalog {
 }
 
 impl Target {
+  pub fn base_name(&self) -> &str {
+    let suffix = format!(".{}", self.file_path.extension().unwrap().to_string_lossy());
+    if self.name.to_ascii_lowercase().ends_with(&suffix.to_ascii_lowercase()) {
+      &self.name[..self.name.len() - suffix.len()]
+    } else {
+      &self.name
+    }
+  }
+  pub fn qualified_name(&self) -> String {
+    let extension = self.file_path.extension().unwrap().to_string_lossy();
+    if self.name.to_ascii_lowercase().ends_with(&format!(".{extension}")) {
+      self.name.clone()
+    } else {
+      format!("{}.{extension}", self.name)
+    }
+  }
   fn aliases(&self) -> Vec<String> {
     let mut aliases = Vec::new();
     if let Some(name) = &self.short_name
@@ -165,13 +199,48 @@ impl Target {
     {
       aliases.push(name.clone());
     }
-    let parts: Vec<_> = self.name.split('/').collect();
-    if parts.len() > 2 {
-      aliases.push(parts[parts.len() - 2..].join("/"));
+    if let Some(short) = &self.short_name
+      && !short.contains('.')
+    {
+      aliases.push(format!("{short}.{}", self.file_path.extension().unwrap().to_string_lossy()));
     }
-    if parts.len() > 1 {
-      aliases.push(parts[parts.len() - 2..].join("-"));
+    let qualified = self.qualified_name();
+    for name in [self.name.as_str(), qualified.as_str()] {
+      let parts: Vec<_> = name.split('/').collect();
+      if parts.len() > 2 {
+        aliases.push(parts[parts.len() - 2..].join("/"));
+      }
+      if parts.len() > 1 {
+        aliases.push(parts[parts.len() - 2..].join("-"));
+      }
+      if parts.len() > 1 {
+        aliases.push(parts[parts.len() - 1].into());
+      }
+      let base = if name == qualified {
+        self.base_name()
+      } else {
+        name
+      };
+      if base != name {
+        aliases.push(base.into());
+        let base_parts: Vec<_> = base.split('/').collect();
+        if base_parts.len() > 2 {
+          aliases.push(base_parts[base_parts.len() - 2..].join("/"));
+        }
+        if base_parts.len() > 1 {
+          aliases.push(base_parts[base_parts.len() - 2..].join("-"));
+          aliases.push(base_parts[base_parts.len() - 1].into());
+        }
+        if let Some(short) = &self.short_name {
+          aliases.push(crate::shared_files::stem(short).into());
+        }
+      }
     }
+    aliases.retain(|s| {
+      !["help", "completion", "__complete", "__exec"]
+        .iter()
+        .any(|r| s.eq_ignore_ascii_case(r))
+    });
     aliases
   }
 }

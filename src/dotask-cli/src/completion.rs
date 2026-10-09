@@ -265,6 +265,42 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
   let directory = Directory::locate(invocation.into(), selected.as_deref()).ok();
   // Management completion does not inspect project code or configuration.
   if crate::shared::COMMANDS.contains(&action.as_str()) {
+    let mut language = None;
+    let mut index = 1;
+    while index < words.len() {
+      if words[index].eq_ignore_ascii_case("--lang") {
+        if index + 1 == words.len() {
+          return Ok(filter(
+            ["csharp", "rust"]
+              .iter()
+              .map(|v| candidate(*v, "value", "Task language"))
+              .collect(),
+            &current,
+          ));
+        }
+        language = Some(words[index + 1].to_ascii_lowercase());
+        index += 2;
+      } else {
+        if let Some((key, value)) = words[index].split_once('=')
+          && key.eq_ignore_ascii_case("--lang")
+        {
+          language = Some(value.to_ascii_lowercase());
+        }
+        index += 1;
+      }
+    }
+    if current.to_ascii_lowercase().starts_with("--lang=") {
+      return Ok(prefix(
+        filter(
+          ["csharp", "rust"]
+            .iter()
+            .map(|v| candidate(*v, "value", "Task language"))
+            .collect(),
+          &current[7..],
+        ),
+        &current[..7],
+      ));
+    }
     let mut candidates = vec![];
     if action == "--remove" || action == "--sync" {
       if let Some(d) = &directory {
@@ -284,11 +320,46 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
           )
         })();
         if let Ok(t) = read {
-          candidates.extend(t.ids().map(|id| candidate(id, "target", "Installed shared task")));
+          candidates.extend(
+            t.ids()
+              .filter(|id| {
+                language.as_deref().is_none_or(|l| {
+                  t.entry_point(id)
+                    .is_ok_and(|p| p.ends_with(if l == "rust" { ".rs" } else { ".cs" }))
+                })
+              })
+              .flat_map(|id| {
+                let mut values = vec![candidate(id, "target", "Installed shared task")];
+                if current.contains('.')
+                  && let Ok(entry) = t.entry_point(id)
+                {
+                  values.push(candidate(entry, "target", "Installed implementation"));
+                }
+                values
+              }),
+          );
         }
       }
     } else if let Ok(entries) = Store::environment().and_then(|s| s.cached()) {
-      candidates.extend(entries.into_iter().map(|(id, d)| candidate(id, "target", d)));
+      candidates.extend(
+        entries
+          .into_iter()
+          .filter(|(_, _, runtime)| language.as_ref().is_none_or(|l| l == runtime))
+          .flat_map(|(id, d, runtime)| {
+            let mut values = vec![candidate(&id, "target", &d)];
+            if current.contains('.') && crate::shared_files::stem(&id) == id {
+              values.push(candidate(
+                format!("{id}.{}", if runtime == "rust" { "rs" } else { "cs" }),
+                "target",
+                d,
+              ));
+            }
+            values
+          }),
+      );
+    }
+    if language.is_none() {
+      candidates.push(candidate("--lang", "option", "Select csharp or rust implementations"));
     }
     if ["--add", "--sync", "--remove"].contains(&action.as_str()) {
       candidates.push(candidate("--dry-run", "option", "Preview without changing project files"));
@@ -319,6 +390,11 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
         catalog
           .names(t)
           .into_iter()
+          .chain(if current.contains('.') {
+            catalog.explicit_names(t)
+          } else {
+            vec![]
+          })
           .map(|n| candidate(n, "target", t.error.as_ref().unwrap_or(&t.description)))
       })
       .collect();

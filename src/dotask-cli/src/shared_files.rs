@@ -24,6 +24,18 @@ fn device(s: &str) -> bool {
   ["CON", "PRN", "AUX", "NUL"].contains(&s.as_str())
     || (s.len() == 4 && (s.starts_with("COM") || s.starts_with("LPT")) && matches!(s.as_bytes()[3], b'1'..=b'9'))
 }
+pub(crate) fn stem(value: &str) -> &str {
+  for extension in [".cs", ".rs"] {
+    if value.to_ascii_lowercase().ends_with(extension) {
+      return &value[..value.len() - extension.len()];
+    }
+  }
+  value
+}
+pub(crate) fn task_id(value: &str, parts: usize) -> Result<()> {
+  id(stem(value), parts)
+}
+
 pub(crate) fn id(id: &str, parts: usize) -> Result<()> {
   let segments: Vec<_> = id.split('/').collect();
   if segments.len() != parts

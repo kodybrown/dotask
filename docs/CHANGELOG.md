@@ -640,3 +640,32 @@ acceptance, installation, and publication.
   remain external. Native Linux/macOS/ARM64, live HTTPS, and interactive terminal
   acceptance remain pending. Doinstall/Inno task sources and the active user
   installation were untouched; nothing was published or pushed.
+
+### 2026-10-09 Select C# and Rust task implementations
+
+- Support coexisting C#, Rust, and YAML task files with explicit extension-qualified
+  full names/shortcuts. Keep extensionless execution unambiguous, preserve exact-name
+  precedence and same-language collision errors, and distinguish implementations
+  in nested calls, existence queries, optional execution, groups, and cycle detection.
+- Merge base-name and implementation-specific defaults case-insensitively, with
+  qualified defaults taking precedence. Use the same effective defaults in help,
+  binding and the group wizard. Keep help/completion metadata-only.
+- Add group selections such as `--add git`, explicit files, and `--lang csharp|rust`
+  to shared list/save/add/sync/remove and local completion. Filter selected roots;
+  declared dependencies retain their implementation. Reject ambiguous dependencies.
+- Keep catalog/lock schemas and revision serialization. Qualify coexisting catalog
+  entries, preserve existing recorded keys/revision identities by their owned entry
+  files, and preserve tracking bytes/comments on no-op sync. Prevent adoption,
+  overwriting another implementation, malformed/double entry ownership, unintended
+  sibling installation during sync, and removal of required/local-edited files.
+- Add canonical `git/check.cs` alongside the Rust implementation and regenerate the
+  catalog. Its C# behavior checks Git availability and optional staged/unstaged
+  whitespace. Existing installed copies and repository tracking stay unchanged;
+  doinstall/Inno sources and their catalog entries are untouched.
+- Verification: `build.cmd verify` passed 259 .NET Release tests and 34 Rust tests
+  on Windows x64, including mixed-language calls/cycles, qualified defaults,
+  ownership, no-op sync, filtered updates/removal, exact dependencies, source
+  language changes, and catalog ambiguity. Rustfmt/clippy/docs/catalog/whitespace
+  and separate .NET formatting passed. Native Linux/macOS/ARM64, live HTTPS and
+  interactive-terminal acceptance remain pending. No active installation,
+  publishing or push occurred.

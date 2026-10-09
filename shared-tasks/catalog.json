@@ -224,7 +224,20 @@
       "requires": []
     },
     {
-      "id": "git/check",
+      "id": "git/check.cs",
+      "entryPoint": "git/check.cs",
+      "description": "Check that Git is available, optionally checking repository whitespace.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "git/check.cs",
+          "sha256": "12dce6b81fd41ba10958dd50b3bc346740b023cc987230c1744404afcc9be9c2"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "git/check.rs",
       "entryPoint": "git/check.rs",
       "description": "Check that Git is available, optionally checking repository whitespace.",
       "runtime": "rust",

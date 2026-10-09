@@ -3,6 +3,34 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Language variants (2026-10-09)
+
+On Windows x64, `build.cmd verify` passed 259 .NET Release tests and 34 Rust tests,
+rustfmt, clippy, required docs, catalog freshness and Git whitespace.
+`dotnet format dotask.slnx whitespace --no-restore --verify-no-changes` also passed.
+
+New native process coverage exercises qualified full/short/case-insensitive calls,
+implementation-specific defaults, metadata-only help/completion, C# to Rust nested
+calls, return-cycle failures, and YAML group metadata. Shared tests cover group and
+language selection, explicit dependency files, dependency protection, filtered
+sync/removal, missing/untracked/locally modified siblings, malformed ownership,
+no-op lockfile bytes/comments, and a source changing languages without replacing
+an existing implementation. Catalog tests verify distinct variant IDs and refuse
+ambiguous requirements before overwriting generated output.
+
+Catalog and lockfile schemas stay at version 1. Existing singleton IDs remain;
+new coexisting catalog entries use their exact `.cs`/`.rs` filenames. Previously
+tracked implementations retain their keys and revision identity, and an unchanged
+source does not cause a tracking rewrite when a sibling appears. Language filters
+select roots; explicitly declared dependencies can use another language. Sync
+does not install unrecorded siblings. No migration or adoption is performed.
+
+Only the Git catalog entries changed: a new C# implementation and a qualified ID
+for the existing Rust implementation. Installed copies, repository tracking,
+doinstall and Inno tasks/entries are unchanged. No installation, publication or
+push occurred. Native Linux/macOS/ARM64, live HTTPS and interactive terminal
+acceptance remain pending independently of the Windows implementation.
+
 ## C# executable removal (2026-10-07)
 
 On Windows x64 with .NET SDK 10.0.400 and Rust/Cargo 1.95.0,

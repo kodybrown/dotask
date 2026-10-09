@@ -101,8 +101,7 @@ pub(crate) fn load(directory: &Directory) -> Result<Value> {
 }
 
 pub(crate) fn defaults(config: &Value, name: &str) -> Result<Map<String, Value>> {
-  let key = format!("{name}.defaults");
-  let Some(value) = find(&config["TargetDefaults"], &key) else {
+  let Some(value) = get(&config["TargetDefaults"], name).and_then(|target| get(target, "defaults")) else {
     return Ok(Map::new());
   };
   value
@@ -111,6 +110,16 @@ pub(crate) fn defaults(config: &Value, name: &str) -> Result<Map<String, Value>>
     .iter()
     .map(|(k, v)| Ok((k.clone(), Value::String(argument(v)?))))
     .collect()
+}
+pub(crate) fn target_defaults(config: &Value, target: &Target) -> Result<Map<String, Value>> {
+  let mut values = defaults(config, target.base_name())?;
+  // Replace case-insensitive keys, rather than letting differently-spelled keys
+  // survive the merge and conflict during binding.
+  for (key, value) in defaults(config, &target.qualified_name())? {
+    values.retain(|k, _| !same_key(k, &key));
+    values.insert(key, value);
+  }
+  Ok(values)
 }
 pub(crate) fn option<'a>(target: &'a Target, name: &str) -> Option<&'a Value> {
   target.options.iter().find(|o| {
@@ -160,7 +169,7 @@ pub(crate) fn bind(target: &Target, config: &Value, args: &[String], root: &Path
     }
     index += 1;
   }
-  let defaults = Value::Object(defaults(config, &target.name)?);
+  let defaults = Value::Object(target_defaults(config, target)?);
   for key in defaults.as_object().unwrap().keys() {
     if !target
       .options

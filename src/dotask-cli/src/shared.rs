@@ -42,6 +42,29 @@ struct SharedCatalog {
   version: i32,
   tasks: Vec<SharedTask>,
 }
+impl SharedCatalog {
+  fn resolve(&self, name: &str) -> Result<&SharedTask> {
+    let exact: Vec<_> = self
+      .tasks
+      .iter()
+      .filter(|t| t.id.eq_ignore_ascii_case(name) || t.entry_point.eq_ignore_ascii_case(name))
+      .collect();
+    let matches = if exact.is_empty() {
+      self
+        .tasks
+        .iter()
+        .filter(|t| files::stem(&t.id).eq_ignore_ascii_case(name))
+        .collect()
+    } else {
+      exact
+    };
+    match matches.as_slice() {
+      [task] => Ok(task),
+      [] => bail!("Shared catalog requires missing task '{name}'."),
+      _ => bail!("Ambiguous shared task dependency '{name}'; specify its .cs or .rs entry point."),
+    }
+  }
+}
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct Installed {
@@ -87,8 +110,9 @@ impl Tracking {
     }
     let mut ids = BTreeSet::new();
     let mut paths = BTreeMap::new();
+    let mut entries = BTreeSet::new();
     for (id, task) in &tracking.tasks {
-      files::id(id, 3)?;
+      files::task_id(id, 3)?;
       if !ids.insert(id.to_lowercase())
         || task.source != id.split('/').next().unwrap()
         || !files::is_hash(&task.revision)
@@ -97,7 +121,7 @@ impl Tracking {
         bail!("Invalid tracking entry '{id}'.");
       }
       for dependency in &task.requires {
-        files::id(dependency, 3)?;
+        files::task_id(dependency, 3)?;
       }
       for (path, hash) in &task.files {
         files::relative(path)?;
@@ -110,14 +134,37 @@ impl Tracking {
           bail!("Invalid or conflicting tracked file '{path}'.");
         }
       }
-      if !["cs", "rs"]
+      let candidates: Vec<_> = ["cs", "rs"]
         .iter()
-        .any(|extension| task.files.contains_key(&format!("{id}.{extension}")))
+        .map(|ext| format!("{}.{ext}", files::stem(id)))
+        .filter(|path| task.files.contains_key(path))
+        .collect();
+      if candidates.len() != 1
+        || (files::stem(id) != id && candidates[0] != *id)
+        || !entries.insert(candidates[0].to_lowercase())
       {
-        bail!("Missing entry point tracking for '{id}'.");
+        bail!("Missing, ambiguous or multiply owned entry point tracking for '{id}'.");
       }
     }
     Ok(tracking)
+  }
+  fn owner(&self, source: &str, entry_point: &str) -> Option<&String> {
+    let path = format!("{source}/{entry_point}");
+    self
+      .tasks
+      .iter()
+      .find(|(_, task)| task.source == source && task.files.contains_key(&path))
+      .map(|(id, _)| id)
+  }
+  pub(crate) fn entry_point(&self, id: &str) -> Result<&str> {
+    let task = &self.tasks[id];
+    let stem = files::stem(id);
+    task
+      .files
+      .keys()
+      .find(|path| files::stem(path) == stem)
+      .map(String::as_str)
+      .ok_or_else(|| anyhow::anyhow!("Missing entry point tracking for '{id}'."))
   }
   fn serialize(&self) -> Result<Vec<u8>> {
     // JSON is valid YAML; preserve the established readable tracking format.
@@ -182,17 +229,20 @@ impl Selection {
       } else {
         "_".into()
       };
-      let pattern = if explicit {
+      let mut pattern = if explicit {
         segments[1..].join("/")
       } else {
         arg.clone()
       };
       files::id(&source, 1)?;
+      if !pattern.contains('/') && pattern != "*" {
+        pattern += "/*";
+      }
       if pattern != "*" {
         if let Some(group) = pattern.strip_suffix("/*") {
           files::id(group, 1)?;
         } else {
-          files::id(&pattern, 2)?;
+          files::task_id(&pattern, 2)?;
         }
       }
       out.push(Self { source, pattern });
@@ -205,6 +255,7 @@ impl Selection {
         id.to_lowercase().starts_with(&prefix.to_lowercase())
       } else {
         id.eq_ignore_ascii_case(&self.pattern)
+          || !self.pattern.contains('.') && files::stem(id).eq_ignore_ascii_case(&self.pattern)
       }
   }
 }
@@ -330,35 +381,37 @@ impl Store {
         requires,
       });
     }
+    let counts: BTreeMap<String, usize> = tasks.iter().fold(BTreeMap::new(), |mut counts, task| {
+      *counts.entry(task.id.to_lowercase()).or_default() += 1;
+      counts
+    });
+    for task in &mut tasks {
+      if counts[&task.id.to_lowercase()] > 1 {
+        task.id = task.entry_point.clone();
+      }
+    }
     let catalog = SharedCatalog { version: 1, tasks };
     validate_catalog(&catalog)?;
     Ok(catalog)
   }
-  pub fn cached(&self) -> Result<Vec<(String, String)>> {
+  pub fn cached(&self) -> Result<Vec<(String, String, String)>> {
     let mut entries = vec![];
     let path = files::resolve(&self.cache, "_/catalog.json")?;
     if path.is_file() {
       let catalog: SharedCatalog = serde_json::from_slice(&fs::read(path)?)?;
       validate_catalog(&catalog)?;
       for t in catalog.tasks {
-        entries.push((format!("_/{}", t.id), t.description.clone()));
-        entries.push((t.id, t.description));
+        entries.push((format!("_/{}", t.id), t.description.clone(), t.runtime.clone()));
+        entries.push((t.id, t.description, t.runtime));
       }
     }
-    // Private completion reads only metadata; it never hashes/copies support files.
-    let paths = crate::catalog::sources(&self.private, false, false)?;
-    if !paths.is_empty() {
-      let targets: Vec<_> = paths.iter().map(|p| crate::task_metadata::metadata(p, &self.private)).collect();
-      for t in targets {
-        let id = t
-          .file_path
-          .strip_prefix(&self.private)?
-          .with_extension("")
-          .to_string_lossy()
-          .replace('\\', "/");
-        if files::id(&id, 2).is_ok() {
-          entries.push((format!("private-tasks/{id}"), t.description));
-        }
+    // Private completion reads only metadata. Support files are never hashed,
+    // copied or required for a suggestion, and project YAML remains unread.
+    let catalog = crate::catalog::load(&self.private, &self.private)?;
+    for t in catalog.targets {
+      if t.file_path.extension().is_some_and(|e| e == "cs" || e == "rs") && files::task_id(&t.name, 2).is_ok() {
+        let runtime = id_language(&t.file_path.to_string_lossy()).into();
+        entries.push((format!("private-tasks/{}", t.name), t.description, runtime));
       }
     }
     Ok(entries)
@@ -458,6 +511,7 @@ impl Store {
     selections: &[Selection],
     refresh: bool,
     dependencies: bool,
+    language: Option<&str>,
   ) -> Result<BTreeMap<String, SharedTask>> {
     let mut result = BTreeMap::new();
     for source in selections.iter().map(|s| &s.source).collect::<BTreeSet<_>>() {
@@ -477,7 +531,7 @@ impl Store {
         if !result.contains_key(&id) {
           if dependencies {
             for required in &task.requires {
-              let t = catalog.tasks.iter().find(|t| t.id.eq_ignore_ascii_case(required)).unwrap();
+              let t = catalog.resolve(required)?;
               add(result, t, catalog, source, dependencies, visiting)?;
             }
           }
@@ -487,7 +541,13 @@ impl Store {
         Ok(())
       }
       for selection in selections.iter().filter(|s| &s.source == source) {
-        let matches: Vec<_> = catalog.tasks.iter().filter(|t| selection.matches(&t.id)).collect();
+        let matches: Vec<_> = catalog
+          .tasks
+          .iter()
+          .filter(|t| {
+            (selection.matches(&t.id) || selection.matches(&t.entry_point)) && language.is_none_or(|l| l == t.runtime)
+          })
+          .collect();
         if matches.is_empty() && selection.pattern != "*" {
           bail!(
             "No shared tasks match '{source}/{}'. Existing project files are preserved.",
@@ -507,12 +567,15 @@ fn validate_catalog(catalog: &SharedCatalog) -> Result<()> {
     bail!("Unsupported or invalid shared task catalog.");
   }
   let mut ids = BTreeSet::new();
+  let mut entries = BTreeSet::new();
   let mut all = BTreeMap::new();
   for t in &catalog.tasks {
-    files::id(&t.id, 2)?;
+    files::task_id(&t.id, 2)?;
     if !ids.insert(t.id.to_lowercase())
+      || !entries.insert(t.entry_point.to_lowercase())
+      || files::stem(&t.id) != t.id && t.id != t.entry_point
       || !["csharp", "rust"].contains(&t.runtime.as_str())
-      || t.entry_point != format!("{}.{}", t.id, if t.runtime == "rust" { "rs" } else { "cs" })
+      || t.entry_point != format!("{}.{}", files::stem(&t.id), if t.runtime == "rust" { "rs" } else { "cs" })
       || t.files.is_empty()
       || t.files.len() > 128
     {
@@ -547,22 +610,43 @@ fn validate_catalog(catalog: &SharedCatalog) -> Result<()> {
       bail!("Missing entry point file for '{}'.", t.id);
     }
     for r in &t.requires {
-      files::id(r, 2)?;
+      files::task_id(r, 2)?;
     }
   }
   for t in &catalog.tasks {
-    for r in &t.requires {
-      if !ids.contains(&r.to_lowercase()) {
-        bail!("Shared task '{}' requires missing task '{r}'.", t.id);
-      }
+    for required in &t.requires {
+      catalog.resolve(required)?;
     }
   }
+
   Ok(())
 }
 
 pub(crate) fn run(command: &Arguments) -> Result<i32> {
   let action = command.remaining[0].to_lowercase();
-  let args = &command.remaining[1..];
+  let mut language = None;
+  let mut filtered = Vec::new();
+  let mut input = command.remaining[1..].iter();
+  while let Some(arg) = input.next() {
+    if arg.eq_ignore_ascii_case("--lang") || arg.to_ascii_lowercase().starts_with("--lang=") {
+      if language.is_some() {
+        bail!("--lang may only be specified once.");
+      }
+      let value = if let Some((_, value)) = arg.split_once('=') {
+        value
+      } else {
+        input.next().ok_or_else(|| anyhow::anyhow!("--lang requires csharp or rust."))?
+      };
+      let value = value.to_ascii_lowercase();
+      if !["csharp", "rust"].contains(&value.as_str()) {
+        bail!("--lang requires csharp or rust.");
+      }
+      language = Some(value);
+    } else {
+      filtered.push(arg.clone());
+    }
+  }
+  let args = &filtered;
   let dry = args.iter().any(|a| a.eq_ignore_ascii_case("--dry-run"));
   let accept = args.iter().any(|a| a.eq_ignore_ascii_case("--accept-merge"));
   let args: Vec<_> = args
@@ -593,7 +677,7 @@ pub(crate) fn run(command: &Arguments) -> Result<i32> {
   }
   let store = Store::environment()?;
   if action == "--list" || action == "--save" {
-    let tasks = store.select(&selections, true, action == "--save")?;
+    let tasks = store.select(&selections, true, action == "--save", language.as_deref())?;
     if action == "--list" && !tasks.is_empty() {
       listing(&store, &tasks, &invocation, command.use_directory.as_deref())?;
     }
@@ -643,7 +727,7 @@ pub(crate) fn run(command: &Arguments) -> Result<i32> {
   let mut preserve = BTreeSet::new();
   let mut conflicts = vec![];
   if action == "--remove" {
-    for id in installed(&before, &selections)? {
+    for id in installed(&before, &selections, language.as_deref())? {
       verify_installed(&project, &before.tasks[&id], &mut conflicts)?;
       next.tasks.remove(&id);
       println!("{} {id}", if dry { "Would remove" } else { "Remove" });
@@ -651,14 +735,43 @@ pub(crate) fn run(command: &Arguments) -> Result<i32> {
   } else {
     if action == "--sync" {
       let ids = if selections.is_empty() {
-        before.tasks.keys().cloned().collect()
+        before
+          .tasks
+          .keys()
+          .filter(|id| {
+            language
+              .as_deref()
+              .is_none_or(|l| id_language(before.entry_point(id).unwrap()) == l)
+          })
+          .cloned()
+          .collect()
       } else {
-        installed(&before, &selections)?
+        installed(&before, &selections, language.as_deref())?
       };
-      selections = Selection::parse(&ids)?;
+      let entries = ids
+        .iter()
+        .map(|id| before.entry_point(id).map(String::from))
+        .collect::<Result<Vec<_>>>()?;
+      selections = Selection::parse(&entries)?;
     }
-    for (id, task) in store.select(&selections, action == "--sync", true)? {
-      let source = id.split('/').next().unwrap();
+    let selected_tasks = store.select(&selections, action == "--sync", true, language.as_deref())?;
+    for (selected_id, task) in &selected_tasks {
+      let source = selected_id.split('/').next().unwrap();
+      let owner = before.owner(source, &task.entry_point);
+      let id = owner.cloned().unwrap_or_else(|| {
+        if before.tasks.contains_key(selected_id) {
+          format!("{source}/{}", task.entry_point)
+        } else {
+          selected_id.clone()
+        }
+      });
+      let mut task = task.clone();
+      if owner.is_some() {
+        // The existing entry file proves ownership. Keep its recorded identity
+        // in revision snapshots even when a new sibling qualifies catalog IDs;
+        // an unchanged source must not rewrite tracking or its comments.
+        task.id = id.split_once('/').unwrap().1.into();
+      }
       if action == "--add"
         && let Some(already) = before.tasks.get(&id)
       {
@@ -667,7 +780,22 @@ pub(crate) fn run(command: &Arguments) -> Result<i32> {
         continue;
       }
       store.save(source, &task)?;
-      let replacement = Installed::from(source, &task);
+      let mut replacement = Installed::from(source, &task);
+      replacement.requires = task
+        .requires
+        .iter()
+        .map(|required| {
+          let dependency = selected_tasks
+            .iter()
+            .find(|(id, t)| {
+              id.starts_with(&format!("{source}/"))
+                && (t.id.eq_ignore_ascii_case(required) || t.entry_point.eq_ignore_ascii_case(required))
+            })
+            .unwrap()
+            .1;
+          format!("{source}/{}", dependency.entry_point)
+        })
+        .collect();
       if let Some(installed) = before.tasks.get(&id) {
         let mut changed = vec![];
         for (path, hash) in &installed.files {
@@ -702,9 +830,10 @@ pub(crate) fn run(command: &Arguments) -> Result<i32> {
         }
         if !changed.is_empty() && !matches {
           let selected = accept
-            && selections
-              .iter()
-              .any(|s| s.source == source && s.pattern.eq_ignore_ascii_case(&task.id));
+            && selections.iter().any(|s| {
+              s.source == source
+                && (s.pattern.eq_ignore_ascii_case(&task.id) || s.pattern.eq_ignore_ascii_case(&task.entry_point))
+            });
           let review = review_path(&store, &project, &id, &replacement.revision)?;
           let expected = json!({"task":id,"beforeRevision":installed.revision,"incomingRevision":replacement.revision});
           let reviewed = fs::read(review.join("review.json"))
@@ -737,6 +866,22 @@ pub(crate) fn run(command: &Arguments) -> Result<i32> {
           "Install/update"
         }
       );
+    }
+  }
+  let entry_owners: BTreeMap<_, _> = next
+    .tasks
+    .keys()
+    .map(|id| (next.entry_point(id).unwrap().to_owned(), id.clone()))
+    .collect();
+  for task in next.tasks.values_mut() {
+    for required in &mut task.requires {
+      let matches: Vec<_> = entry_owners
+        .iter()
+        .filter(|(entry, _)| entry.eq_ignore_ascii_case(required) || files::stem(entry).eq_ignore_ascii_case(required))
+        .collect();
+      if matches.len() == 1 {
+        *required = matches[0].1.clone();
+      }
     }
   }
   for (id, task) in &next.tasks {
@@ -830,15 +975,25 @@ pub(crate) fn run(command: &Arguments) -> Result<i32> {
   }
   Ok(0)
 }
-fn installed(tracking: &Tracking, selections: &[Selection]) -> Result<Vec<String>> {
+fn id_language(id: &str) -> &str {
+  if id.ends_with(".rs") {
+    "rust"
+  } else {
+    "csharp"
+  }
+}
+fn installed(tracking: &Tracking, selections: &[Selection], language: Option<&str>) -> Result<Vec<String>> {
   let mut ids = BTreeSet::new();
   for s in selections {
     let matches: Vec<_> = tracking
       .tasks
       .keys()
       .filter(|id| {
-        id.split_once('/')
-          .is_some_and(|(source, task)| source.eq_ignore_ascii_case(&s.source) && s.matches(task))
+        id.split_once('/').is_some_and(|(source, task)| {
+          source.eq_ignore_ascii_case(&s.source)
+            && (s.matches(task) || s.matches(&tracking.entry_point(id).unwrap()[source.len() + 1..]))
+            && language.is_none_or(|l| id_language(tracking.entry_point(id).unwrap()) == l)
+        })
       })
       .cloned()
       .collect();
@@ -935,7 +1090,9 @@ fn listing(
   for (id, task) in tasks {
     crate::process::check_cancelled()?;
     let source = id.split('/').next().unwrap();
-    let installed = tracking.tasks.get(id);
+    let installed = tracking
+      .owner(source, &task.entry_point)
+      .and_then(|owner| tracking.tasks.get(owner));
     let present = files::resolve(&project.task_directory, &format!("{source}/{}", task.entry_point))?.is_file();
     let status = if !present {
       "—"

@@ -4,7 +4,9 @@ This is the authoring contract for the current preview. See [usage](USAGE.md) fo
 CLI behavior and [AI assistant guidance](AI-ASSISTANTS.md) for a task-writing
 workflow. A target is a C# file-based application, a Rust `.rs` entry file using
 the bundled `dotask-sdk`, or a declarative YAML `.task` group. The native CLI
-supports calls in both directions between C# and Rust. The native CLI reads
+supports calls in both directions between C# and Rust. Explicit `.cs`, `.rs`,
+and `.task` names identify implementations; extensionless names require an
+unambiguous target. The native CLI reads
 metadata directly; C# compilation uses the installed SDK and maintained authoring
 library. See [Rust tasks](#rust-tasks) for the Rust source and SDK contract.
 
@@ -12,6 +14,26 @@ Jump to [a complete target](#a-complete-target), [reuse](#reuse-a-target),
 [options](#option-metadata), [YAML](#yaml-configuration),
 [context and nested calls](#context-and-target-calls),
 [processes and files](#processes-and-files), or [requirements](#requirements-and-scope).
+
+## Implementation identity and defaults
+
+Files such as `tools/check.cs` and `tools/check.rs` may coexist. Invoke either
+full path or an unambiguous shortcut, such as `check.cs`. `tools/check` is an
+error when multiple implementations exist. The same rule applies to help,
+completion, YAML group steps, existence queries, optional execution, and nested
+calls. Ambiguity is a failure, never an absent optional task.
+
+A single implementation retains its existing canonical `TargetName`; when
+implementations coexist, the canonical names include their extensions. Cycle
+detection distinguishes implementations and rejects a return to an already
+active one. Case-only or space-grouped collisions within one language remain
+errors. Requirements naming an ambiguous shared task must use `.cs` or `.rs`.
+
+Project defaults under `targets.tools/check.defaults` apply to both variants.
+Defaults under `targets.tools/check.cs.defaults` or `.rs` override the base values
+case-insensitively. These are literal mapping keys, not nested settings paths.
+CLI arguments override both layers. Help and the wizard use the same effective
+values. There is no project-wide language preference.
 
 ## Rust tasks
 
@@ -123,8 +145,8 @@ for installing copies, support-file declarations, and protected synchronization.
 ## YAML task groups
 
 Groups may call Rust tasks as well as C# tasks. A `.cs`, `.rs`, or `.task` file
-with the same full name currently conflicts; language variants and
-extension-qualified selection remain future work.
+may share a base name with another implementation; use the extension-qualified
+name when calling it from a group. Extensionless ambiguity remains an error.
 
 Create `.tasks/check.task` to compose existing tasks without writing C#:
 

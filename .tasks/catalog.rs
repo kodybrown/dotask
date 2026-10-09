@@ -86,6 +86,15 @@ fn task(project: &BuildContext) -> Result<()> {
       .collect();
     tasks.push(json!({"id":id,"entryPoint":relative,"description":metadata["Description"],"runtime":if source.extension().is_some_and(|e| e == "rs") { "rust" } else { "csharp" },"files":records,"requires":requires}));
   }
+  let mut counts = std::collections::BTreeMap::<String, usize>::new();
+  for task in &tasks {
+    *counts.entry(task["id"].as_str().unwrap().to_lowercase()).or_default() += 1;
+  }
+  for task in &mut tasks {
+    if counts[&task["id"].as_str().unwrap().to_lowercase()] > 1 {
+      task["id"] = task["entryPoint"].clone();
+    }
+  }
   let mut ids = BTreeSet::new();
   for task in &tasks {
     let id = task["id"].as_str().unwrap();
@@ -95,11 +104,32 @@ fn task(project: &BuildContext) -> Result<()> {
   }
   for task in &tasks {
     for required in task["requires"].as_array().unwrap() {
-      if !ids.contains(&required.as_str().unwrap().to_lowercase()) {
+      let required = required.as_str().unwrap();
+      let exact: Vec<_> = tasks
+        .iter()
+        .filter(|t| {
+          t["id"].as_str().unwrap().eq_ignore_ascii_case(required)
+            || t["entryPoint"].as_str().unwrap().eq_ignore_ascii_case(required)
+        })
+        .collect();
+      let matches = if exact.is_empty() {
+        tasks
+          .iter()
+          .filter(|t| {
+            t["entryPoint"].as_str().unwrap()[..t["entryPoint"].as_str().unwrap().len() - 3]
+              .eq_ignore_ascii_case(required)
+          })
+          .collect()
+      } else {
+        exact
+      };
+      if matches.is_empty() {
+        bail!("{} requires missing task: {required}", task["id"].as_str().unwrap());
+      }
+      if matches.len() > 1 {
         bail!(
-          "{} requires missing task: {}",
-          task["id"].as_str().unwrap(),
-          required.as_str().unwrap()
+          "{} requires ambiguous task: {required}. Specify .cs or .rs when variants coexist.",
+          task["id"].as_str().unwrap()
         );
       }
     }
