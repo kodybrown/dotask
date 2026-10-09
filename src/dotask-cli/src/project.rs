@@ -138,9 +138,24 @@ impl Catalog {
     self.names(target).get(1).cloned().unwrap_or_else(|| target.name.clone())
   }
   pub fn find(&self, name: &str) -> Result<Option<&Target>> {
+    self.find_with_language(name, None)
+  }
+  pub fn find_with_language(&self, name: &str, language: Option<&str>) -> Result<Option<&Target>> {
+    // Selection belongs to this invocation. The returned target keeps its
+    // canonical identity; nested calls resolve independently across languages.
+    if let Some(language) = language {
+      let extension = Path::new(name).extension().and_then(|e| e.to_str());
+      if let Some(extension) = extension {
+        let expected = if language == "rust" { "rs" } else { "cs" };
+        if !extension.eq_ignore_ascii_case(expected) {
+          bail!("Target '{name}' conflicts with --lang {language}.");
+        }
+      }
+    }
     let exact: Vec<_> = self
       .targets
       .iter()
+      .filter(|t| language.is_none_or(|l| t.language() == Some(l)))
       .filter(|t| t.name.eq_ignore_ascii_case(name) || t.qualified_name().eq_ignore_ascii_case(name))
       .collect();
     if exact.len() > 1 {
@@ -153,6 +168,7 @@ impl Catalog {
       self
         .targets
         .iter()
+        .filter(|t| language.is_none_or(|l| t.language() == Some(l)))
         .filter(|t| t.aliases().iter().any(|a| a.eq_ignore_ascii_case(name)))
         .collect()
     } else {
@@ -174,6 +190,13 @@ impl Catalog {
 }
 
 impl Target {
+  pub fn language(&self) -> Option<&'static str> {
+    match self.file_path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
+      "cs" => Some("csharp"),
+      "rs" => Some("rust"),
+      _ => None,
+    }
+  }
   pub fn base_name(&self) -> &str {
     let suffix = format!(".{}", self.file_path.extension().unwrap().to_string_lossy());
     if self.name.to_ascii_lowercase().ends_with(&suffix.to_ascii_lowercase()) {

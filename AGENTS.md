@@ -127,6 +127,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - Coexisting C#, Rust, and YAML implementations use extension-qualified names;
   extensionless calls must be unambiguous. Defaults for a qualified name override
   base-name defaults, and nested calls/cycle detection distinguish implementations.
+  CLI `--lang csharp|rust` selects the requested target/help implementation only;
+  it is reserved and never inherited by nested calls or interpreted as directory execution.
 - Shared management supports group selections and `--lang csharp|rust` filters
   for selected roots. Declared dependencies retain their implementation; sync
   updates only tracked variants and preserves their existing ownership identities.

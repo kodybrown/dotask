@@ -99,6 +99,9 @@ fn run_inner(arguments: Vec<OsString>) -> Result<i32> {
   if action == "help" && remaining.len() > 2 {
     bail!("Usage: dotask help [TARGET]");
   }
+  if command.language.is_some() && ["--init", "--create-task", "completion"].contains(&action.as_str()) {
+    bail!("--lang selects a task implementation or shared-task selection; it is not supported by {action}.");
+  }
   if action == "--init" {
     if command.help {
       help::initialization();
@@ -135,16 +138,26 @@ fn run_inner(arguments: Vec<OsString>) -> Result<i32> {
     configuration: Value::Null,
     verbose: command.verbose,
   };
-  let catalog = executor.catalog(session.path())?;
+  let mut catalog = executor.catalog(session.path())?;
   executor.configuration = catalog.configuration.clone();
   let name = remaining.get(usize::from(action == "help"));
   let Some(name) = name else {
+    if let Some(language) = command.language.as_deref() {
+      catalog.targets.retain(|t| t.language() == Some(language));
+    }
     help::project(&catalog, &executor.directory, command.verbose);
     return Ok(0);
   };
-  let target = catalog
-    .find(name)?
-    .ok_or_else(|| anyhow::anyhow!("Unknown target '{name}'. Run dotask help to list targets."))?;
+  let target = catalog.find_with_language(name, command.language.as_deref())?.ok_or_else(|| {
+    anyhow::anyhow!(
+      "Unknown target '{name}'{}. Run dotask help to list targets.",
+      command
+        .language
+        .as_ref()
+        .map(|l| format!(" for language '{l}'"))
+        .unwrap_or_default()
+    )
+  })?;
   if let Some(error) = &target.error {
     bail!("{error}");
   }
@@ -165,6 +178,7 @@ fn run_inner(arguments: Vec<OsString>) -> Result<i32> {
 #[derive(Default)]
 pub(crate) struct Arguments {
   pub use_directory: Option<String>,
+  pub language: Option<String>,
   pub help: bool,
   pub version: bool,
   pub verbose: bool,
@@ -180,6 +194,21 @@ impl Arguments {
         "--help" | "-h" => result.help = true,
         "--version" => result.version = true,
         "--verbose" => result.verbose = true,
+        _ if lower == "--lang" || lower.starts_with("--lang=") => {
+          if result.language.is_some() {
+            bail!("--lang may only be specified once.");
+          }
+          let value = if let Some((_, value)) = arg.split_once('=') {
+            value.to_owned()
+          } else {
+            args.next().ok_or_else(|| anyhow::anyhow!("--lang requires csharp or rust."))?
+          };
+          let value = value.to_ascii_lowercase();
+          if !["csharp", "rust"].contains(&value.as_str()) {
+            bail!("--lang requires csharp or rust.");
+          }
+          result.language = Some(value);
+        }
         _ if lower == "--use-dir" || lower.starts_with("--use-dir=") => {
           if result.use_directory.is_some() {
             bail!("--use-dir may only be specified once.");

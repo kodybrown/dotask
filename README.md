@@ -211,13 +211,16 @@ implementation explicitly when the extensionless name is ambiguous:
 
 ```sh
 dotask --add git --lang rust
-dotask git/check.rs --whitespace
+dotask git/check --lang rust --whitespace
 ```
 
 `--add git` selects all available group implementations. `--lang csharp|rust`
 filters shared list/save/add/sync/remove selections; declared dependencies can
 use another language. Sync updates recorded variants and preserves ownership,
-local edits, and no-op tracking bytes. See [shared tasks](docs/SHARED-TASKS.md).
+local edits, and no-op tracking bytes. For execution/help, `--lang` filters only
+the requested target and does not flow into nested calls. Conflicting extensions
+and ambiguous matches fail. It does not execute entire directories.
+See [shared tasks](docs/SHARED-TASKS.md).
 
 ## Initialize a project
 

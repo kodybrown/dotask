@@ -90,6 +90,9 @@ The following decisions describe the implemented transition:
    Extensionless calls require an unambiguous target. Apply the same rules to
    nested calls, and identify implementations distinctly for cycle detection.
    Mixed-language projects need only the toolchains required by executed tasks.
+   CLI `--lang csharp|rust` filters the requested target/help selection, not
+   nested calls or group children. Explicit conflicting suffixes fail. The flag
+   is reserved, and directory names do not become implicit execution groups.
 
 Common YAML metadata parsing is owned by Rust. Native shared management
 preserves the existing SHA-256 revision serialization, lock schema, transaction

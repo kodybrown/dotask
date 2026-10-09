@@ -669,3 +669,24 @@ acceptance, installation, and publication.
   and separate .NET formatting passed. Native Linux/macOS/ARM64, live HTTPS and
   interactive-terminal acceptance remain pending. No active installation,
   publishing or push occurred.
+
+### 2026-10-09 Select a task implementation with --lang
+
+- Add execution/help `--lang csharp|rust` before or after a target, with separated
+  or equals syntax. Resolve only matching implementations; reject missing,
+  ambiguous and conflicting filename/language selectors before task side effects.
+  Filter bare project help and completion using the same selection rules.
+- Reserve `lang` in task option metadata and consume the selector in the common
+  CLI parser used by shared management. Do not pass it to task parameters, persist
+  it in YAML, or inherit it in nested calls, dependencies, or group children.
+  Directory names remain unknown targets rather than implicit execution groups.
+- Preserve the fixed pre-removal completion baseline for existing suggestions;
+  independently test the additive selector. Refresh usage/authoring guidance.
+- Verification: `build.cmd verify` passed 269 .NET Release tests and 34 Rust tests
+  on Windows x64, rustfmt/clippy/docs/catalog/whitespace gates, and the separate
+  .NET whitespace-format check. Focused execution/help/completion/shared tests
+  passed 101 cases. The requested `git/check --lang rust --whitespace` source
+  invocation and 83 local Markdown links/anchors passed. Native Linux/macOS/ARM64,
+  live HTTPS and interactive-terminal
+  acceptance remain pending. Shared sources, doinstall/Inno adapters, tracking and
+  the active installation are unchanged; nothing was published or pushed.

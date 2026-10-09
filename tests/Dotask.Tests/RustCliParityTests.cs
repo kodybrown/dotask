@@ -61,7 +61,10 @@ public sealed class RustCliParityTests
     var reference = Baseline("complete:" + shell + ":" + line);
     var native = await RustArtifacts.Run(project.Root, args);
     Assert.Equal(0, native.ExitCode);
-    Assert.Equal(Normalize(reference.StandardOutput), Normalize(native.StandardOutput).Replace(Path.GetFileName(project.Root), "<project>", StringComparison.Ordinal));
+    // The fixed pre-removal oracle covers existing completions. The additive
+    // global language selector is verified independently by execution tests.
+    var existing = string.Concat(Normalize(native.StandardOutput).Split('\n').Where(row => !row.StartsWith("--lang\t", StringComparison.Ordinal)).Select(row => row.Length == 0 ? "" : row + "\n"));
+    Assert.Equal(Normalize(reference.StandardOutput), existing.Replace(Path.GetFileName(project.Root), "<project>", StringComparison.Ordinal));
     Assert.Empty(native.StandardError);
     Assert.False(File.Exists(Path.Combine(project.Root, "executed")));
   }

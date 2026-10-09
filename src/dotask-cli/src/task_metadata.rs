@@ -123,7 +123,7 @@ pub(crate) fn metadata(file: &Path, root: &Path) -> Target {
       for name in std::iter::once(&option.name).chain(option.alias.iter()) {
         if !catalog::identifier(name)
           || !names.insert(name.to_lowercase())
-          || ["help", "h", "verbose", "version", "use-dir"].contains(&name.to_ascii_lowercase().as_str())
+          || ["help", "h", "verbose", "version", "use-dir", "lang"].contains(&name.to_ascii_lowercase().as_str())
         {
           bail!("Invalid, reserved, or duplicate option '{name}'.");
         }

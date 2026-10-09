@@ -20,10 +20,11 @@ Global options:
   --help, -h      Show CLI help, or target help when a target is given.
   --verbose       Show full project summaries and execution diagnostics.
   --version       Show version.
+  --lang LANGUAGE Select csharp or rust for this target/help request; nested calls resolve independently.
 
 Shared tasks:
   --list          List the online cache, or private-tasks/* for private tasks.
-  --lang LANGUAGE Filter shared selections by csharp or rust; dependencies retain their declared implementation.
+  --lang LANGUAGE Filter shared roots by csharp or rust; dependencies retain their declared implementation.
   --save          Download selected shared tasks into the local cache.
   --add           Copy shared tasks into the project; never overwrite existing tasks.
   --sync          Update installed shared tasks while protecting local edits.

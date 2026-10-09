@@ -240,6 +240,46 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
   if current.to_lowercase().starts_with("--use-dir=") {
     return Ok(prefix(paths(&current[10..], invocation, true), &current[..10]));
   }
+  let mut language = None;
+  let mut index = 0;
+  while index < words.len() {
+    if words[index].eq_ignore_ascii_case("--lang") {
+      if index + 1 == words.len() {
+        return Ok(filter(
+          ["csharp", "rust"]
+            .iter()
+            .map(|v| candidate(*v, "value", "Task language"))
+            .collect(),
+          &current,
+        ));
+      }
+      language = Some(words[index + 1].to_ascii_lowercase());
+      words.drain(index..index + 2);
+    } else {
+      if let Some((key, value)) = words[index].split_once('=')
+        && key.eq_ignore_ascii_case("--lang")
+      {
+        language = Some(value.to_ascii_lowercase());
+      }
+      if words[index].to_ascii_lowercase().starts_with("--lang=") {
+        words.remove(index);
+      } else {
+        index += 1;
+      }
+    }
+  }
+  if current.to_ascii_lowercase().starts_with("--lang=") {
+    return Ok(prefix(
+      filter(
+        ["csharp", "rust"]
+          .iter()
+          .map(|v| candidate(*v, "value", "Task language"))
+          .collect(),
+        &current[7..],
+      ),
+      &current[..7],
+    ));
+  }
   let action = words.first().map(|s| s.to_lowercase()).unwrap_or_default();
   if action == "completion" {
     return Ok(filter(
@@ -265,42 +305,6 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
   let directory = Directory::locate(invocation.into(), selected.as_deref()).ok();
   // Management completion does not inspect project code or configuration.
   if crate::shared::COMMANDS.contains(&action.as_str()) {
-    let mut language = None;
-    let mut index = 1;
-    while index < words.len() {
-      if words[index].eq_ignore_ascii_case("--lang") {
-        if index + 1 == words.len() {
-          return Ok(filter(
-            ["csharp", "rust"]
-              .iter()
-              .map(|v| candidate(*v, "value", "Task language"))
-              .collect(),
-            &current,
-          ));
-        }
-        language = Some(words[index + 1].to_ascii_lowercase());
-        index += 2;
-      } else {
-        if let Some((key, value)) = words[index].split_once('=')
-          && key.eq_ignore_ascii_case("--lang")
-        {
-          language = Some(value.to_ascii_lowercase());
-        }
-        index += 1;
-      }
-    }
-    if current.to_ascii_lowercase().starts_with("--lang=") {
-      return Ok(prefix(
-        filter(
-          ["csharp", "rust"]
-            .iter()
-            .map(|v| candidate(*v, "value", "Task language"))
-            .collect(),
-          &current[7..],
-        ),
-        &current[..7],
-      ));
-    }
     let mut candidates = vec![];
     if action == "--remove" || action == "--sync" {
       if let Some(d) = &directory {
@@ -375,13 +379,16 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
     return Ok(filter(candidates, &current));
   }
   let session = tempfile::tempdir()?;
-  let catalog = directory
+  let mut catalog = directory
     .as_ref()
     .and_then(|d| crate::catalog::load(&d.task_directory, session.path()).ok())
     .unwrap_or(Catalog {
       configuration: Value::Null,
       targets: vec![],
     });
+  if let Some(language) = language.as_deref() {
+    catalog.targets.retain(|t| t.language() == Some(language));
+  }
   if words.is_empty() || action == "help" {
     let mut candidates: Vec<_> = catalog
       .targets
@@ -408,9 +415,12 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
       "option",
       "Show full summaries and execution diagnostics",
     ));
+    if language.is_none() {
+      candidates.push(candidate("--lang", "option", "Select csharp or rust implementations"));
+    }
     return Ok(filter(candidates, &current));
   }
-  let Some(target) = catalog.find(&words[0]).ok().flatten() else {
+  let Some(target) = catalog.find_with_language(&words[0], language.as_deref()).ok().flatten() else {
     return Ok(filter(globals(), &current));
   };
   let root = &directory.as_ref().unwrap().root_directory;
@@ -443,6 +453,9 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
     return Ok(values(p, &current, root));
   }
   let mut candidates = globals();
+  if language.is_none() {
+    candidates.push(candidate("--lang", "option", "Select csharp or rust implementations"));
+  }
   for o in &target.options {
     let name = o["Name"].as_str().unwrap();
     if used.contains(name) {

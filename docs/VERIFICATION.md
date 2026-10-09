@@ -3,6 +3,29 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Execution language selector (2026-10-09)
+
+On Windows x64, `build.cmd verify` passed 269 .NET Release tests and 34 Rust tests,
+rustfmt, clippy, required docs, catalog freshness and Git whitespace. The separate
+`dotnet format dotask.slnx whitespace --no-restore --verify-no-changes` check passed.
+The focused execution/completion/shared-task suite passed all 101 cases.
+The exact source invocation `build.cmd --use-dir shared-tasks git/check --lang
+rust --whitespace` and 83 local Markdown links/anchors passed.
+
+Coverage includes selectors before/after targets, case-insensitive equals values,
+root-only filtering with nested calls into another language, literal option-like
+parameter values, filtered help/summary and completion with invalid project YAML,
+conflicting extensions, missing/invalid/duplicate language values, same-language
+ambiguity, reserved option metadata, and rejection of directory/group-language
+execution. Existing shared selection tests exercise the common parser too.
+Historical completion baselines still require all existing suggestions unchanged;
+the additional CLI language suggestion is checked independently.
+
+No selector is stored in configuration or forwarded in nested-call context.
+No directory execution, migration, task registration, SDK change, or installer
+adapter change was introduced. Native Linux/macOS/ARM64, live HTTPS and interactive
+terminal acceptance remain pending. No installation, publication or push occurred.
+
 ## Language variants (2026-10-09)
 
 On Windows x64, `build.cmd verify` passed 259 .NET Release tests and 34 Rust tests,

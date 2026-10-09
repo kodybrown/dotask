@@ -624,29 +624,8 @@ fn validate_catalog(catalog: &SharedCatalog) -> Result<()> {
 
 pub(crate) fn run(command: &Arguments) -> Result<i32> {
   let action = command.remaining[0].to_lowercase();
-  let mut language = None;
-  let mut filtered = Vec::new();
-  let mut input = command.remaining[1..].iter();
-  while let Some(arg) = input.next() {
-    if arg.eq_ignore_ascii_case("--lang") || arg.to_ascii_lowercase().starts_with("--lang=") {
-      if language.is_some() {
-        bail!("--lang may only be specified once.");
-      }
-      let value = if let Some((_, value)) = arg.split_once('=') {
-        value
-      } else {
-        input.next().ok_or_else(|| anyhow::anyhow!("--lang requires csharp or rust."))?
-      };
-      let value = value.to_ascii_lowercase();
-      if !["csharp", "rust"].contains(&value.as_str()) {
-        bail!("--lang requires csharp or rust.");
-      }
-      language = Some(value);
-    } else {
-      filtered.push(arg.clone());
-    }
-  }
-  let args = &filtered;
+  let language = &command.language;
+  let args = &command.remaining[1..];
   let dry = args.iter().any(|a| a.eq_ignore_ascii_case("--dry-run"));
   let accept = args.iter().any(|a| a.eq_ignore_ascii_case("--accept-merge"));
   let args: Vec<_> = args

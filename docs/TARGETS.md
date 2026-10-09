@@ -35,6 +35,15 @@ case-insensitively. These are literal mapping keys, not nested settings paths.
 CLI arguments override both layers. Help and the wizard use the same effective
 values. There is no project-wide language preference.
 
+`dotask tools/check --lang rust` selects the Rust implementation of that target;
+`dotask help tools/check --lang csharp` selects its C# help. The selector is a
+reserved CLI option, not a task parameter, and accepts equals syntax too. A
+conflicting explicit extension is rejected. The filter applies only to the
+requested target; nested calls resolve normally and can cross languages. YAML
+groups have no C#/Rust implementation language, so select them without this
+filter and name their child implementations explicitly. Directory execution is
+not implied by the selector.
+
 ## Rust tasks
 
 Save this as `.tasks/hello.rs`, then run `dotask hello --name Rust`:

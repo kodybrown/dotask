@@ -17,6 +17,9 @@ and YAML-only projects need no .NET host. Use `.cs`/`.rs` task names when varian
 coexist; extensionless calls must be unambiguous. Shared selection supports
 group-only `--add git`, `--lang csharp|rust`, and exact files such as `git/check.rs`.
 Language filters select roots; dependencies retain their declared implementation.
+For a direct CLI call/help request, `--lang csharp|rust` can select an individual
+implementation without a filename suffix. It is CLI-reserved and does not flow
+into nested calls; conflicting suffixes and ambiguous matches are errors.
 Use explicit implementation names in dependencies, YAML steps and nested calls
 when ambiguity is possible. No-op sync must preserve existing tracking bytes.
 
