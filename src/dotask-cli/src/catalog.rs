@@ -134,7 +134,7 @@ pub(crate) fn read_name(file: &Path, root: &Path) -> Result<(String, Option<Stri
   }
   Ok((name, short))
 }
-fn group(file: &Path, root: &Path) -> Target {
+pub(crate) fn group(file: &Path, root: &Path) -> Target {
   let mut target = Target {
     name: file.file_stem().unwrap().to_string_lossy().into_owned(),
     file_path: file.into(),
@@ -148,7 +148,23 @@ fn group(file: &Path, root: &Path) -> Target {
   let parsed = (|| -> Result<()> {
     (target.name, target.short_name) = read_name(file, root)?;
     let value = crate::yaml::parse(&fs::read_to_string(file)?, &file.display().to_string())?;
-    keys(&value, &["description", "require_at_least_1_step", "steps"])?;
+    keys(
+      &value,
+      &[
+        "description",
+        "remarks",
+        "examples",
+        "capabilities",
+        "options",
+        "requires",
+        "require_at_least_1_step",
+        "steps",
+      ],
+    )?;
+    let mut metadata = value.as_object().unwrap().clone();
+    metadata.remove("steps");
+    metadata.remove("require_at_least_1_step");
+    crate::task_metadata::apply_value(&mut target, Value::Object(metadata), root)?;
     target.description = match value.get("description") {
       None => "(no description)".into(),
       Some(v) => text(v, "description")?.into(),
@@ -159,14 +175,73 @@ fn group(file: &Path, root: &Path) -> Target {
       .ok_or_else(|| anyhow::anyhow!("steps must be a sequence (use steps: [] for an empty group)."))?
       .iter()
       .map(|step| {
-        keys(step, &["run", "optional", "with"])?;
-        let run = text(
-          step.get("run").ok_or_else(|| anyhow::anyhow!("Every step requires run."))?,
-          "run",
-        )?;
-        if run.trim().is_empty() {
-          bail!("run must name a target.");
+        keys(step, &["run", "exec", "optional", "with", "when"])?;
+        if step.get("run").is_some() == step.get("exec").is_some() {
+          bail!("Every step requires exactly one run or exec action.");
         }
+        let when = if let Some(condition) = step.get("when") {
+          keys(condition, &["parameter"])?;
+          let name = text(
+            condition
+              .get("parameter")
+              .ok_or_else(|| anyhow::anyhow!("when needs a boolean parameter reference."))?,
+            "parameter",
+          )?;
+          if crate::configuration::option(&target, name).is_none_or(|o| o["Type"] != "bool") {
+            bail!("when must reference a declared boolean parameter: {name}");
+          }
+          Some(
+            crate::configuration::option(&target, name).unwrap()["Name"]
+              .as_str()
+              .unwrap()
+              .to_owned(),
+          )
+        } else {
+          None
+        };
+        let run = if let Some(run) = step.get("run") {
+          let run = text(run, "run")?;
+          if run.trim().is_empty() {
+            bail!("run must name a target.");
+          }
+          run
+        } else {
+          ""
+        };
+        let exec = if let Some(command) = step.get("exec") {
+          if step.get("optional").is_some() || step.get("with").is_some() {
+            bail!("exec steps cannot declare optional or with.");
+          }
+          keys(command, &["executable", "arguments", "cwd"])?;
+          let executable = command
+            .get("executable")
+            .ok_or_else(|| anyhow::anyhow!("exec requires executable."))?
+            .clone();
+          crate::process_steps::validate(&executable, &target)?;
+          if executable.as_str().is_some_and(|s| s.trim().is_empty()) {
+            bail!("Executable must be nonempty.");
+          }
+          let arguments = command.get("arguments").cloned().unwrap_or(json!([]));
+          let arguments = arguments
+            .as_array()
+            .ok_or_else(|| anyhow::anyhow!("arguments must be a sequence."))?
+            .clone();
+          for argument in &arguments {
+            crate::process_steps::validate(argument, &target)?;
+          }
+          let cwd = command.get("cwd").cloned().unwrap_or(json!("."));
+          crate::process_steps::validate(&cwd, &target)?;
+          if cwd.as_str().is_some_and(|s| s.trim().is_empty()) {
+            bail!("cwd must be nonempty.");
+          }
+          Some(crate::project::ProcessStep {
+            executable,
+            arguments,
+            cwd,
+          })
+        } else {
+          None
+        };
         let parameters = step.get("with").cloned().unwrap_or(json!({}));
         let object = parameters
           .as_object()
@@ -177,6 +252,8 @@ fn group(file: &Path, root: &Path) -> Target {
           }
         }
         Ok(Step {
+          exec,
+          when,
           run: run.into(),
           optional: flag(step, "optional")?,
           parameters,

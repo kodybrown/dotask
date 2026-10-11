@@ -1,6 +1,6 @@
 # Using dotask
 
-dotask runs project-defined C# and Rust tasks. A **target** is one task file: `.tasks/build.rs`
+dotask runs project-defined C#, Rust and declarative YAML tasks. A **target** is one task file: `.tasks/build.rs`
 becomes `dotask build`. A **parameter** is a declared command-line option for that
 target. **Settings** are shared values from `.dotasks.yaml`.
 
@@ -16,14 +16,17 @@ Cargo/Rust 1.95+ and the bundled `sdk/rust/` source directory.
 
 The native CLI is the sole executable, repository bootstrap, and installer
 payload; see [verification](VERIFICATION.md). C# and Rust implementations may
-coexist: use `git/check.cs` or `git/check.rs` when `git/check` is ambiguous. Shared
+coexist: use `tools/check.cs` or `tools/check.rs` when `tools/check` is ambiguous. Shared
 management accepts `--lang csharp|rust`. The same selector resolves an individual
-task or help request: `dotask git/check --lang rust --whitespace`. Place it
+task or help request: `dotask tools/check --lang rust`. Place it
 before or after the target; separated and equals syntax are supported. It filters
 only this selection, not nested calls or dependencies. A conflicting filename
 selector or missing/ambiguous matching implementation is an error. Bare help
 with `--lang` lists matching implementations. Directory names do not execute all
 contained tasks. `--lang` is reserved and cannot be declared as a task option.
+`git/check.task` executes Git directly and needs no language toolchain; use
+`dotask git/check --whitespace` without a code-language filter. Declarative
+process syntax is documented in [task authoring](TARGETS.md#direct-process-steps).
 Existing shared-task catalogs,
 hashes, lockfiles, and recovery journals retain their wire formats. A no-op sync
 preserves the existing lockfile's bytes and comments.

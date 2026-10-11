@@ -224,27 +224,14 @@
       "requires": []
     },
     {
-      "id": "git/check.cs",
-      "entryPoint": "git/check.cs",
+      "id": "git/check",
+      "entryPoint": "git/check.task",
       "description": "Check that Git is available, optionally checking repository whitespace.",
-      "runtime": "csharp",
+      "runtime": "yaml",
       "files": [
         {
-          "path": "git/check.cs",
-          "sha256": "12dce6b81fd41ba10958dd50b3bc346740b023cc987230c1744404afcc9be9c2"
-        }
-      ],
-      "requires": []
-    },
-    {
-      "id": "git/check.rs",
-      "entryPoint": "git/check.rs",
-      "description": "Check that Git is available, optionally checking repository whitespace.",
-      "runtime": "rust",
-      "files": [
-        {
-          "path": "git/check.rs",
-          "sha256": "4ee12848d5ac3f12dd7d38e6091e8423515f5e300e72f3a4f198b50c5bfc227d"
+          "path": "git/check.task",
+          "sha256": "73978abb98e79056ca9784fc8e49ab63b6f37339cd896796f9024bab64b88cde"
         }
       ],
       "requires": []

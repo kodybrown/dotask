@@ -353,7 +353,14 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
             let mut values = vec![candidate(&id, "target", &d)];
             if current.contains('.') && crate::shared_files::stem(&id) == id {
               values.push(candidate(
-                format!("{id}.{}", if runtime == "rust" { "rs" } else { "cs" }),
+                format!(
+                  "{id}.{}",
+                  match runtime.as_str() {
+                    "rust" => "rs",
+                    "yaml" => "task",
+                    _ => "cs",
+                  }
+                ),
                 "target",
                 d,
               ));

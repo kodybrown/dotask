@@ -34,7 +34,7 @@ fn task(project: &BuildContext) -> Result<()> {
     reject_link(&group.path())?;
     for entry in fs::read_dir(group.path())? {
       let source = entry?.path();
-      if hidden(&source) || !source.extension().is_some_and(|e| e == "cs" || e == "rs") {
+      if hidden(&source) || !source.extension().is_some_and(|e| e == "cs" || e == "rs" || e == "task") {
         continue;
       }
       reject_link(&source)?;
@@ -54,7 +54,11 @@ fn task(project: &BuildContext) -> Result<()> {
   let mut tasks = vec![];
   for source in &sources {
     let relative = source.strip_prefix(root)?.to_string_lossy().replace('\\', "/");
-    let id = &relative[..relative.len() - 3];
+    let id = source
+      .with_extension("")
+      .strip_prefix(root)?
+      .to_string_lossy()
+      .replace('\\', "/");
     if id.split('/').count() != 2 || !id.split('/').all(identifier) {
       bail!("Invalid task ID: {id}");
     }
@@ -84,7 +88,7 @@ fn task(project: &BuildContext) -> Result<()> {
       .filter(|r| r["Kind"] == "task")
       .map(|r| r["Value"].clone())
       .collect();
-    tasks.push(json!({"id":id,"entryPoint":relative,"description":metadata["Description"],"runtime":if source.extension().is_some_and(|e| e == "rs") { "rust" } else { "csharp" },"files":records,"requires":requires}));
+    tasks.push(json!({"id":id,"entryPoint":relative,"description":metadata["Description"],"runtime":match source.extension().unwrap().to_str().unwrap() { "rs" => "rust", "task" => "yaml", _ => "csharp" },"files":records,"requires":requires}));
   }
   let mut counts = std::collections::BTreeMap::<String, usize>::new();
   for task in &tasks {
@@ -116,7 +120,9 @@ fn task(project: &BuildContext) -> Result<()> {
         tasks
           .iter()
           .filter(|t| {
-            t["entryPoint"].as_str().unwrap()[..t["entryPoint"].as_str().unwrap().len() - 3]
+            Path::new(t["entryPoint"].as_str().unwrap())
+              .with_extension("")
+              .to_string_lossy()
               .eq_ignore_ascii_case(required)
           })
           .collect()

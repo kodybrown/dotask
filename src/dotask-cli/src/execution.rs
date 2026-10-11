@@ -89,6 +89,23 @@ impl Executor {
     if let Some(group) = &target.group {
       let mut executed = 0;
       for step in &group.steps {
+        if let Some(name) = &step.when
+          && !crate::configuration::get(&parameters, name)
+            .and_then(Value::as_bool)
+            .ok_or_else(|| anyhow::anyhow!("Condition requires boolean parameter '{name}'."))?
+        {
+          continue;
+        }
+        if let Some(command) = &step.exec {
+          self.trace("Executing declarative process step");
+          let code =
+            crate::process_steps::execute(command, &self.directory, &parameters, &self.configuration["Settings"])?;
+          if code != 0 {
+            return Ok(code);
+          }
+          executed += 1;
+          continue;
+        }
         let catalog = self.catalog(session)?;
         let child = catalog.find(&step.run)?;
         if child.is_none() && step.optional {

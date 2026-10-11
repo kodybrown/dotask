@@ -690,3 +690,28 @@ acceptance, installation, and publication.
   live HTTPS and interactive-terminal
   acceptance remain pending. Shared sources, doinstall/Inno adapters, tracking and
   the active installation are unchanged; nothing was published or pushed.
+
+### 2026-10-11 Declarative process tasks and a toolchain-independent Git check
+
+- Extend `.task` files with typed options and direct `exec` steps containing an
+  executable, argument list and project-root-relative cwd. Mix commands with
+  existing task calls and guard either action with a boolean parameter. Preserve
+  literal arguments, streams, failure exit codes and process-tree cancellation;
+  no shell, interpreter, language compiler or SDK preparation is implicit.
+- Distribute YAML tasks through the shared catalog and management commands with
+  the existing ownership/hash protections. Replace both reusable Git code files
+  and the repository's installed Rust copy with `git/check.task`, retaining Git
+  availability and optional staged/unstaged whitespace checks. Keep `.task` as
+  the extension and document explicit replacement for existing consumer copies.
+- Isolate native CLI smoke-test cwd and caches so shared-task probes cannot
+  mutate the checkout. Keep help/completion metadata-only and preserve existing
+  task-call regression coverage.
+- Verification: `build.cmd verify` passed 286 .NET Release tests and 34 Rust tests
+  on Windows x64, rustfmt/clippy/docs/catalog/whitespace gates. Separate .NET
+  whitespace formatting passed. Standalone Git help and whitespace execution
+  passed with only the native executable, Git on PATH, and no SDK files.
+  Final `build.cmd verify-docs`, `git diff --check` and 86 local Markdown
+  links/anchors passed; evaluated MSBuild/Cargo output paths remain external.
+  Native Linux/macOS/ARM64, live HTTPS and interactive-terminal acceptance remain
+  pending. Doinstall/Inno sources and catalog entries were untouched; no active
+  installation, publication or push occurred.

@@ -186,6 +186,15 @@ pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) 
     out.section("Steps");
     out.line(&format!("  Require at least one step: {}", group.require_at_least_one_step), 0);
     for step in &group.steps {
+      if let Some(name) = &step.when {
+        out.row("  When parameter: ", name);
+      }
+      if let Some(command) = &step.exec {
+        out.row("  - exec: ", &command.executable.to_string());
+        out.row("    arguments: ", &serde_json::to_string(&command.arguments).unwrap());
+        out.row("    cwd: ", &command.cwd.to_string());
+        continue;
+      }
       out.row(
         "  - ",
         &format!(

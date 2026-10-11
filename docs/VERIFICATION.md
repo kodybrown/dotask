@@ -3,6 +3,35 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Declarative process tasks (2026-10-11)
+
+On Windows x64, `build.cmd verify` passed 286 .NET Release tests and 34 Rust tests,
+rustfmt, clippy, required docs, catalog freshness and Git whitespace. The separate
+`dotnet format dotask.slnx whitespace --no-restore --verify-no-changes` check passed.
+Focused process/Git/cancellation coverage passed all 22 cases.
+Final `build.cmd verify-docs`, `git diff --check` and 86 local Markdown
+links/anchors passed. Evaluated MSBuild output/intermediate/publish paths remain
+under `C:\tmp\_dotnet`; Cargo's evaluated target directory remains
+`C:\tmp\_rust\dotask\target`.
+
+Coverage includes literal argument boundaries (empty strings, quotes, backslashes,
+newlines, Unicode and shell-like text), root-relative cwd from nested invocations,
+parameter/setting references, boolean conditions/defaults, strict malformed YAML,
+failure exit codes and stopped subsequent steps. Native Ctrl+C coverage includes
+a declarative process with an uncooperative descendant, exit 130 and cleanup.
+Shared YAML add, metadata-only help/completion, no-op tracking bytes/comments and
+local-edit protection are exercised alongside existing code-task coverage.
+
+A standalone copy of the native executable, with no adjacent SDK files and PATH
+restricted to Git, successfully read Git help and ran `git/check --whitespace`
+against this checkout. Neither .NET nor Rust task tooling was available to that
+process. The canonical and repository-installed Git YAML files are identical;
+only Git entries changed in the shared catalog and tracking.
+
+Native Linux/macOS/ARM64, live HTTPS and interactive-terminal acceptance remain
+pending. Doinstall/Inno task sources were untouched. No active installation,
+publication or push occurred.
+
 ## Execution language selector (2026-10-09)
 
 On Windows x64, `build.cmd verify` passed 269 .NET Release tests and 34 Rust tests,

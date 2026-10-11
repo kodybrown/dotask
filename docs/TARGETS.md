@@ -173,15 +173,17 @@ steps:
 
 Run it with `dotask check`; `dotask help check` shows its description, source,
 ordered steps, parameters, and execution requirement without executing children.
-Groups use the same naming, shortcuts, completion, and cycle detection as C#
-targets. `check.cs` and `check.task` in the same directory are a duplicate-name
-error. Groups may call groups or C# targets, and C# target-call helpers can call
+Groups use the same naming, shortcuts, completion, and cycle detection as code
+tasks. Coexisting `check.cs` and `check.task` require extension-qualified calls.
+Groups may call groups, C# or Rust targets, and SDK target-call helpers can call
 or query groups.
 
 The file contains one YAML mapping. Keys are case-sensitive; unknown keys,
 duplicate keys (including case variants), invalid types, and multiple documents
 are errors. `description` is an optional string; `steps` is a required sequence
-and may be empty (`steps: []`). Each step requires a nonempty string `run`.
+and may be empty (`steps: []`). Each step requires exactly one `run` or `exec`
+action. Top-level `options`, `requires`, `remarks`, `examples`, and `capabilities`
+use the same metadata contract as C# and Rust headers.
 
 - Steps execute sequentially in listed order, including repeated calls.
 - `optional` defaults to `false`. A missing required target fails; a missing
@@ -198,12 +200,64 @@ and may be empty (`steps: []`). Each step requires a nonempty string `run`.
   Null, sequence, and mapping parameter values are rejected.
 
 Parameters are passed through the normal named-argument binding; values are not
-shell commands or expressions. No arguments are automatically forwarded, and
-groups do not declare their own CLI parameters. Use C# for dynamic orchestration.
+shell commands or expressions. Declarative tasks can declare typed options, but
+parent arguments are never automatically forwarded to `run` children. Use code
+tasks for dynamic orchestration.
 Names resolve against the project catalog, not relative to the group file;
 prefer source-qualified names such as `_/dotnet/test`. Execution never downloads
-missing targets. Shared-task add/sync/catalog distribution still manages C#
-tasks; `.task` groups are project-authored files.
+missing targets. Shared-task add/sync/catalog distribution supports C#, Rust and
+YAML `.task` files; reuse preserves the same ownership and hash protections.
+
+## Direct process steps
+
+A declarative task needs no C# or Rust toolchain to execute processes. Example:
+
+```yaml
+description: Check Git, optionally checking whitespace.
+options:
+  - {name: whitespace, type: bool, default: false}
+steps:
+  - exec:
+      executable: git
+      arguments: [--version]
+      cwd: .
+  - when: {parameter: whitespace}
+    exec:
+      executable: git
+      arguments: [diff, --check]
+```
+
+`exec` contains `executable`, optional `arguments` (a sequence, default empty),
+and optional `cwd` (default `.`). Omitted/relative cwd resolves from the project
+root, independently of the invocation directory and task-file location. A bare
+executable uses PATH; explicitly portable executable paths resolve from the
+project root. Only executable paths and cwd are normalized; argument strings
+retain backslashes, quotes, empty strings, newlines, and option-like values.
+
+Each value is a literal string or an exact reference `{parameter: name}` or
+`{setting: dotted.name}`. Parameter references use declared option names, not
+aliases. References resolve scalar strings, numbers and booleans to one argument;
+no interpolation, splitting, expression evaluation, or implicit shell occurs.
+For example, `arguments: [{parameter: message}]` preserves a message with spaces.
+Use a setting reference for configured executable/cwd paths. Missing/non-scalar
+references and invalid cwd fail before starting that process.
+
+`when: {parameter: enabled}` may guard either action and must reference a declared
+boolean option. False skips the step without invoking its process or target.
+Conditions are simple references, not expressions. Executed process steps count
+toward `require_at_least_1_step`. `optional` and `with` are only for `run` actions;
+a missing executable or process failure cannot be silently skipped.
+
+Processes inherit stdin/stdout/stderr, run sequentially, preserve nonzero exit
+codes, stop later steps on failure, and use the native process-tree cancellation
+path. Help/completion read metadata and never launch a command. To run shell
+syntax or a script, explicitly invoke its interpreter and provide argument-list
+entries; Windows `.cmd` tools need an explicit `cmd` invocation. Dotask does not
+introduce a shell or bundle interpreters.
+
+`git/check.task` is the only reusable Git check. Its default runs `git --version`;
+`--whitespace` also checks unstaged and staged diffs. Invoke it without `--lang`
+because YAML has no C#/Rust implementation language.
 
 ## A complete target
 

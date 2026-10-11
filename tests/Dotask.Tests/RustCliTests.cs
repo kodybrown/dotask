@@ -279,11 +279,12 @@ public sealed class RustCliTests
   }
 
   [Theory]
-  [InlineData(false, false)]
-  [InlineData(true, false)]
-  [InlineData(false, true)]
-  [InlineData(true, true)]
-  public async Task NativeCancellationStopsUncooperativeDescendantsAndRemovesContext( bool nested, bool rust )
+  [InlineData(false, false, false)]
+  [InlineData(true, false, false)]
+  [InlineData(false, true, false)]
+  [InlineData(true, true, false)]
+  [InlineData(false, false, true)]
+  public async Task NativeCancellationStopsUncooperativeDescendantsAndRemovesContext( bool nested, bool rust, bool declarative )
   {
     using var project = new TestProject();
     project.Write(".tasks/wait.cs", """
@@ -308,6 +309,11 @@ public sealed class RustCliTests
       File.WriteAllText("task-ready", Environment.ProcessId.ToString());
       Thread.Sleep(Timeout.Infinite);
       """);
+    if (declarative) {
+      var assembly = await project.BuildProcessProbeAsync(File.ReadAllText(Path.Combine(project.Tasks, "wait.cs")).Replace("using DoTask;", "", StringComparison.Ordinal));
+      File.Delete(Path.Combine(project.Tasks, "wait.cs"));
+      project.Write(".tasks/wait.task", "steps: [{exec: {executable: dotnet, arguments: [" + System.Text.Json.JsonSerializer.Serialize(assembly) + "]}}]");
+    }
     if (rust) {
       File.Delete(Path.Combine(project.Tasks, "wait.cs"));
       project.Write(".tasks/wait.rs", """

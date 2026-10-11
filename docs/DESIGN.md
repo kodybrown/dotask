@@ -75,18 +75,18 @@ The following decisions describe the implemented transition:
    cancellation, failures, and supported structured results.
 3. Keep task groups about functionality: `_/dotnet/build.cs` builds .NET
    projects, `_/rust/build.rs` builds Rust projects, and utilities such as
-   `_/git/check.cs` and `_/git/check.rs` offer equivalent implementations.
+   language-neutral utilities such as `_/git/check.task` call apps directly.
    Canonical sources remain in `shared-tasks/<group>/`; installed copies remain
    in `.tasks/<source>/<group>/`. The extension identifies the implementation.
 4. Generate catalog variants from the actual source files and record exact
    installed variants and original hashes in the lockfile. Allow `--add git` as
    shorthand for `--add _/git/*`, installing all available implementations;
    `--lang csharp` or `--lang rust` filters implementations without changing the
-   task group. Explicit selection such as `--add git/check.rs` chooses one.
+   task group. Explicit selection such as `--add tools/check.rs` chooses one.
    `--sync` updates tracked variants; adding the group again can add newly
    available variants. Preserve local-edit and ownership protections.
 5. Use installed files for execution with no project-wide language setting.
-   Allow extension-qualified calls such as `git/check.cs` and `git/check.rs`.
+   Allow extension-qualified calls such as `tools/check.cs` and `tools/check.rs`.
    Extensionless calls require an unambiguous target. Apply the same rules to
    nested calls, and identify implementations distinctly for cycle detection.
    Mixed-language projects need only the toolchains required by executed tasks.
@@ -116,6 +116,22 @@ Existing tracking identities and revision serialization remain stable on no-op
 sync. No untracked files are adopted and no language is chosen implicitly.
 Linux/macOS and live remote catalog acceptance remain pending independently of
 the Windows cutover. Installation and publication are separate user actions.
+
+## Declarative process tasks
+
+The existing `.task` format combines target-call `run` steps with direct `exec`
+steps; exactly one action is allowed per step. Code headers and YAML files share
+option/requirement validation. Literal strings or exact scalar parameter/setting
+references preserve argument boundaries without shell evaluation. Cwd and
+explicit executable paths resolve from the project root. Boolean parameter
+conditions can skip either action; no general expression language is provided.
+
+The native process runner owns streams, exit codes and cancellation for `exec`.
+No compiler, restore or SDK helper is involved. Shared catalog/lock version 1
+supports runtime `yaml` and exact `.task` entry-file ownership. Old code copies
+are never migrated or adopted. Only `git/check.task` remains reusable; dotask's
+repository tracking explicitly replaced its unchanged owned Rust copy. Consumer
+repositories and all doinstall/Inno adapters remain untouched.
 
 ## Discovery and metadata
 

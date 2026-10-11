@@ -98,6 +98,17 @@ pub(crate) struct Step {
   pub run: String,
   pub optional: bool,
   pub parameters: Value,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub exec: Option<ProcessStep>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub when: Option<String>,
+}
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub(crate) struct ProcessStep {
+  pub executable: Value,
+  pub arguments: Vec<Value>,
+  pub cwd: Value,
 }
 
 #[derive(Deserialize)]

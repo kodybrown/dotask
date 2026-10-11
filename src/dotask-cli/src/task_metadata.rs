@@ -46,6 +46,9 @@ fn string_type() -> String {
 }
 
 pub(crate) fn metadata(file: &Path, root: &Path) -> Target {
+  if file.extension().is_some_and(|e| e.eq_ignore_ascii_case("task")) {
+    return crate::catalog::group(file, root);
+  }
   let mut target = Target {
     name: file.file_stem().unwrap().to_string_lossy().into_owned(),
     file_path: file.into(),
@@ -108,74 +111,88 @@ pub(crate) fn metadata(file: &Path, root: &Path) -> Target {
     } else {
       Metadata::default()
     };
-    if !metadata.description.is_empty() {
-      target.description = metadata.description;
-    }
-    let mut names = std::collections::BTreeSet::new();
-    for option in metadata.options {
-      if option
-        .alias
-        .as_ref()
-        .is_some_and(|a| a.len() != 1 || !a.as_bytes()[0].is_ascii_alphabetic())
-      {
-        bail!("Option aliases must be single-letter names.");
-      }
-      for name in std::iter::once(&option.name).chain(option.alias.iter()) {
-        if !catalog::identifier(name)
-          || !names.insert(name.to_lowercase())
-          || ["help", "h", "verbose", "version", "use-dir", "lang"].contains(&name.to_ascii_lowercase().as_str())
-        {
-          bail!("Invalid, reserved, or duplicate option '{name}'.");
-        }
-      }
-      if !["string", "path", "bool", "int", "number"].contains(&option.kind.as_str()) {
-        bail!("Unknown option type '{}'.", option.kind);
-      }
-      if option
-        .completion
-        .as_deref()
-        .is_some_and(|c| !["file", "directory", "none"].contains(&c))
-      {
-        bail!("Invalid completion kind.");
-      }
-      let default = option
-        .default
-        .map(|v| match v {
-          Value::String(s) => Ok(s),
-          Value::Bool(_) | Value::Number(_) => Ok(v.to_string()),
-          _ => Err(anyhow::anyhow!("Option defaults must be scalars.")),
-        })
-        .transpose()?;
-      let value = json!({"Name":option.name,"Alias":option.alias,"Type":option.kind,"Description":option.description,"Default":default,"Required":option.required,"Choices":option.choices,"Completion":option.completion});
-      if let Some(value_text) = value["Default"].as_str() {
-        crate::configuration::convert(&value, value_text, root)?;
-      }
-      target.options.push(value);
-    }
-    let mut requirements = vec![];
-    for requirement in metadata.requires {
-      if !["tool", "setting", "task", "file", "os"].contains(&requirement.kind.as_str())
-        || requirement.value.trim().is_empty()
-      {
-        bail!("Invalid task requirement.");
-      }
-      if requirement.kind == "file" {
-        crate::rust_tasks::support(root, &requirement.value)?;
-      }
-      requirements.push(json!({"Kind":requirement.kind,"Value":requirement.value}));
-    }
-    target.metadata.extend([
-      ("Requirements".into(), json!(requirements)),
-      ("Remarks".into(), json!(metadata.remarks)),
-      ("Examples".into(), json!(metadata.examples)),
-      ("Capabilities".into(), json!(metadata.capabilities)),
-    ]);
+    apply(&mut target, metadata, root)?;
     Ok(())
   })();
   if let Err(error) = parsed {
     target.error = Some(format!("Metadata error in {}: {error:#}", file.display()));
   }
   target
+}
+
+// Code headers and declarative tasks share one metadata contract and validator.
+pub(crate) fn apply_value(target: &mut Target, value: Value, root: &Path) -> Result<()> {
+  for option in value["options"].as_array().into_iter().flatten() {
+    if option.get("default").is_some_and(Value::is_null) {
+      bail!("Option defaults must be scalars.");
+    }
+  }
+  apply(target, serde_json::from_value::<Metadata>(value)?, root)
+}
+fn apply(target: &mut Target, metadata: Metadata, root: &Path) -> Result<()> {
+  if !metadata.description.is_empty() {
+    target.description = metadata.description;
+  }
+  let mut names = std::collections::BTreeSet::new();
+  for option in metadata.options {
+    if option
+      .alias
+      .as_ref()
+      .is_some_and(|a| a.len() != 1 || !a.as_bytes()[0].is_ascii_alphabetic())
+    {
+      bail!("Option aliases must be single-letter names.");
+    }
+    for name in std::iter::once(&option.name).chain(option.alias.iter()) {
+      if !catalog::identifier(name)
+        || !names.insert(name.to_lowercase())
+        || ["help", "h", "verbose", "version", "use-dir", "lang"].contains(&name.to_ascii_lowercase().as_str())
+      {
+        bail!("Invalid, reserved, or duplicate option '{name}'.");
+      }
+    }
+    if !["string", "path", "bool", "int", "number"].contains(&option.kind.as_str()) {
+      bail!("Unknown option type '{}'.", option.kind);
+    }
+    if option
+      .completion
+      .as_deref()
+      .is_some_and(|c| !["file", "directory", "none"].contains(&c))
+    {
+      bail!("Invalid completion kind.");
+    }
+    let default = option
+      .default
+      .map(|v| match v {
+        Value::String(s) => Ok(s),
+        Value::Bool(_) | Value::Number(_) => Ok(v.to_string()),
+        _ => Err(anyhow::anyhow!("Option defaults must be scalars.")),
+      })
+      .transpose()?;
+    let value = json!({"Name":option.name,"Alias":option.alias,"Type":option.kind,"Description":option.description,"Default":default,"Required":option.required,"Choices":option.choices,"Completion":option.completion});
+    if let Some(value_text) = value["Default"].as_str() {
+      crate::configuration::convert(&value, value_text, root)?;
+    }
+    target.options.push(value);
+  }
+  let mut requirements = vec![];
+  for requirement in metadata.requires {
+    if !["tool", "setting", "task", "file", "os"].contains(&requirement.kind.as_str())
+      || requirement.value.trim().is_empty()
+    {
+      bail!("Invalid task requirement.");
+    }
+    if requirement.kind == "file" {
+      crate::rust_tasks::support(root, &requirement.value)?;
+    }
+    requirements.push(json!({"Kind":requirement.kind,"Value":requirement.value}));
+  }
+  target.metadata.extend([
+    ("Requirements".into(), json!(requirements)),
+    ("Remarks".into(), json!(metadata.remarks)),
+    ("Examples".into(), json!(metadata.examples)),
+    ("Capabilities".into(), json!(metadata.capabilities)),
+  ]);
+  Ok(())
 }
 
 #[cfg(test)]

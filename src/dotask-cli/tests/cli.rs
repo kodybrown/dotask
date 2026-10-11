@@ -2,8 +2,14 @@ use std::process::{Command, Output};
 
 fn run(arguments: &[&str]) -> Output {
   // No language host or installed dotask may satisfy these smoke tests.
+  // Every probe owns its cwd and cache; validation cannot mutate the checkout.
+  let root = tempfile::tempdir().unwrap();
   Command::new(env!("CARGO_BIN_EXE_dotask"))
     .args(arguments)
+    .current_dir(root.path())
+    .env("DOTASK_CACHE_HOME", root.path().join("cache"))
+    .env("DOTASK_PRIVATE_TASKS", root.path().join("private"))
+    .env("DOTASK_ONLINE_TASKS", root.path().join("online"))
     .env("PATH", "")
     .output()
     .expect("launch the native CLI")
@@ -62,7 +68,7 @@ fn version_matches_embedded_application_build_metadata() {
 fn unimplemented_requests_fail_instead_of_reporting_success() {
   for arguments in [
     &["--init", "unexpected"][..],
-    &["--add", "git", "--lang", "rust"],
+    &["--add", "git", "--lang", "python"],
     &["completion", "unknown"],
     &["--create-task"],
   ] {

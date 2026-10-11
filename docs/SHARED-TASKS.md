@@ -24,14 +24,17 @@ Neither directory is the compiler cache, which remains separate.
 
 The first version supports **Official tasks (_)** and **private-tasks**. Named third-party
 GitHub repositories, authenticated private repositories, additional task languages,
-and CLI self-update are future features. C# and Rust tasks are supported. Reserving a source component in IDs and
+and CLI self-update are future features. C#, Rust and YAML `.task` files are supported. Reserving a source component in IDs and
 paths does not mean arbitrary remote sources are already supported.
 
 ## Language variants and ownership
 
-`dotask --add git` selects the whole group, like `--add "_/git/*"`. Both C# and
-Rust implementations are selected when available. Choose one language with
-`--lang csharp` or `--lang rust`, or one exact file with `--add git/check.rs`.
+`dotask --add git` selects the whole group, like `--add "_/git/*"`. Available code
+and declarative implementations are selected. The Git group now supplies only
+`git/check.task`, requiring Git but no language toolchain. Choose one language with
+`--lang csharp` or `--lang rust`, or one exact file such as `--add tools/check.rs`.
+YAML tasks use runtime `yaml` in the catalog and are excluded by code-language
+filters; use `--add git` or `--add git/check.task` without `--lang`.
 The filter is available for list/save/add/sync/remove, with separated or equals
 syntax. It applies to selected roots; explicitly declared dependencies retain
 their chosen implementation even if it uses another language. Ambiguous
@@ -39,14 +42,14 @@ extensionless dependencies are rejected before project mutation.
 
 Catalog and lockfile version 1 remain in use. A single implementation retains
 its extensionless catalog ID. Coexisting implementations get extension-qualified
-IDs and separate entry-file hashes. An existing tracked entry keeps its recorded
+IDs and separate entry-file hashes. Declarative entries use `.task` paths. An existing tracked entry keeps its recorded
 key/revision identity when a sibling appears; the entry file proves which
 implementation it owns. No migration, untracked-file adoption, or replacement of
 another implementation occurs. A no-op sync preserves lockfile bytes/comments.
 
 `--sync --lang rust` updates recorded Rust roots and their declared dependencies;
 it does not add newly published siblings. Another `--add` explicitly installs
-new variants. `--remove git/check.rs` removes only the owned Rust variant;
+new variants. `--remove tools/check.rs` removes only that owned Rust variant;
 `--remove git` selects the group's recorded variants. Local edits, missing files,
 shared support ownership, dependencies, dry runs, recovery, and reviewed merges
 retain their existing protections. Group/wildcard selections cannot be accepted
@@ -110,6 +113,15 @@ Commit the configuration, lock file, and task source/support files. The generate
 it is excluded from discovery. Do not place handwritten files there.
 
 
+## Replacing the old Git implementation
+
+The reusable `git/check.cs` and `git/check.rs` files are removed. Existing consumer
+copies are user-owned and are not automatically converted or removed by sync.
+After using a dotask version with declarative process support, explicitly remove
+the tracked old Git variant and add `git/check.task` from an available new catalog.
+Removal still refuses local edits; preserve/merge those before changing ownership.
+No migration or adoption of an untracked declarative file occurs.
+
 ## Shared-task listing status
 
 `dotask --list` aligns task names, compact `I` and `M` indicators, and descriptions.
@@ -136,7 +148,7 @@ Use `--save` to refresh cached task files.
 ## Names and calls between tasks
 
 Use extension-qualified names when implementations coexist, including for
-nested calls and YAML steps. For example, `_/git/check.cs` and `_/git/check.rs`
+nested calls and YAML steps. For example, `_/tools/check.cs` and `_/tools/check.rs`
 identify distinct implementations. Extensionless execution never guesses a
 language. Completion stays local and offers `--lang` values and matching
 implementations without reading project YAML or downloading source files.

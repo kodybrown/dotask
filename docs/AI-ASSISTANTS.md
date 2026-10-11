@@ -6,7 +6,7 @@ Use this guide when creating, editing, explaining, or running dotask tasks in a
 services and the other [deferred features](DESIGN.md#deferred) are not APIs.
 
 The [Rust CLI](../README.md#rust-cli-development-preview) runs C# and Rust tasks
-and YAML groups, including nested calls,
+and YAML tasks with target-call and direct-process steps, including nested calls,
 project management, help, shell completion, and the interactive group wizard.
 Stage `sdk/dotnet/Dotask.dotnet.dll` and the `sdk/rust/` helper crate beneath the
 native executable's directory.
@@ -15,7 +15,7 @@ both languages is an ordinary-comment YAML header and needs no toolchain.
 Native initialization
 and YAML-only projects need no .NET host. Use `.cs`/`.rs` task names when variants
 coexist; extensionless calls must be unambiguous. Shared selection supports
-group-only `--add git`, `--lang csharp|rust`, and exact files such as `git/check.rs`.
+group-only `--add git`, `--lang csharp|rust`, and exact files such as `tools/check.rs`.
 Language filters select roots; dependencies retain their declared implementation.
 For a direct CLI call/help request, `--lang csharp|rust` can select an individual
 implementation without a filename suffix. It is CLI-reserved and does not flow
@@ -35,11 +35,20 @@ After final edits/formatting to any shared task or declared support file, run
 `./build.sh catalog`, then `./build.sh verify`; its catalog check detects stale output
 without rewriting it. Commit the generated `shared-tasks/catalog.json` with
 those sources. The generator is `.tasks/catalog.rs`, using the native CLI's
-compiler-free metadata transport for C# and Rust catalog entries.
+compiler-free metadata transport for C#, Rust and YAML catalog entries.
 Repository `verify-docs` checks required documents and delegates Git whitespace
 checks to its declared `git/check` dependency with `Whitespace = true`.
 Ordinary `git/check` remains a tool-availability check; `--whitespace` checks
 both tracked diffs without changing files or requiring a clean working tree.
+
+For basic external commands, prefer declarative `.task` process steps rather than
+requiring an unrelated language toolchain. Use `exec: {executable: ..., arguments:
+[...] , cwd: ...}` with literal argument-list entries or exact parameter/setting
+references. Declare typed options and simple boolean `when` guards as needed;
+never construct shell command strings for ordinary argument passing. Interpreters
+must be explicit. The reusable Git task is now only `git/check.task`; invoke/add
+it without `--lang` and do not silently replace consumers' tracked code copies.
+See [direct process steps](TARGETS.md#direct-process-steps).
 
 ## Establish the project context
 
@@ -262,7 +271,7 @@ launcher to bypass conflicts.
 
 In the DoTask source repository, `shared-tasks/` is the canonical source of
 reusable tasks; `.tasks/` contains the copies used by the repository itself.
-Keep the `dotnet/format.cs`, `doinstall/*.rs`, `dotnet/pack.cs`, and `git/check.rs` copies
+Keep the `dotnet/format.cs`, `doinstall/*.rs`, `dotnet/pack.cs`, and `git/check.task` copies
 identical when updating them, and regenerate the catalog. The standard formatter
 formats the solution and C# files throughout the selected tasks directory;
 `--verify` checks both without running optional `_/text/fixeol`.

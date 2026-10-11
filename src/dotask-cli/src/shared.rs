@@ -134,7 +134,7 @@ impl Tracking {
           bail!("Invalid or conflicting tracked file '{path}'.");
         }
       }
-      let candidates: Vec<_> = ["cs", "rs"]
+      let candidates: Vec<_> = ["cs", "rs", "task"]
         .iter()
         .map(|ext| format!("{}.{ext}", files::stem(id)))
         .filter(|path| task.files.contains_key(path))
@@ -322,7 +322,7 @@ impl Store {
     files::check_link(&self.private)?;
     let paths: Vec<_> = crate::catalog::sources(&self.private, false, true)?
       .into_iter()
-      .filter(|p| p.extension().is_some_and(|e| e == "cs" || e == "rs"))
+      .filter(|p| p.extension().is_some_and(|e| e == "cs" || e == "rs" || e == "task"))
       .collect();
     let targets: Vec<_> = paths.iter().map(|p| crate::task_metadata::metadata(p, &self.private)).collect();
     let mut tasks = vec![];
@@ -332,7 +332,7 @@ impl Store {
         .strip_prefix(&self.private)?
         .to_string_lossy()
         .replace('\\', "/");
-      let id = relative[..relative.len() - 3].to_owned();
+      let id = files::stem(&relative).to_owned();
       files::id(&id, 2)?;
       let manifest = target.file_path.with_extension("task.json");
       files::check_link(&manifest)?;
@@ -371,12 +371,7 @@ impl Store {
         id,
         entry_point: relative.clone(),
         description: target.description,
-        runtime: if relative.ends_with(".rs") {
-          "rust"
-        } else {
-          "csharp"
-        }
-        .into(),
+        runtime: id_language(&relative).into(),
         files: assets,
         requires,
       });
@@ -409,7 +404,9 @@ impl Store {
     // copied or required for a suggestion, and project YAML remains unread.
     let catalog = crate::catalog::load(&self.private, &self.private)?;
     for t in catalog.targets {
-      if t.file_path.extension().is_some_and(|e| e == "cs" || e == "rs") && files::task_id(&t.name, 2).is_ok() {
+      if t.file_path.extension().is_some_and(|e| e == "cs" || e == "rs" || e == "task")
+        && files::task_id(&t.name, 2).is_ok()
+      {
         let runtime = id_language(&t.file_path.to_string_lossy()).into();
         entries.push((format!("private-tasks/{}", t.name), t.description, runtime));
       }
@@ -574,12 +571,24 @@ fn validate_catalog(catalog: &SharedCatalog) -> Result<()> {
     if !ids.insert(t.id.to_lowercase())
       || !entries.insert(t.entry_point.to_lowercase())
       || files::stem(&t.id) != t.id && t.id != t.entry_point
-      || !["csharp", "rust"].contains(&t.runtime.as_str())
-      || t.entry_point != format!("{}.{}", files::stem(&t.id), if t.runtime == "rust" { "rs" } else { "cs" })
+      || !["csharp", "rust", "yaml"].contains(&t.runtime.as_str())
+      || t.entry_point
+        != format!(
+          "{}.{}",
+          files::stem(&t.id),
+          match t.runtime.as_str() {
+            "rust" => "rs",
+            "yaml" => "task",
+            _ => "cs",
+          }
+        )
       || t.files.is_empty()
       || t.files.len() > 128
     {
-      bail!("Invalid or unsupported shared task '{}'. Expected a C# or Rust task.", t.id);
+      bail!(
+        "Invalid or unsupported shared task '{}'. Expected a C#, Rust or YAML task.",
+        t.id
+      );
     }
     let mut paths = BTreeSet::new();
     for f in &t.files {
@@ -589,7 +598,9 @@ fn validate_catalog(catalog: &SharedCatalog) -> Result<()> {
         || !files::is_hash(&f.sha256)
         || parts.len() < 2
         || parts.iter().any(|p| p.starts_with('.'))
-        || (f.path.to_lowercase().ends_with(".cs") || f.path.to_lowercase().ends_with(".rs"))
+        || (f.path.to_lowercase().ends_with(".cs")
+          || f.path.to_lowercase().ends_with(".rs")
+          || f.path.to_lowercase().ends_with(".task"))
           && f.path != t.entry_point
           && !parts[..parts.len() - 1].iter().any(|p| p.starts_with('_'))
       {
@@ -957,6 +968,8 @@ pub(crate) fn run(command: &Arguments) -> Result<i32> {
 fn id_language(id: &str) -> &str {
   if id.ends_with(".rs") {
     "rust"
+  } else if id.ends_with(".task") {
+    "yaml"
   } else {
     "csharp"
   }

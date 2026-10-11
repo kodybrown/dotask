@@ -43,10 +43,10 @@ tasks:
       _/doinstall/uninstall.rs: 5ebf40c0fda9a4814dfdcf07992e12ed9be04b8130aba9ae858ba699c2ca997a
   _/git/check:
     source: _
-    revision: ad2aca63684e1d59cda111c494c15147116cda41e019c54854e469aac1502874
+    revision: 14b649102f3582206ff4dcc8f1a2772e632ef4901c62859f3c746233cf119ff5
     requires: []
     files:
-      _/git/check.rs: 4ee12848d5ac3f12dd7d38e6091e8423515f5e300e72f3a4f198b50c5bfc227d
+      _/git/check.task: 73978abb98e79056ca9784fc8e49ab63b6f37339cd896796f9024bab64b88cde
   _/installer/install:
     source: _
     revision: b79aeb6692c60c7a93fbd561fe025c40d8aedc1ba33651264f6cb979df1e4410

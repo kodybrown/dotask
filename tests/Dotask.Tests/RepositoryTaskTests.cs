@@ -237,13 +237,13 @@ public sealed class RepositoryTaskTests
   public async Task GitCheckOptionChecksBothDiffsWithoutChangingFilesAndDefaultWorksOutsideRepository()
   {
     using var project = new TestProject();
-    using (var stream = typeof(RepositoryTaskTests).Assembly.GetManifestResourceStream("Shared/git/check.rs")!)
+    using (var stream = typeof(RepositoryTaskTests).Assembly.GetManifestResourceStream("Shared/git/check.task")!)
     using (var reader = new StreamReader(stream)) {
-      project.Write(".tasks/git/check.rs", reader.ReadToEnd());
+      project.Write(".tasks/git/check.task", reader.ReadToEnd());
     }
     var version = await RustArtifacts.Run(project.Root, ["git/check"]);
     Assert.True(version.ExitCode == 0, version.StandardError);
-    Assert.Contains("OK: git version", version.StandardOutput);
+    Assert.Contains("git version", version.StandardOutput);
     Assert.NotEqual(0, (await RustArtifacts.Run(project.Root, ["git/check", "--whitespace"])).ExitCode);
     await GitAsync("init");
     await GitAsync("config", "core.autocrlf", "false");

@@ -206,21 +206,37 @@ chosen application's `installer/` directory. Do not use `dotnet tool install`
 for the native payload. The maintained C# project is a task helper library.
 ## Select task implementations
 
-C# and Rust tasks can coexist as `git/check.cs` and `git/check.rs`. Choose an
+C# and Rust tasks can coexist as `tools/check.cs` and `tools/check.rs`. Choose an
 implementation explicitly when the extensionless name is ambiguous:
 
 ```sh
-dotask --add git --lang rust
-dotask git/check --lang rust --whitespace
+dotask tools/check --lang rust
 ```
 
-`--add git` selects all available group implementations. `--lang csharp|rust`
+`--add GROUP` selects all available group implementations. `--lang csharp|rust`
 filters shared list/save/add/sync/remove selections; declared dependencies can
 use another language. Sync updates recorded variants and preserves ownership,
 local edits, and no-op tracking bytes. For execution/help, `--lang` filters only
 the requested target and does not flow into nested calls. Conflicting extensions
 and ambiguous matches fail. It does not execute entire directories.
 See [shared tasks](docs/SHARED-TASKS.md).
+
+## Tasks without a language toolchain
+
+Use declarative `.task` files to run apps directly with executable, argument-list,
+and cwd fields, or compose other targets. Typed options, exact parameter/setting
+references and simple boolean conditions support reusable commands without
+compiling task code. See [process steps](docs/TARGETS.md#direct-process-steps).
+
+The Git group now supplies only `git/check.task`:
+
+```sh
+dotask --add git
+dotask git/check --whitespace
+```
+
+This needs dotask and Git, with no Rust/.NET SDK. Old tracked `.cs`/`.rs` consumer
+copies require explicit removal/addition; sync does not migrate ownership.
 
 ## Initialize a project
 
