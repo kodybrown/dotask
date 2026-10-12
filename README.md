@@ -182,8 +182,13 @@ integration suite. `verify` explicitly requires every verification stage,
 including native Rust tests, rustfmt, clippy, docs, catalog, and whitespace;
 failures stop the sequence. No arguments list available tasks. The independent
 doinstall tools are supplied separately for adapter verification using
-`DOINSTALL_TOOL_DIR`; verification never builds them implicitly. Install the two
-products independently and opt into dotask's shared adapters when needed.
+`--doinstall-tools` or `DOINSTALL_TOOL_DIR`; verification never builds them
+implicitly. Install the two products independently and opt into dotask's shared
+adapters when needed.
+For dotask's complete local installer workflow, run
+`./build.sh create-dotask-installer` (Windows: `.\build.cmd create-dotask-installer`).
+It explicitly builds/stages doinstall, verifies both projects, and creates the
+package without installing it; it is not a shared task.
 Destination machines need Rust only to execute Rust tasks and a .NET SDK only
 to execute C# tasks. The standalone installer needs neither toolchain.
 See [installer tasks and schema](docs/INSTALLATION.md).

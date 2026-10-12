@@ -210,6 +210,26 @@ dotask owns the optional task files and their add/sync lifecycle.
 
 ## Build and install dotask itself
 
+For the complete checkout-local workflow, run:
+
+```powershell
+cd C:\Users\kodyb\Projects\dotask
+.\build.cmd create-dotask-installer
+```
+
+Unix uses `./build.sh create-dotask-installer`. This local Rust task builds and
+stages the configured doinstall checkout, runs its full verification gate, runs
+dotask's full gate against the staged pair, then calls `create-installer` with
+those exact binaries. Any failure stops later steps. Tools are temporary and stay
+outside source and deliverables; the task returns an `InstallerArtifact` and
+does not launch it. No environment or project settings are rewritten. Select a
+different checkout with `--source`; otherwise the build helper uses
+`DOINSTALL_SOURCE` or `settings.doinstall.source` (`../doinstall` here).
+`--app-version` and `--build-stamp` forward to packaging. This task is local to
+dotask and is not distributed through the shared catalog.
+
+To use an already-prepared tool pair instead, keep using `create-installer`:
+
 The local Rust `create-installer` task delegates to
 `_/doinstall/create-installer`. Its `.tasks/installer.yaml` build steps
 run `build` to prepare the native app and SDKs, gather the declared files, and call
@@ -241,8 +261,9 @@ $env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt, host-matching pair.
 For repeated `dotask install` calls, configure `settings.doinstall.builder` and
 `settings.doinstall.installer` in `.dotasks.yaml`; the generic install target does
 not forward tool-selection options. Unix uses actual tool paths without `.exe`.
-`test-sdks` requires `DOINSTALL_TOOL_DIR` containing both prebuilt tools and fails
-when the pair is absent. If developing against source, explicitly run
+`verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
+over `DOINSTALL_TOOL_DIR`. Both require a prebuilt tool pair and fail when it is
+absent. If developing against source, explicitly run
 `build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. CI performs
 that preparation as a separate step from verification and packaging.
 

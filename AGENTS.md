@@ -187,8 +187,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   Dotask owns optional task adapters, not doinstall-specific native CLI behavior.
 - The gate tests dotask's Rust CLI/SDK with Rust 1.95+, rustfmt, and clippy, then
   SDK and external-tool adapter integration. `test-sdks` requires a prebuilt pair
-  through `DOINSTALL_TOOL_DIR`; source preparation is an explicit development/CI
-  step using the shared build wrapper. Independent doinstall
+  through `--doinstall-tools` or `DOINSTALL_TOOL_DIR`; source preparation is an
+  explicit development/CI step using the shared build wrapper. Independent doinstall
   tests belong to its own `build.cmd verify`/`./build.sh verify` gate. Keep outputs
   external and query each project's evaluated Cargo target directory.
 - The Rust CLI reads common YAML headers without language toolchains and runs

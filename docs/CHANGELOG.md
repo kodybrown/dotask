@@ -766,3 +766,26 @@ acceptance, installation, and publication.
   and uninstalled both applications with user PATH unchanged. Output policies
   remain external. Native Linux/macOS/ARM64 and interactive-terminal acceptance
   remain pending; no active installation, publication or push occurred.
+
+### 2026-10-12 Complete local dotask installer workflow
+
+- Add checkout-local `create-dotask-installer.rs`, invoked with
+  `build.cmd create-dotask-installer` (Unix: `./build.sh create-dotask-installer`).
+  Build and temporarily stage the selected doinstall checkout, verify doinstall,
+  run dotask's full gate against that exact pair, then create and return dotask's
+  installer. Stop on failures and never launch the resulting installer. Forward
+  optional source, application-version and build-stamp selections. No shared task
+  or catalog changes, project settings rewrites, or global environment mutation.
+- Add `--doinstall-tools` to local `verify` and `test-sdks`, taking precedence over
+  `DOINSTALL_TOOL_DIR`, so the workflow can pass its staged pair through invocation
+  parameters. Document the one-command workflow and retain the prebuilt-only
+  `create-installer` entry point for independent-tool users.
+- Verification: the complete `build.cmd create-dotask-installer` workflow passed
+  on Windows x64, including doinstall's 70 Rust tests and dotask's 292 .NET Release
+  and 34 Rust tests, formatting/clippy/docs/catalog/whitespace gates, and actual
+  installer creation. Package validation, runtime hash/payload checks, final
+  verify-docs, 49 local Markdown links/anchors and git diff --check passed. The
+  missing-source check stopped before later stages and removed its temporary
+  tools. Temporary tools were also removed after success; evaluated MSBuild/Cargo
+  outputs remain external. Native Linux/macOS/ARM64
+  acceptance remains pending. No active installation, publication or push occurred.
