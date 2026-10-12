@@ -293,6 +293,16 @@ transport and launching, plus shared `_/doinstall/*` adapters and
 The authoritative installer design lives at
 [doinstall's design contract](https://github.com/kodybrown/doinstall/blob/main/docs/DESIGN.md).
 
+Install dotask and doinstall independently. Dotask's installed payload contains
+its native executable and task SDK helpers, not doinstall or its builder. The
+optional adapters belong to dotask's shared-task catalog; doinstall never
+discovers projects, writes task files or manages their tracking. The CLI needs
+no special tool-discovery/download service. `assemble.task` is an ordinary direct
+process call; dynamic build/gather and artifact launching retain their Rust tasks.
+The builder can use PATH, but the packaged runtime uses an explicit actual
+executable path to avoid distributing a command shim. Source builds are explicit
+development/CI preparation; packaging and verification consume prebuilt tools.
+
 ## Deferred
 
 Service management is deliberately deferred. There is no service provider,

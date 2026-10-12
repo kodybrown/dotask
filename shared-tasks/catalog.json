@@ -37,13 +37,13 @@
     },
     {
       "id": "doinstall/assemble",
-      "entryPoint": "doinstall/assemble.rs",
-      "description": "Assemble a distributable installer directory from resolved configuration and payload.",
-      "runtime": "rust",
+      "entryPoint": "doinstall/assemble.task",
+      "description": "Assemble an installer using separately supplied doinstall tools and resolved YAML.",
+      "runtime": "yaml",
       "files": [
         {
-          "path": "doinstall/assemble.rs",
-          "sha256": "292f2d239fc1445f0aa8ae1aeb66e2cda4a9c92c248d451163dfad8c73ff6e09"
+          "path": "doinstall/assemble.task",
+          "sha256": "fdd13b61b78d2340df2dbfd8d95abd97db131367b513cddd75590b25c2c0287b"
         }
       ],
       "requires": []
@@ -73,7 +73,7 @@
         },
         {
           "path": "doinstall/create-installer.rs",
-          "sha256": "21d57d71fe1956b35c2a6c5e34b18f7697181019e89935a2ce60c1073e51d50a"
+          "sha256": "9068a2b475eea9b0c3d87c2bf601bda611b16767810096881b97bd6a79216088"
         }
       ],
       "requires": []

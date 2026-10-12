@@ -18,10 +18,10 @@ tasks:
       _/archive/create-zip.rs: 7d7701fa1e484c689de35fb5895c6411e72534d015ff3e7192aaa6d0c419b97f
   _/doinstall/assemble:
     source: _
-    revision: e89470a20a857c9859f8960e865ae7ebc51662fc1034976a33332faa72c7fdd6
+    revision: bde889accc868cee771ee2fb00cf0b8a1858697457de7c8d9e9aa15aa47eba9a
     requires: []
     files:
-      _/doinstall/assemble.rs: 292f2d239fc1445f0aa8ae1aeb66e2cda4a9c92c248d451163dfad8c73ff6e09
+      _/doinstall/assemble.task: fdd13b61b78d2340df2dbfd8d95abd97db131367b513cddd75590b25c2c0287b
   _/doinstall/build:
     source: _
     revision: a1bcd781795257dee23cd39d1bfea605abe969570701fcef61894498ff745f99
@@ -30,11 +30,11 @@ tasks:
       _/doinstall/build.rs: 6088d3d9755eb455cb1c6c775bc4c1d28988ad9370049891b10cbf6d521ac708
   _/doinstall/create-installer:
     source: _
-    revision: d62271a920bb658956223dcedb105de0ab6269a0d96b46a6fc9d136b8e31b375
+    revision: 934aa442b98e69cbe39579a0ba17b4aeb5baf45ee2be883d2d28fb3dace60272
     requires: []
     files:
       _/doinstall/_support/BuildInfo.rs: ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53
-      _/doinstall/create-installer.rs: 21d57d71fe1956b35c2a6c5e34b18f7697181019e89935a2ce60c1073e51d50a
+      _/doinstall/create-installer.rs: 9068a2b475eea9b0c3d87c2bf601bda611b16767810096881b97bd6a79216088
   _/doinstall/uninstall:
     source: _
     revision: 0d7e8b9c8897d89974fd096630d61f5369268f8ea9595e22f06e0c406cb429e8

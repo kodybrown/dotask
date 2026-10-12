@@ -372,7 +372,7 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `_/installer/install` | Executes `create-installer`, validates its result, and runs its installer |
 | `_/doinstall/create-installer` | Runs YAML build steps and gathers their expected files into an installer |
 | `_/doinstall/build` | Explicitly builds a configured external source checkout using doinstall's own Cargo tooling |
-| `_/doinstall/assemble` | Invokes an external builder/runtime pair with resolved configuration and payload |
+| `_/doinstall/assemble.task` | Directly invokes a separately supplied builder/runtime pair with resolved configuration and payload; no language toolchain |
 | `_/doinstall/uninstall` | Runs the retained engine without rebuilding the application |
 | `_/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
 | `_/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |

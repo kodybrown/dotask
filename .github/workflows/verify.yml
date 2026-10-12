@@ -14,12 +14,15 @@ jobs:
           - os: ubuntu-latest
             launcher: ./build.sh
             shell: bash
+            exe: ''
           - os: macos-latest
             launcher: ./build.sh
             shell: bash
+            exe: ''
           - os: windows-latest
             launcher: build.cmd
             shell: cmd
+            exe: .exe
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -27,21 +30,24 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: kodybrown/doinstall
-          ref: b3150eef78c342e6b81b0d4424ae86c432d50d3b
+          ref: db11b9e3401e770ab4d491b10aa79ff5501403e1
           path: doinstall-source
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
       - name: Prepare Rust toolchain
         run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
-      - name: Bootstrap and verify
-        # Rust CLI, installer, SDK, and native integration tests use this gate.
+      - name: Prepare external doinstall tools
+        # External source preparation is explicit; verification only consumes binaries.
         shell: ${{ matrix.shell }}
         env:
           DOINSTALL_SOURCE: ${{ github.workspace }}/doinstall-source
+        run: ${{ matrix.launcher }} _/doinstall/build --stage-dir "${{ runner.temp }}/doinstall-tools"
+      - name: Verify dotask and optional adapters
+        shell: ${{ matrix.shell }}
+        env:
+          DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-tools
         run: ${{ matrix.launcher }} verify
       - name: Package
         shell: ${{ matrix.shell }}
-        env:
-          DOINSTALL_SOURCE: ${{ github.workspace }}/doinstall-source
-        run: ${{ matrix.launcher }} create-installer
+        run: ${{ matrix.launcher }} create-installer --builder "${{ runner.temp }}/doinstall-tools/doinstall-builder${{ matrix.exe }}" --installer "${{ runner.temp }}/doinstall-tools/doinstall${{ matrix.exe }}"

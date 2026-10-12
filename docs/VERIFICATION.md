@@ -3,6 +3,41 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Separately supplied doinstall tools (2026-10-12)
+
+On Windows x64, `build.cmd verify` passed 292 .NET Release tests and 34 Rust tests,
+rustfmt, clippy, required docs, catalog freshness and Git whitespace. The separate
+`dotnet format dotask.slnx whitespace --no-restore --verify-no-changes` check and
+72 local Markdown links/anchors passed. Evaluated MSBuild output/intermediate/
+publish paths remain under `C:\tmp\_dotnet`; Cargo's evaluated target directories
+remain `C:\tmp\_rust\dotask\target` and `C:\tmp\_rust\doinstall\target`.
+
+Focused native tests run `assemble.task` with a standalone CLI, no SDK files,
+and PATH containing only prebuilt doinstall tools. Both the default builder
+command and an explicit executable path work. Coverage includes Unicode/spaces,
+root-relative paths from a nested invocation, metadata-only help, missing-tool
+failure, and collision refusal without overwriting the completed package. The
+existing consumer build/gather/install/launch/retained-uninstall test now uses
+tool settings and declarative assembly through tool-managed shared copies.
+
+Local acceptance used the latest executable sources at doinstall `65a2d2b`.
+Its subsequent adapter-only cleanup is committed as `42679e4`; executable sources
+are unchanged. A separately staged matching pair created dotask's installer while
+`DOINSTALL_SOURCE` pointed to an unavailable checkout. The packaged runtime hash
+matched the supplied runtime; the app payload contained dotask/SDK helpers and no
+doinstall tools. Package validation, temporary installation and command launch
+passed. The installed dotask command added the shared adapter using an isolated
+local catalog/cache and created another native application's installer without
+a source-build dependency. That package installed and launched successfully.
+Both retained uninstallers removed their temporary installations. User PATH was
+compared before/after and remained unchanged.
+
+CI explicitly prepares the separate tools before the dotask gate and packaging.
+Its pin is the newest remotely available doinstall commit,
+`db11b9e3401e770ab4d491b10aa79ff5501403e1`; later local commits are unpublished.
+Native Linux/macOS/Windows ARM64, remote CI and interactive-terminal acceptance
+remain pending. No active installation, publication or push occurred.
+
 ## Declarative text normalization (2026-10-12)
 
 On Windows x64, `build.cmd verify` passed 290 .NET Release tests and 34 Rust tests,

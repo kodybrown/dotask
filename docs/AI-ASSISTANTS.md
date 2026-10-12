@@ -53,6 +53,13 @@ The reusable `text/fixeol.task` also calls its app directly: it requires `fixeol
 on PATH, preserves recursive exclusions, and always normalizes batch files to
 CRLF. It defaults other text to LF; `--eol crlf` changes that pass. Missing tools
 and normalization failures are errors. Replace old tracked C# copies explicitly.
+`_/doinstall/assemble.task` similarly invokes separately supplied doinstall tools
+without a language compiler. The builder defaults to PATH; provide the matching
+actual runtime path with `--installer`, not a command shim. It takes resolved
+YAML/payload, does not return an installer artifact, and never builds/downloads
+doinstall. Dotask's build/gather creator and generic install launcher remain Rust
+tasks. See [installation](INSTALLATION.md) for tool configuration and replacement
+of tracked `assemble.rs` copies. The two products are installed independently.
 
 ## Establish the project context
 
@@ -198,8 +205,10 @@ The creator chooses which project settings become installer configuration;
 project identity is not copied implicitly. `application.name`, `description`,
 and optional `copyright` supply the interactive console banner. Shortcut
 declarations grant permissions while defaults choose the initial answers.
-Group shared installer settings under `settings.installer` using `config`,
-`engine`, and `output`; accessors use dotted keys such as `installer.config`.
+Group shared installer settings under `settings.installer` using `config`
+and `output`; accessors use dotted keys such as `installer.config`. Separately
+supplied tool selections belong under `settings.doinstall.builder` and
+`settings.doinstall.installer`; `source` is only an explicit development helper.
 Dotask's own stable source template is `.tasks/installer.yaml`. Its local creator
 builds the native app plus helper DLL/SDK payload, fills dynamic metadata in a
 temporary config, and delegates actual packaging to the shared creator. Other
@@ -207,13 +216,13 @@ applications keep their own build wrapper and installer configuration.
 Application versions are not constrained to dotask's calendar convention.
 Supply `application.build.stamp` and optional `commit` to align package and
 installed directory names with the app's own build information. Named package
-creation uses `--output-parent` and a structured `--result-file`; identical names
+creation by `doinstall-builder` can use `--output-parent` and a structured `--result-file`; identical names
 with different contents are rejected. Git is optional, and the application's
 version is never inferred from the installer/tool version. Dotask's local creator
-preserves major/minor and adds calendar fields by default, with `--app-version`,
-`--git-hash`, and `--build-stamp` overrides.
+preserves major/minor and adds calendar fields by default, with `--app-version`
+and `--build-stamp` overrides. Git naming policy is configured in `settings.app`.
 
-Dotask's standalone Rust installer uses YAML receipts and the `installer/` plus
+Doinstall's standalone Rust installer uses YAML receipts and the `installer/` plus
 `app/<build>/` layout. Older formats are unsupported; use fresh destinations or
 manually remove the old installation first. Its creator copies packages beneath the project-relative
 or absolute `settings.installer.output` directory (`artifacts/installers` here),
@@ -275,7 +284,7 @@ launcher to bypass conflicts.
 
 In the DoTask source repository, `shared-tasks/` is the canonical source of
 reusable tasks; `.tasks/` contains the copies used by the repository itself.
-Keep the `dotnet/format.cs`, `doinstall/*.rs`, `dotnet/pack.cs`, and `git/check.task` copies
+Keep the `dotnet/format.cs`, `doinstall/*.rs` / `doinstall/*.task`, `dotnet/pack.cs`, and `git/check.task` copies
 identical when updating them, and regenerate the catalog. The standard formatter
 formats the solution and C# files throughout the selected tasks directory;
 `--verify` checks both without running optional `_/text/fixeol`.

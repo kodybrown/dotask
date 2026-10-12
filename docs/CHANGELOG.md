@@ -735,3 +735,34 @@ acceptance, installation, and publication.
   conversion, LF/CRLF, `Makefile`, batch CRLF and exclusions from a nested cwd,
   using a standalone native dotask with no SDK files. Native Linux/macOS
   acceptance remains pending. No active installation, publication or push occurred.
+
+### 2026-10-12 Separate doinstall tooling and declarative assembly
+
+- Replace the reusable and tracked `doinstall/assemble.rs` adapter with
+  `assemble.task`, executing prebuilt tools without a Rust/.NET task compiler.
+  Default the builder to PATH, accept explicit paths, and require the actual
+  matching runtime executable for packaging rather than a command shim. Keep
+  dynamic build/gather, source-build and artifact-launching tasks in Rust.
+- Make dotask's own installer creation consume separately supplied tools through
+  options/settings and build values; remove automatic doinstall builds from its
+  source installer template. Keep consumer tooling out of dotask's app payload.
+  Require a prebuilt pair for adapter verification, with explicit development/CI
+  preparation. Pin CI to the newest remotely available doinstall revision,
+  db11b9e3401e770ab4d491b10aa79ff5501403e1; latest local runtime acceptance used
+  65a2d2b. Dotask owns the optional shared adapter and add/sync lifecycle.
+- Update authoritative installation/agent/design guidance, repository policy,
+  shared catalog, identical installed copies and tool-managed tracking. Consumer
+  implementation replacement remains explicit and preserves local ownership.
+- Verification: build.cmd verify passed 292 .NET Release tests and 34 Rust tests
+  on Windows x64, rustfmt/clippy/docs/catalog/whitespace gates. Separate .NET
+  whitespace formatting and 72 local Markdown links/anchors passed. Focused
+  adapter tests cover PATH/explicit builders, Unicode/spaces, nested cwd, help,
+  missing tools, collision refusal, and assembly without SDK files/toolchains.
+  Consumer build/gather/install/launch/retained-uninstall integration passed.
+- Created and validated dotask's installer with an unavailable source checkout
+  and separately staged prebuilt tools; verified the runtime hash and payload
+  exclusions. Installed dotask temporarily, used its command to add the shared
+  adapter and create a second application's installer, then installed, launched
+  and uninstalled both applications with user PATH unchanged. Output policies
+  remain external. Native Linux/macOS/ARM64 and interactive-terminal acceptance
+  remain pending; no active installation, publication or push occurred.

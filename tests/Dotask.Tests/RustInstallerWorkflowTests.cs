@@ -4,6 +4,81 @@ namespace DoTask.Tests;
 
 public sealed class RustInstallerWorkflowTests
 {
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task DeclarativeAssemblyUsesSeparateToolsWithoutLanguageSdks( bool explicitBuilder )
+  {
+    using var project = new TestProject();
+    var engine = RustArtifacts.Binary("doinstall");
+    var builder = RustArtifacts.Binary("doinstall-builder");
+    using var resource = typeof(RustInstallerWorkflowTests).Assembly.GetManifestResourceStream("Shared/doinstall/assemble.task")!;
+    using var reader = new StreamReader(resource);
+    project.Write(".tasks/_/doinstall/assemble.task", await reader.ReadToEndAsync());
+    project.Write(".dotasks.yaml", "version: 1\n");
+    var payloadFile = project.Write("payload 日本語/hello.txt", "A consumer-owned payload.");
+    var payloadCommand = "probe" + (OperatingSystem.IsWindows() ? ".exe" : "");
+    File.Copy(RustArtifacts.Binary("dotask"), Path.Combine(Path.GetDirectoryName(payloadFile)!, payloadCommand));
+    var config = project.Write(".tasks/resolved installer.yaml", JsonSerializer.Serialize(new {
+      schema = 1,
+      application = new { id = "adapter-probe", name = "Adapter Probe", version = "1.0.0" },
+      platform = project.Context().OS.ToString().ToLowerInvariant(),
+      architecture = project.Context().Architecture.ToString().ToLowerInvariant(),
+      payload = Path.GetDirectoryName(payloadFile),
+      runtime = new {
+        interactive = false,
+        commands = new[] { new { name = "adapter-probe", executable = payloadCommand } },
+        shortcuts = Array.Empty<object>()
+      }
+    }));
+    var native = Path.Combine(project.Root, "standalone", Path.GetFileName(RustArtifacts.Binary("dotask")));
+    Directory.CreateDirectory(Path.GetDirectoryName(native)!);
+    File.Copy(RustArtifacts.Binary("dotask"), native);
+    var nested = Path.Combine(project.Root, "nested");
+    Directory.CreateDirectory(nested);
+    var output = Path.Combine(project.Root, "artifacts", "package 日本語");
+    var arguments = new List<string> {
+      "_/doinstall/assemble.task", "--installer", engine, "--config", Path.GetRelativePath(project.Root, config),
+      "--output", Path.GetRelativePath(project.Root, output)
+    };
+    if (explicitBuilder) {
+      arguments.AddRange(["--builder", builder]);
+    }
+    // Only the native CLI is copied. PATH contains the prebuilt pair, no Cargo
+    // or .NET, and invalid SDK overrides expose accidental code-task execution.
+    async Task<ProcessResult> Run( IReadOnlyList<string> args ) => await ProcessRunner.RunAsync(new ProcessDefinition {
+      Executable = native,
+      Arguments = args,
+      WorkingDirectory = nested,
+      CaptureOutput = true,
+      ThrowOnError = false,
+      Environment = new Dictionary<string, string?> {
+        ["PATH"] = Path.GetDirectoryName(builder),
+        ["DOTNET_HOST_PATH"] = "not-a-host",
+        ["DOTASK_SOURCE_RUST_SDK"] = "not-an-sdk"
+      }
+    }, CancellationToken.None);
+    var help = await Run(["help", "_/doinstall/assemble.task"]);
+    Assert.Equal(0, help.ExitCode);
+    Assert.Contains("doinstall-builder", help.StandardOutput);
+    Assert.False(Directory.Exists(output));
+    var assembled = await Run(arguments);
+    Assert.True(assembled.ExitCode == 0, assembled.StandardOutput + assembled.StandardError);
+    Assert.Equal("A consumer-owned payload.", File.ReadAllText(Path.Combine(output, "payload", "hello.txt")));
+    Assert.True(File.Exists(Path.Combine(output, "installer.yaml")));
+    Assert.True(File.Exists(Path.Combine(output, OperatingSystem.IsWindows() ? "installer.exe" : "installer")));
+    Assert.False(File.Exists(Path.Combine(output, Path.GetFileName(builder))));
+    var before = File.ReadAllBytes(Path.Combine(output, "installer.yaml"));
+    Assert.NotEqual(0, (await Run(arguments)).ExitCode);
+    Assert.Equal(before, File.ReadAllBytes(Path.Combine(output, "installer.yaml")));
+    var missing = await Run(["_/doinstall/assemble.task", "--builder", "missing-doinstall-builder", "--installer", engine,
+      "--config", config, "--output", output + "-missing"]);
+    Assert.NotEqual(0, missing.ExitCode);
+    Assert.Contains("missing-doinstall-builder", missing.StandardError);
+    Assert.False(Directory.Exists(output + "-missing"));
+    Assert.False(Directory.Exists(Path.Combine(project.Root, "standalone", "sdk")));
+  }
+
   [Fact]
   public async Task SharedTasksPackageInstallLaunchAndUninstallGuiPayloadWithoutOriginalPackage()
   {
@@ -84,7 +159,7 @@ public sealed class RustInstallerWorkflowTests
       new {
         run = "_/doinstall/assemble",
         with = new Dictionary<string, object> {
-          ["builder"] = builder, ["installer"] = engine, ["config"] = "${config}", ["output"] = "${package}"
+          ["builder"] = "${builder}", ["installer"] = "${installer}", ["config"] = "${config}", ["output"] = "${package}"
         }
       }
     });
@@ -100,7 +175,8 @@ public sealed class RustInstallerWorkflowTests
     project.Write(".dotasks.yaml", JsonSerializer.Serialize(new {
       version = 1,
       settings = new Dictionary<string, object> {
-        ["installer"] = new { config, output = Path.Combine(project.Root, "packages") }
+        ["installer"] = new { config, output = Path.Combine(project.Root, "packages") },
+        ["doinstall"] = new { builder, installer = engine }
       }
     }));
     var installation = await project.RunAsync("install");

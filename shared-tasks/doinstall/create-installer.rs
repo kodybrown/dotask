@@ -5,6 +5,8 @@
 //   - { name: output, type: path, description: Package parent directory; otherwise installer.output. }
 //   - { name: app-version, description: Override the application version pattern. }
 //   - { name: build-stamp, description: Reproducible UTC YYDDD-HHMM build stamp. }
+//   - { name: builder, description: "Builder command/path for the optional '${builder}' build value; otherwise doinstall.builder or doinstall-builder." }
+//   - { name: installer, type: path, description: "Actual runtime path for the optional '${installer}' build value; otherwise doinstall.installer." }
 // requires: [{ kind: file, value: doinstall/_support/BuildInfo.rs }]
 // end-dotask
 #[path = "_support/BuildInfo.rs"]
@@ -148,6 +150,21 @@ fn task(project: &BuildContext) -> Result<()> {
     ("exe-extension".into(), json!(if cfg!(windows) { ".exe" } else { "" })),
   ]);
   settings("settings", project.settings(), &mut variables);
+  // Tool selection belongs to this optional adapter, never to the native CLI.
+  // An explicit runtime path avoids accidentally packaging a PATH launcher shim.
+  let builder = project
+    .string("builder")
+    .ok()
+    .or_else(|| project.setting("doinstall.builder").ok().and_then(Value::as_str))
+    .unwrap_or("doinstall-builder");
+  variables.insert("builder".into(), json!(builder));
+  if let Some(installer) = project
+    .string("installer")
+    .ok()
+    .or_else(|| project.setting("doinstall.installer").ok().and_then(Value::as_str))
+  {
+    variables.insert("installer".into(), json!(project.path(installer)));
+  }
   for key in ["commands", "shortcuts"] {
     if let Some(entries) = config["runtime"][key].as_array_mut() {
       for entry in entries {

@@ -181,7 +181,9 @@ its configured SDKs; `test-sdks` runs the maintained C# helper and native CLI
 integration suite. `verify` explicitly requires every verification stage,
 including native Rust tests, rustfmt, clippy, docs, catalog, and whitespace;
 failures stop the sequence. No arguments list available tasks. The independent
-doinstall tools are prepared only for adapter verification.
+doinstall tools are supplied separately for adapter verification using
+`DOINSTALL_TOOL_DIR`; verification never builds them implicitly. Install the two
+products independently and opt into dotask's shared adapters when needed.
 Destination machines need Rust only to execute Rust tasks and a .NET SDK only
 to execute C# tasks. The standalone installer needs neither toolchain.
 See [installer tasks and schema](docs/INSTALLATION.md).

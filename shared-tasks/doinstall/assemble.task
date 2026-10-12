@@ -1,0 +1,19 @@
+description: Assemble an installer using separately supplied doinstall tools and resolved YAML.
+options:
+  # A command name stays a command name; type:path would anchor it to the project.
+  - {name: builder, default: doinstall-builder, description: Builder command on PATH or an explicit executable path.}
+  - {name: installer, type: path, required: true, description: 'Matching actual doinstall runtime executable, not a command shim.'}
+  - {name: config, type: path, required: true, description: Resolved installer YAML including platform and payload.}
+  - {name: output, type: path, required: true, description: Fresh complete installer output directory.}
+remarks: Requires prebuilt host-matching tools. Does not build, download, or install doinstall, or return an InstallerArtifact.
+examples: [dotask doinstall/assemble --installer tools/doinstall.exe --config resolved-installer.yaml --output artifacts/example]
+steps:
+  - exec:
+      executable: {parameter: builder}
+      arguments:
+        - --installer
+        - {parameter: installer}
+        - --config
+        - {parameter: config}
+        - --output
+        - {parameter: output}

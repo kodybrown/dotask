@@ -7,9 +7,6 @@ application:
   copyright: Copyright (C) 2026 Kody Brown
   description: Portable project tasks, in the language of your choice, for any platform.
 build-steps:
-  - run: _/doinstall/build
-    with:
-      stage-dir: '${staging}/tools'
   - run: build
     with:
       build-info: '${build-info}'
@@ -20,8 +17,8 @@ build-steps:
         to: .
   - run: _/doinstall/assemble
     with:
-      builder: '${staging}/tools/doinstall-builder${exe-extension}'
-      installer: '${staging}/tools/doinstall${exe-extension}'
+      builder: '${builder}'
+      installer: '${installer}'
       config: '${config}'
       output: '${package}'
   # Enable either step, or substitute another archive task such as a RAR creator.

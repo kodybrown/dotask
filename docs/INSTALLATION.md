@@ -6,6 +6,14 @@ The shared adapters live under `_/doinstall/`, with generic launching under
 remain project-specific.
 Custom `create-installer` targets and other installer technologies remain supported.
 
+Dotask and doinstall tooling are installed separately. Dotask's application
+payload contains its command and SDK helpers; packaging does not download or
+install doinstall tools automatically. Its installer package carries the runtime
+as `installer`, which is also retained for uninstall, as with other applications.
+Consumer projects supply their own doinstall runtime/builder pair. The native CLI
+has no doinstall-specific behavior; optional shared tasks invoke its ordinary
+command-line interface, just like adapters for other external utilities.
+
 ## Where installer configuration comes from
 
 The source `.tasks/installer.yaml` separates three responsibilities:
@@ -62,8 +70,8 @@ build-steps:
         to: .
   - run: _/doinstall/assemble
     with:
-      builder: tools/doinstall-builder.exe
-      installer: tools/doinstall.exe
+      builder: '${builder}'
+      installer: '${installer}'
       config: '${config}'
       output: '${package}'
   - run: _/archive/create-zip
@@ -91,6 +99,10 @@ relationship. Configure SDK file selections in `.tasks/sdks.yaml` for the reusab
 
 Available build values are `${staging}`, `${payload}`, `${config}`, `${package}`,
 `${version}`, `${build-info}`, `${exe-extension}`, and `${settings.NAME}`.
+The doinstall creator also supplies `${builder}` (the `--builder` option,
+`settings.doinstall.builder`, or `doinstall-builder` on PATH) and `${installer}`
+(the `--installer` option or `settings.doinstall.installer`, resolved from the
+project root). Supply the actual runtime executable, not a command launcher shim.
 `build-info` is JSON metadata for a producer that embeds the same application
 version/stamp. Runtime input placeholders, such as `${shortcut-name}`, remain for
 the destination installer. Only command/shortcut executable paths resolve build
@@ -111,7 +123,7 @@ no shortcuts, so it offers no Start Menu or desktop shortcut questions.
 
 ## Shared tasks
 
-Install the Rust group using the tool:
+Install the optional adapters using the tool:
 
 ```sh
 dotask --add "_/doinstall/*" "_/installer/install"
@@ -122,6 +134,28 @@ tracked installer tasks explicitly so short names do not become ambiguous.
 An exact project `install` can wrap `_/installer/install`. Updating the CLI
 alone does not update committed task copies. Until published, use the
 [local catalog override](SHARED-TASKS.md#official-catalog-and-unpublished-preview).
+
+`_/doinstall/assemble.task` invokes a prebuilt builder directly, with no C# or
+Rust task compilation. For an already-resolved configuration and payload:
+
+```powershell
+dotask --add "_/doinstall/assemble.task"
+dotask doinstall/assemble --installer C:/Tools/doinstall/doinstall.exe --config .tasks/resolved-installer.yaml --output artifacts/example-installer
+```
+
+The builder defaults to `doinstall-builder` on PATH; `--builder` accepts an
+explicit executable path. `--installer` must point to the matching actual
+runtime executable because a PATH command may be a launcher shim. Both tools
+must match the host OS/architecture. The adapter takes resolved doinstall YAML,
+not dotask's source-only `build-steps`, and does not return an `InstallerArtifact`.
+Missing tools and builder failures stop execution; no fallback build or download
+occurs. Configure recurring paths in `targets._/doinstall/assemble.defaults`.
+
+Replace old tracked `assemble.rs` copies explicitly with `--remove` followed by
+`--add`; shared sync does not silently change their implementation. Review local
+edits first. The build/gather creator, source-build helper, retained-uninstaller
+adapter and technology-neutral install launcher remain Rust tasks and require
+Rust/Cargo when executed. Converting those dynamic workflows is separate work.
 
 The shared creator accepts `installer.config` (`--config`) and
 `installer.output` (`--output`), with optional `--app-version` and `--build-stamp`
@@ -169,15 +203,22 @@ The project can use prebuilt doinstall and doinstall-builder tools with the
 `_/doinstall/build`. That wrapper delegates to the external project's Cargo
 helper and can stage both tools. It does not add the external package to dotask's
 Cargo workspace. No source download or tool installation happens implicitly.
+Consumers do not need `settings.doinstall.source`. Keep the builder/runtime pair
+from the same doinstall build; this adapter requires its schema-1 resolved YAML
+and `--installer`, `--config`, `--output` interface. Doinstall owns that interface;
+dotask owns the optional task files and their add/sync lifecycle.
 
 ## Build and install dotask itself
 
 The local Rust `create-installer` task delegates to
 `_/doinstall/create-installer`. Its `.tasks/installer.yaml` build steps
-run `_/doinstall/build` against the explicitly configured external checkout, run
-`build` to prepare the native app and SDKs, gather the declared files, and call
+run `build` to prepare the native app and SDKs, gather the declared files, and call
 `_/doinstall/assemble`. Optional archive steps follow. There is no local
 `pack` task; `_/dotnet/pack` remains a NuGet task for consuming C# projects.
+Tool selection comes from `--builder` / `--installer` or `settings.doinstall`
+as described above. Missing runtime paths fail before building dotask. Creating
+its installer never automatically builds doinstall. The source-build helper is
+an explicit development convenience, not a consumer prerequisite.
 
 `build-sdks` publishes the maintained C# helper using evaluated MSBuild
 `PublishDir`, then copies the Rust SDK selections from `.tasks/sdks.yaml`.
@@ -189,11 +230,21 @@ No language runtime, SDK, Roslyn, or managed support host is bundled.
 
 ```powershell
 .\build.cmd                         # Bootstrap and list available tasks.
-.\build.cmd verify                  # Explicit repository verification.
-.\build.cmd create-installer
+$env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt, host-matching pair.
+.\build.cmd verify                  # Includes external adapter integration.
+.\build.cmd create-installer --builder "$env:DOINSTALL_TOOL_DIR/doinstall-builder.exe" --installer "$env:DOINSTALL_TOOL_DIR/doinstall.exe"
 # Use fresh, isolated locations for acceptance:
-.\build.cmd install --installer-args '["--non-interactive","--set","add-to-path=false","--install-dir","C:/Temp/dotask-acceptance/apps/dotask","--bin-dir","C:/Temp/dotask-acceptance/bin"]'
+# Run the generated installer.exe with --non-interactive --set add-to-path=false
+# --install-dir C:/Temp/dotask-acceptance/apps/dotask --bin-dir C:/Temp/dotask-acceptance/bin
 ```
+
+For repeated `dotask install` calls, configure `settings.doinstall.builder` and
+`settings.doinstall.installer` in `.dotasks.yaml`; the generic install target does
+not forward tool-selection options. Unix uses actual tool paths without `.exe`.
+`test-sdks` requires `DOINSTALL_TOOL_DIR` containing both prebuilt tools and fails
+when the pair is absent. If developing against source, explicitly run
+`build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. CI performs
+that preparation as a separate step from verification and packaging.
 
 Unix uses `./build.sh`. Both launchers forward arbitrary arguments to a temporary
 native runner; no task whitelist is maintained. The Rust source SDK is available
