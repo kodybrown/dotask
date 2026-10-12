@@ -251,13 +251,13 @@
     },
     {
       "id": "text/fixeol",
-      "entryPoint": "text/fixeol.cs",
+      "entryPoint": "text/fixeol.task",
       "description": "Normalize text-file encoding and line endings using fixeol.",
-      "runtime": "csharp",
+      "runtime": "yaml",
       "files": [
         {
-          "path": "text/fixeol.cs",
-          "sha256": "d20ad4061241d2791393f6c492b2be664c5dba1812c02300da4a8ac039d63a8f"
+          "path": "text/fixeol.task",
+          "sha256": "88c6c3fcb3152192c94e7fe654391c30e6467d3d534a83240bed33e7d7d46cdc"
         }
       ],
       "requires": []

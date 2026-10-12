@@ -49,6 +49,10 @@ never construct shell command strings for ordinary argument passing. Interpreter
 must be explicit. The reusable Git task is now only `git/check.task`; invoke/add
 it without `--lang` and do not silently replace consumers' tracked code copies.
 See [direct process steps](TARGETS.md#direct-process-steps).
+The reusable `text/fixeol.task` also calls its app directly: it requires `fixeol`
+on PATH, preserves recursive exclusions, and always normalizes batch files to
+CRLF. It defaults other text to LF; `--eol crlf` changes that pass. Missing tools
+and normalization failures are errors. Replace old tracked C# copies explicitly.
 
 ## Establish the project context
 

@@ -407,6 +407,13 @@ throughout `project.TaskDirectory`, including other groups and custom `--use-dir
 locations. `--verify` adds `--verify-no-changes` to both steps and skips optional
 line-ending normalization. Normal formatting runs the optional
 `_/text/fixeol` target only if installed and propagates its failures.
+The reusable `text/fixeol.task` runs the `fixeol` app directly without C#/Rust
+tooling. It requires `fixeol` on PATH; a missing executable fails rather than
+warning and skipping. Its `--eol lf|crlf` option defaults to LF for ordinary text;
+`.cmd` and `.bat` always use UTF-8/CRLF. All three recursive passes retain the
+existing file patterns (including `Makefile`) and exclude `.tasks`, generated
+outputs and `.mcp_file_state.json`. Existing tracked C# copies require explicit
+removal/addition with the updated CLI/catalog; sync does not migrate them.
 The repository no longer has a separate root `format.cs` shadowing this task.
 Task formatting follows the consuming project's `.editorconfig`. Changes to
 tracked shared copies count as local edits and remain protected during sync.

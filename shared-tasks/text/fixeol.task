@@ -1,0 +1,151 @@
+description: Normalize text-file encoding and line endings using fixeol.
+options:
+  - name: eol
+    choices: [lf, crlf]
+    default: lf
+    description: Line endings for text files; batch files always use CRLF.
+requires:
+  - {kind: tool, value: fixeol}
+examples: [dotask fixeol, dotask fixeol --eol crlf]
+steps:
+  - exec:
+      executable: fixeol
+      arguments:
+        - --encoding
+        - utf8
+        - --eol
+        - {parameter: eol}
+        - --recursive
+        # Keep generated output out of text normalization.
+        - '*.code-workspace'
+        - '*.cs'
+        - '*.csproj'
+        - '*.css'
+        - '*.editorconfig'
+        - '*.gitattributes'
+        - '*.gitignore'
+        - '*.htm'
+        - '*.html'
+        - '*.ini'
+        - '*.js'
+        - '*.json'
+        - '*.md'
+        - '*.prettierrc'
+        - '*.ps1'
+        - '*.psm1'
+        - '*.pubxml'
+        - '*.py'
+        - '*.razor'
+        - '*.rest'
+        - '*.rs'
+        - '*.scss'
+        - '*.sh'
+        - '*.sln'
+        - '*.slnx'
+        - '*.sql'
+        - '*.text'
+        - '*.toml'
+        - '*.ts'
+        - '*.txt'
+        - '*.vue'
+        - '*.xml'
+        - '*.xsl'
+        - '*.yaml'
+        - '*.yml'
+        - 'Makefile'
+        - --exclude
+        - '.mcp_file_state.json'
+        - --exclude
+        - '*/.git/*'
+        - --exclude
+        - '*/.tasks/*'
+        - --exclude
+        - '*/node_modules/*'
+        - --exclude
+        - '*/bin/*'
+        - --exclude
+        - '*/obj/*'
+        - --exclude
+        - '*/dist/*'
+        - --exclude
+        - '*/artifacts/*'
+        - --exclude
+        - '*/target/*'
+        - --exclude
+        - '*/coverage/*'
+        - --exclude
+        - '*/playwright-report/*'
+        - --exclude
+        - '*/test-results/*'
+        - --exclude
+        - '*/TestResults/*'
+  - exec:
+      executable: fixeol
+      arguments:
+        - --encoding
+        - utf8
+        - --eol
+        - crlf
+        - --recursive
+        - '*.cmd'
+        - --exclude
+        - '.mcp_file_state.json'
+        - --exclude
+        - '*/.git/*'
+        - --exclude
+        - '*/.tasks/*'
+        - --exclude
+        - '*/node_modules/*'
+        - --exclude
+        - '*/bin/*'
+        - --exclude
+        - '*/obj/*'
+        - --exclude
+        - '*/dist/*'
+        - --exclude
+        - '*/artifacts/*'
+        - --exclude
+        - '*/target/*'
+        - --exclude
+        - '*/coverage/*'
+        - --exclude
+        - '*/playwright-report/*'
+        - --exclude
+        - '*/test-results/*'
+        - --exclude
+        - '*/TestResults/*'
+  - exec:
+      executable: fixeol
+      arguments:
+        - --encoding
+        - utf8
+        - --eol
+        - crlf
+        - --recursive
+        - '*.bat'
+        - --exclude
+        - '.mcp_file_state.json'
+        - --exclude
+        - '*/.git/*'
+        - --exclude
+        - '*/.tasks/*'
+        - --exclude
+        - '*/node_modules/*'
+        - --exclude
+        - '*/bin/*'
+        - --exclude
+        - '*/obj/*'
+        - --exclude
+        - '*/dist/*'
+        - --exclude
+        - '*/artifacts/*'
+        - --exclude
+        - '*/target/*'
+        - --exclude
+        - '*/coverage/*'
+        - --exclude
+        - '*/playwright-report/*'
+        - --exclude
+        - '*/test-results/*'
+        - --exclude
+        - '*/TestResults/*'

@@ -172,7 +172,7 @@ Fully qualified calls remain stable if another source provides the same group/ta
 Shortcuts remain convenient at the terminal. A top-level `.tasks/build.cs` can
 orchestrate multiple explicitly named tasks without a preferred group.
 
-Two installed sources may both have `text/fixeol.cs` without a file collision.
+Two installed sources may both have `text/fixeol.task` without a file collision.
 `text/fixeol` and `fixeol` then become ambiguous unless an exact project task owns
 that name. Existing handwritten files at **any** destination remain protected;
 source directories do not authorize overwriting them.

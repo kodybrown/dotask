@@ -3,6 +3,29 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Declarative text normalization (2026-10-12)
+
+On Windows x64, `build.cmd verify` passed 290 .NET Release tests and 34 Rust tests,
+rustfmt, clippy, required docs, catalog freshness and Git whitespace. The separate
+`.NET` whitespace-format check, all six focused text/format tests, 32 local
+Markdown links/anchors and `git diff --check` passed. Evaluated MSBuild output,
+intermediate and publish directories remain external under `C:\tmp\_dotnet`;
+Cargo's evaluated target directory remains `C:\tmp\_rust\dotask\target`.
+
+Native regression coverage asserts all three process argument lists, exact file
+patterns/exclusions, LF/CRLF selection, project-root cwd from a nested invocation,
+failure exit codes, stopped subsequent passes, missing-tool failure, metadata-only
+help and invalid option rejection. The formatter integration test calls a YAML
+process task, skips it during verification and propagates its failures.
+
+Real fixeol 3.21 acceptance in temporary projects passed for UTF-16 to UTF-8
+conversion, LF/CRLF, `Makefile`, forced batch CRLF and unchanged excluded files.
+Those checks used a standalone native dotask without SDK files and only fixeol
+on PATH. Only the text/fixeol entry changed in the shared catalog; no repository
+copy of this task was installed. Doinstall/Inno sources were untouched.
+Native Linux/macOS/ARM64 acceptance remains pending. No active installation,
+publication or push occurred.
+
 ## Declarative process tasks (2026-10-11)
 
 On Windows x64, `build.cmd verify` passed 286 .NET Release tests and 34 Rust tests,

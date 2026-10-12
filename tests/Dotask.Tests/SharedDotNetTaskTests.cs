@@ -55,15 +55,13 @@ public sealed class SharedDotNetTaskTests
     var untidy = project.Write(tasks + "/custom/untidy.cs",
       "public static class Other\n{\npublic static void Main()\n{\nSystem.Console.WriteLine(\"done\");\n}\n}\n");
     var original = File.ReadAllBytes(untidy);
-    var fixeol = project.Write(tasks + "/_/text/fixeol.cs", """
-      using DoTask;
-      public static class Target
-      {
-        public static void Main()
-        {
-          BuildContext.Current.Files.WriteText("normalized", "yes");
-        }
-      }
+    var probe = await project.BuildProcessProbeAsync("""
+      if (args[0] == "fail") { Environment.Exit(17); }
+      File.WriteAllText("normalized", "yes");
+      """);
+    var fixeol = project.Write(tasks + "/_/text/fixeol.task", $$"""
+      steps:
+        - exec: {executable: dotnet, arguments: [{{System.Text.Json.JsonSerializer.Serialize(probe)}}, write]}
       """);
     var marker = Path.Combine(project.Root, "normalized");
     string[] command = ["--use-dir", tasks, "dotnet/format"];
@@ -83,7 +81,7 @@ public sealed class SharedDotNetTaskTests
     Assert.True(check.ExitCode == 0, check.StandardOutput + check.StandardError);
     Assert.False(File.Exists(marker));
 
-    File.WriteAllText(fixeol, "public static class Target { public static void Main() { System.Environment.Exit(17); } }\n");
+    File.WriteAllText(fixeol, File.ReadAllText(fixeol).Replace(", write]", ", fail]", StringComparison.Ordinal));
     Assert.Equal(17, (await project.RunAsync(command)).ExitCode);
   }
 

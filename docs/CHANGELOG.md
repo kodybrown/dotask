@@ -715,3 +715,23 @@ acceptance, installation, and publication.
   Native Linux/macOS/ARM64, live HTTPS and interactive-terminal acceptance remain
   pending. Doinstall/Inno sources and catalog entries were untouched; no active
   installation, publication or push occurred.
+
+### 2026-10-12 Declarative text normalization task
+
+- Replace the reusable `text/fixeol.cs` with `text/fixeol.task`, invoking the app
+  directly without compiling task code or preparing C#/Rust helpers. Preserve
+  the three recursive passes, UTF-8 encoding, LF/CRLF option, batch-file CRLF,
+  `Makefile` selection and all generated/task/output exclusions.
+- Require `fixeol` on PATH: absence now fails rather than warning and skipping.
+  Preserve failed-process exit codes and stop remaining passes. Document explicit
+  replacement of old tracked consumer copies; no ownership migration occurs.
+  Keep `dotnet/format`'s optional target lookup and `--verify` behavior, with
+  regression coverage calling a YAML normalization task.
+- Verification: `build.cmd verify` passed 290 .NET Release tests and 34 Rust tests
+  on Windows x64, rustfmt/clippy/docs/catalog/whitespace gates. All six focused
+  text/format tests, .NET whitespace formatting, `git diff --check` and 32 local
+  Markdown links/anchors passed; evaluated MSBuild/Cargo outputs remain external.
+  Real fixeol 3.21 acceptance passed in temporary projects for UTF-8
+  conversion, LF/CRLF, `Makefile`, batch CRLF and exclusions from a nested cwd,
+  using a standalone native dotask with no SDK files. Native Linux/macOS
+  acceptance remains pending. No active installation, publication or push occurred.
