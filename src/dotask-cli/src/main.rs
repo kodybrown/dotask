@@ -1,9 +1,12 @@
+mod bindings;
 mod catalog;
 mod cli;
 mod completion;
 mod configuration;
 mod csharp_tasks;
+mod declarative;
 mod execution;
+mod file_steps;
 mod help;
 mod host;
 mod initialization;

@@ -314,6 +314,8 @@ fn step(input: &Input, catalog: &Catalog, config: &Value, root: &Path, group: &s
     }
   }
   Ok(Step {
+    id: None,
+    file: None,
     exec: None,
     when: None,
     run,

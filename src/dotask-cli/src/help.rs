@@ -186,8 +186,16 @@ pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) 
     out.section("Steps");
     out.line(&format!("  Require at least one step: {}", group.require_at_least_one_step), 0);
     for step in &group.steps {
-      if let Some(name) = &step.when {
-        out.row("  When parameter: ", name);
+      if let Some(id) = &step.id {
+        out.row("  Result: ", id);
+      }
+      if let Some(condition) = &step.when {
+        out.row("  When: ", &condition.to_string());
+      }
+      if let Some(file) = &step.file {
+        out.row("  - file: ", &file["operation"].to_string());
+        out.row("    path: ", &file["path"].to_string());
+        continue;
       }
       if let Some(command) = &step.exec {
         out.row("  - exec: ", &command.executable.to_string());

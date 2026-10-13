@@ -817,3 +817,26 @@ acceptance, installation, and publication.
   collision refusal, staging cleanup, and direct/junction source-boundary refusal
   passed. Native Linux/macOS/ARM64 acceptance remains pending. No active
   installation, publication or push occurred.
+
+### 2026-10-13 Native file actions and workflow results
+
+- Add native YAML read/write/render/replace/copy/directory actions with named
+  execution-local results, typed boolean guards, explicit result/environment
+  references, and selected-value forwarding to nested tasks. Keep execution
+  independent of a language SDK and avoid an expression/interpolation language.
+- Guard changes to existing files with observed SHA-256, stage writes on the
+  destination filesystem, preserve supported text encoding/EOL/final-newline
+  policies, skip identical writes, and reject linked paths and unsafe rewrites.
+- Add explicit process environment, bounded accepted UTF-8 stdout capture, and
+  owned-process-tree timeouts. Validate captured output before publishing staged
+  files; require the outer controller to own nested Unix workflow timeouts.
+- Document the primitive contracts, configuration ownership boundary, and native
+  server-workflow use. Restore existing Unicode text after reproducing the
+  WeekendTech MCP write corruption and receiving a scoped file-tool exception.
+- Verification: build.cmd verify --doinstall-tools
+  C:/tmp/_rust/doinstall/target/release passed 311 .NET Release tests, 51 Rust
+  tests, formatting, clippy, documentation, catalog, and whitespace checks on
+  Windows x64. Native fixtures cover no-SDK execution, changed/no-op rendering,
+  guards, JSON results, invalid capture publication, timeouts, and metadata-only
+  POSIX-mode help. Evaluated MSBuild outputs remain under C:/tmp/_dotnet.
+  Native Linux/macOS/ARM64 acceptance remains pending.

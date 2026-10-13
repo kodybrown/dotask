@@ -14,6 +14,7 @@ run your first example. The preview is not yet published to a public package fee
 | Download, share, update, or remove tasks safely       | [Shared tasks](SHARED-TASKS.md)                                  |
 | Create a group interactively | [Creation wizard](TARGETS.md#interactive-group-creation) |
 | Compose existing tasks without C# | [YAML task groups](TARGETS.md#yaml-task-groups) |
+| Read/render configuration and run native installation workflows | [Native YAML workflow actions](YAML-WORKFLOWS.md) |
 | Create a task or look up library APIs                 | [Authoring and configuration reference](TARGETS.md)              |
 | Write a Rust task with compiler-free metadata | [Rust tasks and SDK](TARGETS.md#rust-tasks) |
 | Ask an AI assistant to create or maintain tasks       | [AI assistant guide and reusable instructions](AI-ASSISTANTS.md) |

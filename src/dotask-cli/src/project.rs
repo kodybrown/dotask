@@ -95,13 +95,17 @@ pub(crate) struct Group {
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub(crate) struct Step {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub id: Option<String>,
   pub run: String,
   pub optional: bool,
   pub parameters: Value,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub exec: Option<ProcessStep>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub when: Option<String>,
+  pub when: Option<Value>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub file: Option<Value>,
 }
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
@@ -111,6 +115,12 @@ pub(crate) struct ProcessStep {
   pub cwd: Value,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub output_file: Option<ProcessOutputFile>,
+  #[serde(default, skip_serializing_if = "Map::is_empty")]
+  pub environment: Map<String, Value>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub timeout_seconds: Option<u64>,
+  #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+  pub capture_output: bool,
 }
 
 #[derive(Clone, Deserialize, Serialize)]

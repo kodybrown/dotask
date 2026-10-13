@@ -181,7 +181,7 @@ or query groups.
 The file contains one YAML mapping. Keys are case-sensitive; unknown keys,
 duplicate keys (including case variants), invalid types, and multiple documents
 are errors. `description` is an optional string; `steps` is a required sequence
-and may be empty (`steps: []`). Each step requires exactly one `run` or `exec`
+and may be empty (`steps: []`). Each step requires exactly one `run`, `exec`, or `file`
 action. Top-level `options`, `requires`, `remarks`, `examples`, and `capabilities`
 use the same metadata contract as C# and Rust headers.
 
@@ -197,16 +197,21 @@ use the same metadata contract as C# and Rust headers.
   booleans, or numbers. Quoted strings stay strings, including values such as
   `'007'`. Child option binding validates/converts values using the child's
   declared types; explicit values override that child's YAML and header defaults.
-  Null, sequence, and mapping parameter values are rejected.
+  Exact references may pass parameters, settings, environment variables, and
+  earlier step results. Nulls, sequences, and other mappings are rejected.
 
 Parameters are passed through the normal named-argument binding; values are not
 shell commands or expressions. Declarative tasks can declare typed options, but
-parent arguments are never automatically forwarded to `run` children. Use code
+parent arguments are never automatically forwarded to `run` children. Explicit
+references can forward selected values. Use code
 tasks for dynamic orchestration.
 Names resolve against the project catalog, not relative to the group file;
 prefer source-qualified names such as `_/dotnet/test`. Execution never downloads
 missing targets. Shared-task add/sync/catalog distribution supports C#, Rust and
 YAML `.task` files; reuse preserves the same ownership and hash protections.
+
+See [native YAML workflows](YAML-WORKFLOWS.md) for file actions, named results,
+boolean result guards, process environment, captured output, and timeouts.
 
 ## Direct process steps
 
@@ -250,7 +255,7 @@ fail before execution. These operations preserve native filenames and do not
 introduce string interpolation or general expressions. Plain argument values
 remain unchanged.
 
-`when: {parameter: enabled}` may guard either action and must reference a declared
+`when: {parameter: enabled}` may guard any action and must reference a declared
 boolean option. False skips the step without invoking its process or target.
 Conditions are simple references, not expressions. Executed process steps count
 toward `require_at_least_1_step`. `optional` and `with` are only for `run` actions;

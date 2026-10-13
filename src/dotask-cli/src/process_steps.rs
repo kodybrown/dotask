@@ -50,12 +50,12 @@ fn validate_value(value: &Value, target: &Target, output: bool, depth: usize) ->
     {
       Ok(())
     }
-    "setting" => Ok(()),
+    "setting" | "result" | "environment" => Ok(()),
     _ => bail!("Unknown process reference {kind}: {name}."),
   }
 }
-fn resolve(value: &Value, directory: &Directory, parameters: &Value, settings: &Value) -> Result<OsString> {
-  let resolved = if value.is_string() {
+pub(crate) fn resolve(value: &Value, directory: &Directory, parameters: &Value, settings: &Value) -> Result<OsString> {
+  let resolved = if !value.is_object() {
     value
   } else {
     let (kind, value) = value.as_object().unwrap().iter().next().unwrap();
@@ -92,7 +92,7 @@ fn resolve(value: &Value, directory: &Directory, parameters: &Value, settings: &
   }
   Ok(text.into())
 }
-fn resolve_path(value: OsString, directory: &Directory) -> Result<PathBuf> {
+pub(crate) fn resolve_path(value: OsString, directory: &Directory) -> Result<PathBuf> {
   if value.is_empty() || value.to_str().is_some_and(|s| s.trim().is_empty()) {
     bail!("Process paths must be nonempty.");
   }
@@ -102,7 +102,12 @@ fn resolve_path(value: OsString, directory: &Directory) -> Result<PathBuf> {
     None => Ok(std::path::absolute(directory.root_directory.join(value))?),
   }
 }
-pub(crate) fn execute(step: &ProcessStep, directory: &Directory, parameters: &Value, settings: &Value) -> Result<i32> {
+pub(crate) fn execute(
+  step: &ProcessStep,
+  directory: &Directory,
+  parameters: &Value,
+  settings: &Value,
+) -> Result<(i32, Value)> {
   let executable = resolve(&step.executable, directory, parameters, settings)?;
   if executable.is_empty() || executable.to_str().is_some_and(|s| s.trim().is_empty()) {
     bail!("Executable must be nonempty.");
@@ -132,6 +137,11 @@ pub(crate) fn execute(step: &ProcessStep, directory: &Directory, parameters: &Va
       }
     })
     .collect::<Result<Vec<_>>>()?;
+  let environment = step
+    .environment
+    .iter()
+    .map(|(name, value)| Ok((name, resolve(value, directory, parameters, settings)?)))
+    .collect::<Result<Vec<_>>>()?;
   let output = if let Some(output) = &step.output_file {
     let path = resolve_path(resolve(&output.path, directory, parameters, settings)?, directory)?;
     let outside = output
@@ -150,17 +160,33 @@ pub(crate) fn execute(step: &ProcessStep, directory: &Directory, parameters: &Va
   }
   // Only explicit executable paths, cwd and path references are normalized.
   // Literal arguments keep backslashes, empty strings and option-like values.
-  let code = process::run(
-    Command::new(executable)
-      .args(arguments.into_iter().map(Option::unwrap))
-      .current_dir(cwd),
-  )?;
+  let mut command = Command::new(executable);
+  command.args(arguments.into_iter().map(Option::unwrap)).current_dir(cwd);
+  command.envs(environment);
+  let captured = if step.capture_output {
+    let file = tempfile::NamedTempFile::new()?;
+    command.stdout(file.reopen()?);
+    Some(file)
+  } else {
+    None
+  };
+  let code = process::run_timeout(&mut command, step.timeout_seconds.map(std::time::Duration::from_secs))?;
+  let mut result = serde_json::json!({"exit-code":code});
+  if code == 0
+    && let Some(captured) = captured
+  {
+    if captured.as_file().metadata()?.len() > 4 * 1024 * 1024 {
+      bail!("Captured process output exceeds 4 MiB.");
+    }
+    result["output"] =
+      Value::String(std::fs::read_to_string(captured.path()).context("Captured process output is not UTF-8.")?);
+  }
   if code == 0
     && let Some(output) = &output
   {
     output.publish()?;
   }
-  Ok(code)
+  Ok((code, result))
 }
 
 #[cfg(all(test, unix))]

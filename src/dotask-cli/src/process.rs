@@ -28,8 +28,14 @@ pub(crate) fn check_cancelled() -> Result<()> {
 }
 
 pub(crate) fn run(command: &mut Command) -> Result<i32> {
+  run_timeout(command, None)
+}
+
+pub(crate) fn run_timeout(command: &mut Command, timeout: Option<Duration>) -> Result<i32> {
   check_cancelled()?;
-  let mut process = Process::spawn(command).with_context(|| format!("Cannot start {:?}", command.get_program()))?;
+  let mut process =
+    Process::spawn(command, timeout.is_some()).with_context(|| format!("Cannot start {:?}", command.get_program()))?;
+  let started = Instant::now();
   loop {
     if check_cancelled().is_err() {
       // Give task cancellation handlers time to release their own resources,
@@ -42,6 +48,11 @@ pub(crate) fn run(command: &mut Command) -> Result<i32> {
       }
       process.terminate()?;
       bail!(Cancelled);
+    }
+    if timeout.is_some_and(|limit| started.elapsed() >= limit) {
+      process.terminate()?;
+      eprintln!("Process timed out.");
+      return Ok(124);
     }
     if let Some(status) = process.child.try_wait()? {
       process.finished = true;
@@ -67,7 +78,9 @@ struct Process {
 }
 
 impl Process {
-  fn spawn(command: &mut Command) -> Result<Self> {
+  fn spawn(command: &mut Command, timed: bool) -> Result<Self> {
+    #[cfg(windows)]
+    let _ = timed;
     #[cfg(unix)]
     {
       use std::os::unix::process::CommandExt;
@@ -75,6 +88,7 @@ impl Process {
       // each nested runner made a new group, killing its parent could
       // strand grandchildren before their own grace interval expired.
       let inherited = std::env::var("DOTASK_PROCESS_GROUP_OWNER")
+        .or_else(|_| std::env::var("DOINSTALL_PROCESS_GROUP_OWNER"))
         .ok()
         .and_then(|s| s.parse::<i32>().ok())
         .is_some_and(|owner| {
@@ -84,6 +98,9 @@ impl Process {
               owner_group >= 0 && owner_group != libc::getpgrp()
             }
         });
+      if inherited && timed {
+        bail!("A timeout inside an existing Unix task process group must be set on the outer workflow. No child was started.");
+      }
       if !inherited {
         command
           .process_group(0)

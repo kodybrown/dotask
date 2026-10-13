@@ -88,32 +88,53 @@ impl Executor {
     let parameters = self.bind(target, args, session, false)?;
     if let Some(group) = &target.group {
       let mut executed = 0;
+      let mut results = serde_json::Map::new();
+      let settings = &self.configuration["Settings"];
       for step in &group.steps {
-        if let Some(name) = &step.when
-          && !crate::configuration::get(&parameters, name)
-            .and_then(Value::as_bool)
-            .ok_or_else(|| anyhow::anyhow!("Condition requires boolean parameter '{name}'."))?
-        {
-          continue;
-        }
-        if let Some(command) = &step.exec {
-          self.trace("Executing declarative process step");
-          let code =
-            crate::process_steps::execute(command, &self.directory, &parameters, &self.configuration["Settings"])?;
-          if code != 0 {
-            return Ok(code);
+        if let Some(condition) = &step.when {
+          let condition = crate::bindings::resolve(condition, &results)?;
+          let enabled = if let Some(name) = condition.get("parameter").and_then(Value::as_str) {
+            crate::configuration::get(&parameters, name).and_then(Value::as_bool)
+          } else {
+            condition.as_bool()
           }
-          executed += 1;
-          continue;
+          .ok_or_else(|| anyhow::anyhow!("Condition requires a boolean parameter or result."))?;
+          if !enabled {
+            continue;
+          }
         }
-        let catalog = self.catalog(session)?;
-        let child = catalog.find(&step.run)?;
-        if child.is_none() && step.optional {
-          self.trace(&format!("Skipping absent optional target: {}", step.run));
-          continue;
+        let (code, result) = if let Some(file) = &step.file {
+          self.trace("Executing declarative file step");
+          let file = crate::bindings::resolve(file, &results)?;
+          (0, crate::file_steps::execute(&file, &self.directory, &parameters, settings)?)
+        } else if let Some(command) = &step.exec {
+          self.trace("Executing declarative process step");
+          let command = serde_json::from_value(crate::bindings::resolve(&serde_json::to_value(command)?, &results)?)?;
+          crate::process_steps::execute(&command, &self.directory, &parameters, settings)?
+        } else {
+          let catalog = self.catalog(session)?;
+          let child = catalog.find(&step.run)?;
+          if child.is_none() && step.optional {
+            self.trace(&format!("Skipping absent optional target: {}", step.run));
+            continue;
+          }
+          let child = child.ok_or_else(|| anyhow::anyhow!("Unknown target '{}'.", step.run))?;
+          let mut values = crate::bindings::resolve(&step.parameters, &results)?;
+          for value in values.as_object_mut().unwrap().values_mut() {
+            if value.is_object() {
+              *value = Value::String(
+                crate::process_steps::resolve(value, &self.directory, &parameters, settings)?
+                  .into_string()
+                  .map_err(|_| anyhow::anyhow!("Nested parameter requires UTF-8."))?,
+              );
+            }
+          }
+          let code = self.execute(child, &arguments(&values)?, &chain, session)?;
+          (code, serde_json::json!({"exit-code":code}))
+        };
+        if let Some(id) = &step.id {
+          results.insert(id.clone(), result);
         }
-        let child = child.ok_or_else(|| anyhow::anyhow!("Unknown target '{}'.", step.run))?;
-        let code = self.execute(child, &arguments(&step.parameters)?, &chain, session)?;
         if code != 0 {
           return Ok(code);
         }
