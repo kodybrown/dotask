@@ -59,6 +59,12 @@ The reusable `text/fixeol.task` also calls its app directly: it requires `fixeol
 on PATH, preserves recursive exclusions, and always normalizes batch files to
 CRLF. It defaults other text to LF; `--eol crlf` changes that pass. Missing tools
 and normalization failures are errors. Replace old tracked C# copies explicitly.
+The archive tasks are also declarative: `_/archive/create-zip.task` and
+`_/archive/create-7z.task` use `7z` (or `--archiver`) without a task compiler.
+They preserve the named source folder and refuse existing/nested outputs.
+Process path references and `output-file` provide canonical input paths and
+staged publication without overwriting. See [process file output](TARGETS.md#staged-process-file-output).
+Replace old tracked Rust copies explicitly; invocation requires no `--lang`.
 `_/doinstall/assemble.task` similarly invokes separately supplied doinstall tools
 without a language compiler. The builder defaults to PATH; provide the matching
 actual runtime path with `--installer`, not a command shim. It takes resolved

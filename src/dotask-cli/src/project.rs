@@ -109,6 +109,17 @@ pub(crate) struct ProcessStep {
   pub executable: Value,
   pub arguments: Vec<Value>,
   pub cwd: Value,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub output_file: Option<ProcessOutputFile>,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub(crate) struct ProcessOutputFile {
+  pub path: Value,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub outside_directory: Option<Value>,
+  pub suffix: String,
 }
 
 #[derive(Deserialize)]

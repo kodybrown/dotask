@@ -115,6 +115,15 @@ public sealed class ProcessTaskTests
   [InlineData("steps: [{exec: {executable: git}, when: true}]")]
   [InlineData("options: [{name: x}]\nsteps: [{exec: {executable: git}, when: {parameter: x}}]")]
   [InlineData("options: [{name: help}]\nsteps: []")]
+  [InlineData("steps: [{exec: {executable: git, arguments: [{path-name: null}]}}]")]
+  [InlineData("steps: [{exec: {executable: git, arguments: [{path-parent: {parameter: missing}}]}}]")]
+  [InlineData("steps: [{exec: {executable: git, arguments: [{output-file: true}]}}]")]
+  [InlineData("steps: [{exec: {executable: git, arguments: [{output-file: false}], output-file: {path: output}}}]")]
+  [InlineData("steps: [{exec: {executable: git, arguments: [{output-file: true}], output-file: {}}}]")]
+  [InlineData("steps: [{exec: {executable: git, arguments: [{output-file: true}], output-file: {path: ''}}}]")]
+  [InlineData("steps: [{exec: {executable: git, arguments: [{output-file: true}], output-file: {path: output, suffix: '../bad'}}}]")]
+  [InlineData("steps: [{exec: {executable: git, arguments: [], output-file: {path: output}}}]")]
+  [InlineData("steps: [{exec: {executable: {output-file: true}, arguments: [{output-file: true}], output-file: {path: output}}}]")]
   public async Task InvalidProcessMetadataFailsBeforeExecution( string yaml )
   {
     using var project = new TestProject();

@@ -234,13 +234,21 @@ executable uses PATH; explicitly portable executable paths resolve from the
 project root. Only executable paths and cwd are normalized; argument strings
 retain backslashes, quotes, empty strings, newlines, and option-like values.
 
-Each value is a literal string or an exact reference `{parameter: name}` or
+Basic values are literal strings or exact references `{parameter: name}` or
 `{setting: dotted.name}`. Parameter references use declared option names, not
 aliases. References resolve scalar strings, numbers and booleans to one argument;
 no interpolation, splitting, expression evaluation, or implicit shell occurs.
 For example, `arguments: [{parameter: message}]` preserves a message with spaces.
 Use a setting reference for configured executable/cwd paths. Missing/non-scalar
 references and invalid cwd fail before starting that process.
+
+`{path-parent: VALUE}` and `{path-name: VALUE}` resolve an existing path from the
+project root, canonicalize it, then return its parent directory or final name.
+VALUE can be a literal path or an exact reference; nested path operations are
+limited to 16 levels. Missing paths and roots without the requested component
+fail before execution. These operations preserve native filenames and do not
+introduce string interpolation or general expressions. Plain argument values
+remain unchanged.
 
 `when: {parameter: enabled}` may guard either action and must reference a declared
 boolean option. False skips the step without invoking its process or target.
@@ -255,9 +263,60 @@ syntax or a script, explicitly invoke its interpreter and provide argument-list
 entries; Windows `.cmd` tools need an explicit `cmd` invocation. Dotask does not
 introduce a shell or bundle interpreters.
 
+### Staged process file output
+
+An `exec` step can declare `output-file` to publish a new file only after the
+command succeeds. Use `{output-file: true}` as an argument to pass the temporary
+filename to the producer:
+
+```yaml
+options:
+  - {name: source, type: path, required: true}
+  - {name: output, type: path, required: true}
+steps:
+  - exec:
+      executable: 7z
+      cwd: {path-parent: {parameter: source}}
+      arguments: [a, -tzip, -y, {output-file: true}, --, {path-name: {parameter: source}}]
+      output-file:
+        path: {parameter: output}
+        outside-directory: {parameter: source}
+        suffix: .zip
+```
+
+`path` is required and resolves from the project root. Optional
+`outside-directory` must resolve to an existing directory and forbids outputs
+inside it, including through linked parent directories. Optional `suffix`
+defaults to empty and uses portable filename characters (letters, digits, `.`,
+`-`, `_`); it affects only the temporary filename, not the final destination.
+The output reference is valid only as a direct argument of that process and
+must appear at least once. Help/completion only validate metadata.
+
+Existing destinations are refused. Parent directories are created after
+validation, and staging lives on the destination filesystem. Exit zero must
+produce an ordinary file at the supplied temporary path. Dotask publishes it
+without replacing a concurrently created destination. A missing/invalid output
+or publication failure fails the task. Process failures preserve their exit
+codes and leave no final output; staging is cleaned on normal completion and
+handled failures. Forcefully terminating the CLI can leave temporary staging.
+
+This is general process output handling; the producing application owns the
+contents and validation of its file. Filesystems must support hard links.
+
+### Reusable process tasks
+
 `git/check.task` is the only reusable Git check. Its default runs `git --version`;
 `--whitespace` also checks unstaged and staged diffs. Invoke it without `--lang`
 because YAML has no C#/Rust implementation language.
+
+The reusable `archive/create-zip.task` and `archive/create-7z.task` use these
+features to call a configurable `7z` executable with no language toolchain.
+They retain the source directory as the archive's top-level folder, require a
+new destination outside that directory, and publish only successful output.
+Supply `--source`, `--output`, and optionally `--archiver` (command name or path).
+Replace tracked Rust implementations explicitly with shared `--remove` and
+`--add`; do not invoke these YAML tasks with `--lang rust`.
+They require a dotask CLI supporting path references and staged process output.
 
 ## A complete target
 

@@ -789,3 +789,31 @@ acceptance, installation, and publication.
   tools. Temporary tools were also removed after success; evaluated MSBuild/Cargo
   outputs remain external. Native Linux/macOS/ARM64
   acceptance remains pending. No active installation, publication or push occurred.
+
+### 2026-10-13 Declarative archives and staged process output
+
+- Replace canonical and installed `archive/create-zip.rs` / `create-7z.rs` with
+  `.task` process definitions and remove their Rust support helper. Keep source,
+  output and archiver options, the named top-level folder, new/outside-source
+  destinations, failure exit codes and publication without replacing an existing
+  or concurrently created archive. Regenerate the catalog and use tool-managed
+  removal/addition to update tracked copies; consumer replacements remain explicit.
+- Add generic, bounded `path-parent` / `path-name` references for existing paths,
+  and process `output-file` declarations supplying a staged argument. Validate
+  metadata without filesystem execution; retain literal/native argument values.
+  Resolve output boundaries through linked parents before creating directories,
+  require an ordinary produced file, and publish on the destination filesystem.
+  Keep the implementation independent of archive formats and language compilers.
+- Document authoring, hard-link requirements, compiler-free archive execution,
+  and source/copy replacement guidance. Preserve explanatory archive comments in
+  the YAML tasks and generic native implementation.
+- Verification: build.cmd verify --doinstall-tools C:/tmp/_rust/doinstall/target/release
+  passed 311 .NET Release tests and 39 Rust tests on Windows x64, rustfmt/clippy,
+  docs/catalog/whitespace gates. All 35 focused archive/process tests, separate
+  .NET whitespace formatting, 43 local Markdown links/anchors, final verify-docs,
+  git diff --check and evaluated external MSBuild/Cargo paths passed.
+  Real 7-Zip 26.02 created/extracted ZIP and 7z from a nested invocation using a
+  standalone native CLI with no SDK files; Unicode/spaces, named folder contents,
+  collision refusal, staging cleanup, and direct/junction source-boundary refusal
+  passed. Native Linux/macOS/ARM64 acceptance remains pending. No active
+  installation, publication or push occurred.

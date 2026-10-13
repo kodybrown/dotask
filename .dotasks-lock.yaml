@@ -4,18 +4,16 @@ directory: .tasks
 tasks:
   _/archive/create-7z:
     source: _
-    revision: 0c9f3006dd99c267b11dc0a809c23b910fed7e0cad465e32b0d998b0fedd39fd
+    revision: 9d87800ec471ff6238f7449a92bd102ac2d9bb42abfb4f3e25b4633d838d937f
     requires: []
     files:
-      _/archive/_support/Archive.rs: 05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e
-      _/archive/create-7z.rs: 24f5ae3393feddcf1539ef6bcf09f402ef9a0a5f636173f0b504fd5d4f5aaf02
+      _/archive/create-7z.task: f42258674628c3d1a14125b04a3f5ee9baa0032cecb6d61614a3f7e0cd287daa
   _/archive/create-zip:
     source: _
-    revision: f8bb98d27df54671519f17a77958e9269f438d7fd45c5660cf0306c7bf07b5f1
+    revision: db395be27eb8bfcc293dc08f84d8848d27644b793e7407ceccf0a11bef645997
     requires: []
     files:
-      _/archive/_support/Archive.rs: 05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e
-      _/archive/create-zip.rs: 7d7701fa1e484c689de35fb5895c6411e72534d015ff3e7192aaa6d0c419b97f
+      _/archive/create-zip.task: a09fcbd69d51c3ff50f8361a61ab334b46897487c7d02e9aaec9a11e0c6b4028
   _/doinstall/assemble:
     source: _
     revision: bde889accc868cee771ee2fb00cf0b8a1858697457de7c8d9e9aa15aa47eba9a

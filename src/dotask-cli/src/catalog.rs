@@ -212,7 +212,39 @@ pub(crate) fn group(file: &Path, root: &Path) -> Target {
           if step.get("optional").is_some() || step.get("with").is_some() {
             bail!("exec steps cannot declare optional or with.");
           }
-          keys(command, &["executable", "arguments", "cwd"])?;
+          keys(command, &["executable", "arguments", "cwd", "output-file"])?;
+          let output_file = if let Some(output) = command.get("output-file") {
+            keys(output, &["path", "outside-directory", "suffix"])?;
+            let path = output
+              .get("path")
+              .ok_or_else(|| anyhow::anyhow!("output-file requires path."))?
+              .clone();
+            crate::process_steps::validate(&path, &target)?;
+            if path.as_str().is_some_and(|s| s.trim().is_empty()) {
+              bail!("output-file path must be nonempty.");
+            }
+            let outside_directory = output.get("outside-directory").cloned();
+            if let Some(outside) = &outside_directory {
+              crate::process_steps::validate(outside, &target)?;
+              if outside.as_str().is_some_and(|s| s.trim().is_empty()) {
+                bail!("outside-directory must be nonempty.");
+              }
+            }
+            let suffix = output.get("suffix").map(|v| text(v, "suffix")).transpose()?.unwrap_or("");
+            if !suffix
+              .bytes()
+              .all(|c| c.is_ascii_alphanumeric() || matches!(c, b'.' | b'-' | b'_'))
+            {
+              bail!("output-file suffix must use portable filename characters: letters, digits, '.', '-' or '_'.");
+            }
+            Some(crate::project::ProcessOutputFile {
+              path,
+              outside_directory,
+              suffix: suffix.into(),
+            })
+          } else {
+            None
+          };
           let executable = command
             .get("executable")
             .ok_or_else(|| anyhow::anyhow!("exec requires executable."))?
@@ -227,7 +259,10 @@ pub(crate) fn group(file: &Path, root: &Path) -> Target {
             .ok_or_else(|| anyhow::anyhow!("arguments must be a sequence."))?
             .clone();
           for argument in &arguments {
-            crate::process_steps::validate(argument, &target)?;
+            crate::process_steps::validate_argument(argument, &target, output_file.is_some())?;
+          }
+          if output_file.is_some() && !arguments.iter().any(|v| v.get("output-file") == Some(&json!(true))) {
+            bail!("An output-file process requires an argument containing {{output-file: true}}.");
           }
           let cwd = command.get("cwd").cloned().unwrap_or(json!("."));
           crate::process_steps::validate(&cwd, &target)?;
@@ -238,6 +273,7 @@ pub(crate) fn group(file: &Path, root: &Path) -> Target {
             executable,
             arguments,
             cwd,
+            output_file,
           })
         } else {
           None

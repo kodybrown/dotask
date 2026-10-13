@@ -180,10 +180,14 @@ assembly belongs to the separate `doinstall-builder` executable, which is
 not distributed. The shipped installer has no `package` command.
 
 ZIP and 7z creation are ordinary optional `build-steps` using
-`_/archive/create-zip` and `_/archive/create-7z`. Each uses a configurable `7z`
+`_/archive/create-zip.task` and `_/archive/create-7z.task`. Each uses a configurable `7z`
 executable and includes the installer directory as the archive's top-level
 folder. Enable one or both, or substitute a project task for another format.
 Archive flags do not belong to the destination installer.
+These tasks need no Rust/.NET compiler. Outputs must be new and outside the
+source directory; failed commands leave no final archive. Staged publication
+refuses concurrent destination creation. Replace old tracked `.rs` copies
+explicitly using shared-task remove/add after reviewing local edits.
 
 Supply binaries matching the host OS/architecture; cross-platform release
 production is not automated. Native acceptance is recorded separately in

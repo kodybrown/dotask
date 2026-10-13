@@ -3,6 +3,35 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Declarative archive tasks (2026-10-13)
+
+On Windows x64, `build.cmd verify --doinstall-tools C:/tmp/_rust/doinstall/target/release`
+passed 311 .NET Release tests and 39 Rust tests, rustfmt/clippy, docs, catalog and
+Git whitespace. All 35 focused archive/process tests and the separate .NET
+whitespace-format check, 43 local Markdown links/anchors and final verify-docs
+passed. MSBuild output/intermediate/publish remain under
+`C:\tmp\_dotnet`; Cargo's evaluated target directory remains
+`C:\tmp\_rust\dotask\target`.
+
+Coverage exercises both declarative archive formats, canonical parent/name
+references, nested invocation, Unicode/spaces, existing/nested/invalid sources,
+archiver failures with partial staging, success without output, racing destination
+creation, cleanup, and invalid metadata. Native file-publication tests cover
+ordinary-file requirements, no-overwrite publication, directory creation guards,
+and Windows case-insensitive source boundaries. Unix-only regressions cover linked
+parents and native non-UTF-8 path names; they require a Unix gate and are not
+claimed as locally executed.
+
+Real 7-Zip 26.02 created and extracted both ZIP and 7z with the named source folder
+and Unicode payload intact. Acceptance used a copied native CLI without SDK
+files and PATH limited to the archiver directory. Existing archives retained their
+hashes after refused updates, direct nested destinations were refused before
+creating source directories, and a Windows junction into the source could not
+bypass that guard. Successful creation removed staging. Shared/canonical copies
+and catalog hashes match; only archive entries changed in the shared catalog.
+Native Linux/macOS/ARM64 acceptance remains pending. No active installation,
+publication or push occurred.
+
 ## Separately supplied doinstall tools (2026-10-12)
 
 On Windows x64, `build.cmd verify` passed 292 .NET Release tests and 34 Rust tests,

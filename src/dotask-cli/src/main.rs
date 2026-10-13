@@ -8,6 +8,7 @@ mod help;
 mod host;
 mod initialization;
 mod process;
+mod process_output;
 mod process_steps;
 mod project;
 mod rust_tasks;

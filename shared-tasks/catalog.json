@@ -3,34 +3,26 @@
   "tasks": [
     {
       "id": "archive/create-7z",
-      "entryPoint": "archive/create-7z.rs",
+      "entryPoint": "archive/create-7z.task",
       "description": "Create a 7z archive containing the named source directory.",
-      "runtime": "rust",
+      "runtime": "yaml",
       "files": [
         {
-          "path": "archive/_support/Archive.rs",
-          "sha256": "05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e"
-        },
-        {
-          "path": "archive/create-7z.rs",
-          "sha256": "24f5ae3393feddcf1539ef6bcf09f402ef9a0a5f636173f0b504fd5d4f5aaf02"
+          "path": "archive/create-7z.task",
+          "sha256": "f42258674628c3d1a14125b04a3f5ee9baa0032cecb6d61614a3f7e0cd287daa"
         }
       ],
       "requires": []
     },
     {
       "id": "archive/create-zip",
-      "entryPoint": "archive/create-zip.rs",
+      "entryPoint": "archive/create-zip.task",
       "description": "Create a ZIP archive containing the named source directory.",
-      "runtime": "rust",
+      "runtime": "yaml",
       "files": [
         {
-          "path": "archive/_support/Archive.rs",
-          "sha256": "05084e5d01e4a007833aa0a0541ba5aa5d24a7493651decba95e9393f832141e"
-        },
-        {
-          "path": "archive/create-zip.rs",
-          "sha256": "7d7701fa1e484c689de35fb5895c6411e72534d015ff3e7192aaa6d0c419b97f"
+          "path": "archive/create-zip.task",
+          "sha256": "a09fcbd69d51c3ff50f8361a61ab334b46897487c7d02e9aaec9a11e0c6b4028"
         }
       ],
       "requires": []

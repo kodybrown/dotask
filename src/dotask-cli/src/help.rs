@@ -193,6 +193,13 @@ pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) 
         out.row("  - exec: ", &command.executable.to_string());
         out.row("    arguments: ", &serde_json::to_string(&command.arguments).unwrap());
         out.row("    cwd: ", &command.cwd.to_string());
+        if let Some(output) = &command.output_file {
+          out.row("    output-file: ", &output.path.to_string());
+          if let Some(outside) = &output.outside_directory {
+            out.row("    outside-directory: ", &outside.to_string());
+          }
+          out.row("    staging suffix: ", &output.suffix);
+        }
         continue;
       }
       out.row(

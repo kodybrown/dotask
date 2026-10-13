@@ -1,0 +1,17 @@
+description: Create a 7z archive containing the named source directory.
+options:
+  - {name: source, type: path, required: true}
+  - {name: output, type: path, required: true}
+  - {name: archiver, default: 7z, description: 7-Zip executable name or path.}
+remarks: The destination must be new and outside the source. Failed creation leaves no final archive.
+steps:
+  - exec:
+      executable: {parameter: archiver}
+      # The parent/name pair retains the named top-level folder, including spaces.
+      cwd: {path-parent: {parameter: source}}
+      arguments: [a, -t7z, -y, {output-file: true}, --, {path-name: {parameter: source}}]
+      # Stage beside the destination and publish only after successful creation.
+      output-file:
+        path: {parameter: output}
+        outside-directory: {parameter: source}
+        suffix: .7z

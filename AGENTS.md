@@ -114,7 +114,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - One entry file per callable task; common ordinary-comment YAML headers own
   C# and Rust task metadata.
   Declarative `.task` YAML tasks compose targets or execute apps directly, with
-  typed options, exact scalar references, and simple boolean conditions. No
+  typed options, exact scalar/path references, staged process file output, and
+  simple boolean conditions. No
   implicit shell, general expression language or task-code compilation is involved.
 - Discovery accepts `.cs` and `.rs` targets and `.task` YAML groups; ordinary documents,
   `.yaml` files, and MSBuild `.targets` files are not tasks. Windows native bootstrap

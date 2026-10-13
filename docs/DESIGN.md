@@ -286,6 +286,14 @@ See [installation](INSTALLATION.md) for the ownership and activation contract.
 
 ## External installer integration
 
+Reusable ZIP/7z tasks are declarative process calls. Generic `path-parent` and
+`path-name` references resolve existing inputs; `output-file` stages a producer's
+file on the destination filesystem and publishes it only after exit zero. It
+refuses existing/concurrent destinations and optional source-directory overlap.
+No archive format implementation or shell is added to the CLI. Metadata remains
+compiler-free; literal arguments and process failure/cancellation behavior remain
+unchanged. Hard-link publication preserves the previous archive task's contract.
+
 Doinstall owns the runtime, builder, Windows shim, schema, and installer behavior
 tests in its independent repository. Dotask owns generic InstallerArtifact
 transport and launching, plus shared `_/doinstall/*` adapters and
