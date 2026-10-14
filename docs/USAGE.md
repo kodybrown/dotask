@@ -334,8 +334,9 @@ option as a value, attach it to the option name: `name=--help`.
 
 ## Project identity, settings, and defaults
 
-Shared settings are read by target code through `project.Config`. Task parameters
-come from `project.Parameters`; the two collections are separate. For example:
+Shared project settings and current-target settings are read through
+`project.Config`. Task parameters come from `project.Parameters`; the collections
+are separate. For example:
 
 ```yaml
 version: 1
@@ -344,9 +345,11 @@ description: Build, test, and publish MyApp.
 settings:
   solution: MyApp.slnx
 targets:
-  _/dotnet/build:
+  _/dotnet/publish:
     defaults:
       configuration: Release
+    settings:
+      project: src/MyApp/MyApp.csproj
 ```
 
 `name` and `description` are optional display strings, separate from `settings`.
@@ -359,16 +362,28 @@ For each parameter, the precedence from highest to lowest is:
 2. `targets.<full-target-name>.defaults.<full-option-name>` in `.dotasks.yaml`.
 3. The option's `default` value in its YAML comment header.
 
-You do not register targets in YAML. Add a `targets` entry only to override that
-target's defaults. Setting `settings.configuration` does not automatically set
+You do not register targets in YAML. Add a `targets` entry to configure that
+target's settings or option defaults. Setting `settings.configuration` does not automatically set
 the `configuration` parameter. Likewise, `configuration=Release` changes a
 parameter for that invocation; it does not edit YAML or override a shared setting.
 There is no environment-variable interpolation in YAML.
 
-The example configures `.tasks/_/dotnet/build.cs`, whether invoked
-by its full name or an available shortcut. Use `targets.build` for a plain `build.cs`; short aliases are not
-looked up when loading defaults. Renaming a plain task to a grouped filename
-requires updating its YAML target-default key to the new full name.
+Top-level `settings` contains values shared by tasks. `targets.<full-name>.settings`
+contains task-specific values for either a local or an imported task. These
+override shared settings; extension-qualified entries override base-name entries.
+Nested mappings merge case-insensitively; arrays/scalars/nulls replace earlier
+values. A null masks an inherited setting. CLI options do not edit these values.
+`dotask --verbose` displays shared settings and configured target settings separately.
+Use exact task identities, such as `_/dotnet/publish`, even when invoking a shortcut.
+Each nested call resolves its own settings from the original project snapshot;
+the caller's target settings are not inherited. See the
+[authoring contract](TARGETS.md#yaml-configuration) for typed access and references.
+
+The example configures `.tasks/_/dotnet/publish.cs`, whether invoked
+by its full name or an available shortcut. Use `targets.publish` for a plain
+`publish.cs`; short aliases are not looked up when loading defaults or settings.
+Renaming a plain task to a grouped filename requires updating its YAML target
+key to the new full name.
 
 See the [configuration reference](TARGETS.md#yaml-configuration) for value types,
 arrays, nested keys, and how defaults are validated.

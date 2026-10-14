@@ -594,11 +594,13 @@ targets:
   _/dotnet/run:
     defaults:
       configuration: Release
+    settings:
+      project: src/MyApp/MyApp.csproj
 ```
 
 `.dotasks.yaml` is optional. Its supported top-level keys are `version` (currently
 1), `name`, `description`, `settings`, and `targets` with optional per-target
-`defaults`. Defining a target here is never required.
+`defaults` and `settings` mappings. Defining a target here is never required.
 
 `dotask --init` creates a starter configuration in the current directory with a
 directory-derived name, empty description, and `settings: {}`, plus an empty
@@ -611,7 +613,7 @@ and custom task directories.
 values count as absent. The name falls back to the project root directory's name,
 and an absent description is omitted. YAML block strings can supply a multiline
 description. Other value types are rejected. These are project display metadata,
-not shared settings: `project.Config` still exposes only the `settings` mapping.
+not task settings: `project.Config` exposes resolved settings, not display metadata.
 For example, `settings.name` is an independent value and does not set the project
 name or any target's `name` parameter. CLI-only `dotask --help` does not read YAML.
 
@@ -628,6 +630,25 @@ Resolution order is target default, then project default, then explicit argument
 Settings support mappings, arrays, strings, booleans, nulls, and numbers. Quoted
 scalars remain strings. No code execution, environment substitution, templates,
 or expressions occur while loading YAML.
+
+Keep values shared by multiple tasks in top-level `settings`. Put task-specific
+data under `targets.<full-name>.settings`, beside its option `defaults`. Both
+local and shared tasks use this layout. Settings do not become CLI options.
+The current task's `project.Config`, Rust SDK `settings()`/`setting()` accessors,
+YAML `{setting: name}` references and `requires: [{kind: setting, value: name}]`
+all use the same resolved settings view.
+
+Settings resolve in this order: shared project values, full base-name target
+settings, then extension-qualified target settings. Mappings merge recursively
+with case-insensitive keys. Arrays, scalars and explicit nulls replace earlier
+values; null masks an inherited value and is absent to required-value accessors.
+Task-name keys are literal full identities, so `tools/check.cs` is one key, not
+a dotted setting path. Shortcut entries do not configure grouped tasks.
+
+Nested calls resolve the called task's own settings from the original shared
+snapshot, without inheriting the caller's target overrides. Explicit forwarded
+parameters remain separate and override the child's option defaults. Editing
+YAML during a task does not change settings or defaults for that call chain.
 
 ```csharp
 var project = BuildContext.Current;
@@ -654,7 +675,8 @@ Configuration is read-only and snapshotted for the entire target call chain.
 YAML does not create
 C# properties or IntelliSense for individual keys in this version. Use
 `config.Get<string>("message")`, not `config.Message`. `project.Config` exposes
-only `settings`; per-target defaults become validated `project.Parameters`.
+the resolved shared and current-target `settings`; per-target defaults become
+validated `project.Parameters`.
 
 ## Context and target calls
 

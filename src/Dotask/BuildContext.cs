@@ -30,6 +30,7 @@ public sealed class BuildContext
   public char DirSeparator => System.IO.Path.DirectorySeparatorChar;
   public IReadOnlyList<char> InvalidFileChars => System.IO.Path.GetInvalidFileNameChars();
   public IReadOnlyList<char> InvalidDirChars => System.IO.Path.GetInvalidFileNameChars();
+  /// <summary>Shared project settings with this target's settings applied.</summary>
   public Values Config { get; }
   public Values Parameters { get; }
   public FileSystemHelpers Files { get; }

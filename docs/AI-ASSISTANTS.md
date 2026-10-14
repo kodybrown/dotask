@@ -166,10 +166,13 @@ example without an application dependency, use
 3. Add a clear `description`, declare every accepted parameter under `options`,
    and add useful `examples` and `requires` entries. Header keys
    are lowercase and case-sensitive. Metadata is YAML inside ordinary C# comments.
-4. Get the context with `var project = BuildContext.Current;` and shared settings
+4. Get the context with `var project = BuildContext.Current;` and resolved settings
    with `var config = project.Config;`. Read validated parameters through
    `project.Parameters.Get<T>("full-name")`.
-5. Put project-specific paths/settings under `settings` in `.dotasks.yaml`.
+5. Put values shared by tasks under `settings` in `.dotasks.yaml`. Put task-specific
+   paths/data under `targets.<full-name>.settings`, using the task's full identity.
+   `project.Config` applies that task's settings over shared values; nested calls
+   resolve their own settings and do not inherit the caller's overrides.
    Optional top-level `name` and `description` identify the project in summaries;
    they are not keys in `project.Config` or task parameters.
    Add `targets.<full-name>.defaults` only when overriding a parameter default
@@ -256,7 +259,7 @@ launcher to bypass conflicts.
 | Need                       | Use / behavior                                                                                                                       |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Ambient context            | `BuildContext.Current`; no constructor or DI container                                                                               |
-| Shared setting             | `project.Config.Get<T>("key")`; dotted nested keys supported                                                                         |
+| Resolved setting           | `project.Config.Get<T>("key")`; shared values plus current-target settings; dotted nested keys supported                            |
 | Optional setting/parameter | `Contains(key)` or `Get<T>(key, fallback)`; null counts as absent                                                                    |
 | Task input                 | `project.Parameters.Get<T>("full-name")`; aliases are input syntax, not stored keys                                                  |
 | Path setting               | `config.GetPath("output")`; absolute native path rooted at the project                                                               |
@@ -290,7 +293,8 @@ launcher to bypass conflicts.
 - `RunAsync` throws on nonzero exit by default. If disabling `ThrowOnError`,
   inspect the result. Do not silently turn command failure into task success.
 - Nested calls execute each time and receive only explicitly supplied parameters
-  plus their own defaults. They share the configuration snapshot. Await sequential
+  plus their own defaults. They resolve their own target settings from the shared
+  configuration snapshot. Await sequential
   dependencies; dotask does not schedule a dependency graph or deduplicate calls.
 - Optional execution returns `TargetExecutionStatus.Succeeded`, `NotFound`, or
   `Failed`. Child exit 1 is a failure, not absence. Pre-execution failures have a
@@ -387,7 +391,9 @@ verification commands. It does not replace the project's existing workflow.
   These control copying, not execution; no `.task.json` sidecar is used.
 - Use `BuildContext.Current`, `project.Config`, and `project.Parameters`.
   Read typed keys with `Get<T>`/`GetPath`; YAML does not generate C# properties.
-- Keep project-specific settings in YAML; no task registration is required.
+- Keep shared values under `settings` and task data under `targets.<full-name>.settings`
+  in YAML; no task registration is required. `project.Config` resolves shared values
+  plus the current task's overrides. Nested calls resolve the child's settings.
   Top-level `name`/`description` are display metadata, outside `project.Config`.
   Explicit parameters override YAML target defaults, which override header defaults.
 - Call processes with `RunAsync(executable, arguments)` using separate unquoted

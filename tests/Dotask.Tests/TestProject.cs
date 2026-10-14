@@ -63,6 +63,7 @@ public sealed class TestProject : IDisposable
     CliExecutable = RustArtifacts.Binary("dotask"),
     CliArguments = [],
     SessionDirectory = Root,
+    ProjectSettings = JsonSerializer.SerializeToElement(new { }),
     Settings = JsonSerializer.SerializeToElement(new { }),
     Parameters = JsonSerializer.SerializeToElement(new { }),
     TargetDefaults = JsonSerializer.SerializeToElement(new { })

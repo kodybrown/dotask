@@ -17,6 +17,66 @@ fn run(root: &std::path::Path) -> std::process::Output {
 }
 
 #[test]
+fn yaml_steps_use_target_settings_and_nested_calls_keep_the_original_shared_snapshot() {
+  let root = tempfile::tempdir().unwrap();
+  task(
+    root.path(),
+    r#"
+requires: [{kind: setting, value: marker}]
+steps:
+  - id: config
+    file: {operation: read, path: .dotasks.yaml}
+  - file: {operation: write, path: parent.txt, content: {setting: marker}}
+  - file: {operation: write, path: .dotasks.yaml, content: 'settings: {marker: changed}', expected-sha256: {result: config.sha256}}
+  - run: child
+    with: {forwarded: {setting: marker}}
+  - run: tail
+"#,
+  );
+  fs::write(
+    root.path().join(".dotasks.yaml"),
+    r#"
+settings: {marker: shared}
+targets:
+  install:
+    settings: {marker: parent}
+  child:
+    settings: {marker: child, output: child.txt}
+  child.task:
+    settings: {output: qualified.txt}
+"#,
+  )
+  .unwrap();
+  fs::write(
+    root.path().join(".tasks/child.task"),
+    r#"
+options: [{name: forwarded, required: true}]
+requires: [{kind: setting, value: output}]
+steps:
+  - file: {operation: write, path: {setting: output}, content: {setting: marker}}
+  - file: {operation: write, path: forwarded.txt, content: {parameter: forwarded}}
+"#,
+  )
+  .unwrap();
+  fs::write(
+    root.path().join(".tasks/tail.task"),
+    "steps: [{file: {operation: write, path: tail.txt, content: {setting: marker}}}]",
+  )
+  .unwrap();
+  let output = run(root.path());
+  assert!(output.status.success(), "{output:?}");
+  for (path, expected) in [
+    ("parent.txt", "parent"),
+    ("qualified.txt", "child"),
+    ("forwarded.txt", "parent"),
+    ("tail.txt", "shared"),
+  ] {
+    assert_eq!(fs::read_to_string(root.path().join(path)).unwrap(), expected);
+  }
+  assert!(!root.path().join("child.txt").exists());
+}
+
+#[test]
 fn native_yaml_reads_renders_guards_updates_and_calls_tasks_without_a_language_host() {
   let root = tempfile::tempdir().unwrap();
   fs::write(root.path().join("template"), "port={{port}}\n").unwrap();
@@ -89,26 +149,29 @@ fn process_capture_and_json_reads_supply_typed_results() {
   let executable = serde_json::to_string(env!("CARGO_BIN_EXE_dotask")).unwrap();
   task(
     root.path(),
-    &format!(
-      r#"
+    r#"
 steps:
   - id: context
-    file: {{operation: read, path: context.json, format: json}}
+    file: {operation: read, path: context.json, format: json}
   - id: probe
     exec:
-      executable: {executable}
+      executable: {setting: tool}
       arguments: ["__build-info"]
       capture-output: true
-      environment: {{INSTALL_PORT: {{result: context.data.port}}}}
+      environment: {INSTALL_PORT: {result: context.data.port}}
       timeout-seconds: 10
   - file:
       operation: write
       path: result.json
-      content: {{result: probe.output}}
-    when: {{result: context.data.enabled}}
-"#
-    ),
+      content: {result: probe.output}
+    when: {result: context.data.enabled}
+"#,
   );
+  fs::write(
+    root.path().join(".dotasks.yaml"),
+    format!("targets: {{install: {{settings: {{tool: {executable}}}}}}}\n"),
+  )
+  .unwrap();
   let output = run(root.path());
   assert!(output.status.success(), "{output:?}");
   let result: serde_json::Value = serde_json::from_slice(&fs::read(root.path().join("result.json")).unwrap()).unwrap();

@@ -57,6 +57,10 @@ fn invalid_identity_and_configuration_fail_clearly() {
     "settings: [one, two]",
     "unexpected: true",
     "targets: {run: {description: no}}",
+    "targets: {run: {settings: []}}",
+    "targets: {run: {settings: null}}",
+    "targets: {run: {settings: {port: 1, PORT: 2}}}",
+    "targets: {run: {defaults: []}}",
     "settings: &a {next: *a}",
   ] {
     assert!(config(&directory, text).is_err(), "{text}");
@@ -64,6 +68,71 @@ fn invalid_identity_and_configuration_fail_clearly() {
   config(&directory, "settings: {}").unwrap();
   write(&directory.task_directory, "config.yaml", "settings: {}");
   assert!(configuration::load(&directory).unwrap_err().to_string().contains("Both"));
+}
+
+#[test]
+fn target_settings_merge_shared_base_and_qualified_values_without_changing_defaults() {
+  let (_root, directory) = fixture();
+  write(&directory.task_directory, "tools/check.cs", OPTIONS);
+  let target = task_metadata::metadata(&directory.task_directory.join("tools/check.cs"), &directory.task_directory);
+  let value = config(
+    &directory,
+    r#"
+settings:
+  shared: retained
+  nested: {keep: true, port: 80, names: [shared], masked: shared, replaced: scalar}
+targets:
+  tools/check:
+    defaults: {configuration: Release}
+    settings:
+      NESTED: {PORT: 81, names: [base], replaced: {child: base}}
+      local: base
+  tools/check.cs:
+    settings:
+      nested: {port: 82, names: [qualified], masked: null, replaced: {extra: true}}
+  check:
+    settings: {local: wrong-shortcut}
+"#,
+  )
+  .unwrap();
+  let settings = configuration::settings(&value, &target);
+  assert_eq!(settings["shared"], "retained");
+  assert_eq!(settings["local"], "base");
+  assert_eq!(settings["nested"]["keep"], true);
+  assert_eq!(settings["nested"]["port"], 82);
+  assert_eq!(settings["nested"]["names"], json!(["qualified"]));
+  assert_eq!(settings["nested"]["replaced"], json!({"child":"base", "extra":true}));
+  assert!(configuration::find(&settings, "nested.masked").is_none());
+  assert_eq!(configuration::find(&value["Settings"], "nested.port"), Some(&json!(80)));
+  assert_eq!(
+    configuration::bind(&target, &value, &[], &directory.root_directory, false).unwrap()["configuration"],
+    "Release"
+  );
+}
+
+#[test]
+fn setting_requirements_use_the_current_target_and_null_masks_shared_values() {
+  let (_root, directory) = fixture();
+  write(
+    &directory.task_directory,
+    "run.rs",
+    "// dotask: 1\n// requires: [{kind: setting, value: input.file}]\n// end-dotask\n",
+  );
+  let target = task_metadata::metadata(&directory.task_directory.join("run.rs"), &directory.task_directory);
+  for source in [
+    "targets: {run: {settings: {input: {file: source}}}}",
+    "settings: {input: {file: source}}",
+  ] {
+    let value = config(&directory, source).unwrap();
+    assert!(configuration::bind(&target, &value, &[], &directory.root_directory, false).is_ok());
+  }
+  let value = config(
+    &directory,
+    "settings: {input: {file: source}}\ntargets: {run: {settings: {input: null}}}",
+  )
+  .unwrap();
+  assert!(configuration::bind(&target, &value, &[], &directory.root_directory, false).is_err());
+  assert!(configuration::bind(&target, &value, &[], &directory.root_directory, true).is_ok());
 }
 
 #[test]

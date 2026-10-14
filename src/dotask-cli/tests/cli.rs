@@ -91,6 +91,30 @@ fn in_project(root: &std::path::Path, args: &[&str]) -> Output {
 }
 
 #[test]
+fn verbose_help_displays_shared_and_target_settings_without_a_toolchain() {
+  let root = tempfile::tempdir().unwrap();
+  std::fs::create_dir_all(root.path().join(".tasks/_/tools")).unwrap();
+  std::fs::write(root.path().join(".tasks/_/tools/check.cs"), "not valid C#;").unwrap();
+  std::fs::write(
+    root.path().join(".dotasks.yaml"),
+    "settings: {shared: common}\ntargets: {_/tools/check: {settings: {marker: scoped}}}\n",
+  )
+  .unwrap();
+  let output = in_project(root.path(), &["--verbose"]);
+  assert!(output.status.success(), "{output:?}");
+  let text = String::from_utf8(output.stdout).unwrap();
+  for value in [
+    "Settings",
+    "shared: common",
+    "Target settings",
+    "_/tools/check",
+    "marker: scoped",
+  ] {
+    assert!(text.contains(value), "{text}");
+  }
+}
+
+#[test]
 fn rust_help_and_completion_read_metadata_without_any_toolchain() {
   let project = tempfile::tempdir().unwrap();
   std::fs::create_dir(project.path().join(".tasks")).unwrap();

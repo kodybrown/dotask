@@ -872,3 +872,26 @@ acceptance, installation, and publication.
   newline state. A sequential rerun resolved an overlapping smoke-check executable
   lock. Native Linux/macOS/ARM64, elevated interactions and remote CI remain
   pending. No active installation, publication or push occurred.
+
+### 2026-10-14 Target-scoped task settings
+
+- Support `targets.<full-name>.settings` beside option `defaults` for local and
+  shared tasks. Resolve shared values, base-name settings and extension-qualified
+  settings through one native implementation for C#, Rust and YAML tasks,
+  including setting requirements, process/file references and forwarded values.
+- Merge mappings recursively with case-insensitive keys; replace arrays, scalars
+  and nulls. Keep original shared settings separate in the execution transport
+  so nested calls resolve their own overrides from the immutable snapshot,
+  without inheriting caller-specific settings or rereading changed YAML.
+- Display configured target settings in verbose project help. Update the usage,
+  authoring, design and AI references with configuration layout and resolution
+  rules; CLI option defaults remain separately validated and explicitly overridden.
+- Verification: `build.cmd verify --doinstall-tools C:/tmp/_rust/doinstall/target/release`
+  passed on Windows x64: 314 .NET Release tests, 63 Rust/native tests, formatting,
+  clippy, documentation, catalog and whitespace gates. Focused native YAML tests
+  also passed; coverage includes cross-language calls, source-qualified shortcuts,
+  qualified settings, immutable snapshots, required/null settings and native
+  process/file references. Scoped .NET whitespace formatting passed. Evaluated
+  .NET bin/obj/publish and Cargo outputs remain external. No active installation,
+  publishing, deployment or push was performed; native Linux/macOS/ARM64 acceptance
+  for this change remains pending.

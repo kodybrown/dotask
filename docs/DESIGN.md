@@ -158,13 +158,20 @@ nested calls, defaults, and cycle detection share canonical identities.
 A common YAML comment header at the top of each task file
 supplies the description, options, requirements, examples, and capabilities.
 Invalid metadata is isolated to its target. Project YAML configures values and optional defaults, not target registration.
+Each `targets.<full-name>` entry can contain option `defaults` and task-specific
+`settings`. Runtime settings recursively merge shared values, base-name target
+settings and implementation-qualified settings. Arrays/scalars/nulls replace
+earlier values. The native executor owns this resolution for C#, Rust and YAML
+tasks, including setting requirements. Execution transports keep original shared
+settings separate from the resolved view, so nested calls receive their own
+overrides from one immutable snapshot rather than inheriting their caller's data.
 Separate `.task` YAML files declare ordered groups of existing targets; their
 strict metadata parser feeds the same catalog. The executor interprets groups
 directly, preserving cancellation, canonical call chains, child option binding,
 and failure exit codes. No C# compilation is needed for a group itself.
 
 Bare `dotask` and `dotask help` show Targets and the detailed-help hint.
-`--verbose` adds the optional YAML `name`/`description`, shared settings, and
+`--verbose` adds the optional YAML `name`/`description`, shared and target settings, and
 combined target options. Execution verbosity travels in the private context to
 nested calls and emits diagnostics on stderr without altering task parameters. The
 name falls back to the project root directory's name. Identity fields remain

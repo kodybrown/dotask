@@ -130,6 +130,20 @@ pub(crate) fn project(catalog: &Catalog, directory: &Directory, verbose: bool) {
     }
     out.section("Settings");
     settings(&out, &config["Settings"], "  ");
+    let scoped = config["TargetDefaults"]
+      .as_object()
+      .into_iter()
+      .flatten()
+      .filter_map(|(name, entry)| {
+        configuration::get(entry, "settings")
+          .filter(|value| value.as_object().is_some_and(|object| !object.is_empty()))
+          .map(|value| (name.clone(), value.clone()))
+      })
+      .collect::<serde_json::Map<_, _>>();
+    if !scoped.is_empty() {
+      out.section("Target settings");
+      settings(&out, &Value::Object(scoped), "  ");
+    }
     out.row(
       "  tasks: ",
       &quote(&relative(&directory.root_directory, &directory.task_directory)),

@@ -15,6 +15,9 @@ internal sealed record ExecutionContextData
   public required string CliExecutable { get; init; }
   public required string[] CliArguments { get; init; }
   public required string SessionDirectory { get; init; }
+  // The CLI retains shared data separately from Settings, the current target's
+  // resolved view, so a nested call can resolve its own overrides.
+  public required JsonElement ProjectSettings { get; init; }
   public required JsonElement Settings { get; init; }
   public required JsonElement Parameters { get; init; }
   public required JsonElement TargetDefaults { get; init; }

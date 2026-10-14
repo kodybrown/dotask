@@ -19,6 +19,9 @@ pub(crate) struct Context {
   cli_executable: PathBuf,
   cli_arguments: Vec<String>,
   session_directory: PathBuf,
+  // Keep project-wide data separate so nested calls cannot inherit the
+  // caller's target overrides. Settings is the current target's resolved view.
+  project_settings: Value,
   settings: Value,
   parameters: Value,
   target_defaults: Value,
@@ -86,10 +89,11 @@ impl Executor {
     chain.push(target.name.clone());
     self.trace(&format!("Target: {}; source: {}", target.name, target.file_path.display()));
     let parameters = self.bind(target, args, session, false)?;
+    let settings = crate::configuration::settings(&self.configuration, target);
     if let Some(group) = &target.group {
       let mut executed = 0;
       let mut results = serde_json::Map::new();
-      let settings = &self.configuration["Settings"];
+      let settings = &settings;
       for step in &group.steps {
         if let Some(condition) = &step.when {
           let condition = crate::bindings::resolve(condition, &results)?;
@@ -208,7 +212,8 @@ impl Executor {
       cli_executable: std::env::current_exe()?,
       cli_arguments: Vec::new(),
       session_directory: session.to_path_buf(),
-      settings: self.configuration["Settings"].clone(),
+      project_settings: self.configuration["Settings"].clone(),
+      settings,
       parameters,
       target_defaults: self.configuration["TargetDefaults"].clone(),
       verbose: self.verbose,
@@ -253,7 +258,7 @@ pub(crate) fn execute_call(path: &Path) -> Result<i32> {
   }
   let executor = Executor {
     directory: context.directory,
-    configuration: json!({ "Settings": context.settings, "TargetDefaults": context.target_defaults }),
+    configuration: json!({ "Settings": context.project_settings, "TargetDefaults": context.target_defaults }),
     verbose: context.verbose,
   };
   let session = &context.session_directory;

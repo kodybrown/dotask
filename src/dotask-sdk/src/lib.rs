@@ -93,6 +93,7 @@ impl BuildContext {
   pub fn parameters(&self) -> &Value {
     &self.data["Parameters"]
   }
+  /// Shared project settings with this target's settings applied by the CLI.
   pub fn settings(&self) -> &Value {
     &self.data["Settings"]
   }

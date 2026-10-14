@@ -81,11 +81,11 @@ pub(crate) fn load(directory: &Directory) -> Result<Value> {
     bail!("{source} settings and targets must be mappings.");
   }
   for (name, target) in targets.as_object().unwrap() {
-    if target
-      .as_object()
-      .is_none_or(|o| o.iter().any(|(k, v)| !k.eq_ignore_ascii_case("defaults") || !v.is_object()))
-    {
-      bail!("{source} targets.{name} only supports a defaults mapping.");
+    if target.as_object().is_none_or(|o| {
+      o.iter()
+        .any(|(k, v)| !(k.eq_ignore_ascii_case("defaults") || k.eq_ignore_ascii_case("settings")) || !v.is_object())
+    }) {
+      bail!("{source} targets.{name} only supports defaults and settings mappings.");
     }
   }
   let text = |key: &str| -> Result<Option<String>> {
@@ -120,6 +120,33 @@ pub(crate) fn target_defaults(config: &Value, target: &Target) -> Result<Map<Str
     values.insert(key, value);
   }
   Ok(values)
+}
+/// Resolve from the shared snapshot, never from the caller's effective settings.
+/// Literal target identities are looked up as whole keys, including dots in
+/// extension-qualified names. Only setting paths use dotted traversal.
+pub(crate) fn settings(config: &Value, target: &Target) -> Value {
+  let mut values = config["Settings"].clone();
+  let qualified = target.qualified_name();
+  for name in [target.base_name(), qualified.as_str()] {
+    if let Some(overrides) = get(&config["TargetDefaults"], name).and_then(|entry| get(entry, "settings")) {
+      merge_settings(&mut values, overrides);
+    }
+  }
+  values
+}
+fn merge_settings(values: &mut Value, overrides: &Value) {
+  // Merge mappings recursively; lists, scalars and explicit nulls replace the
+  // inherited value. Null therefore masks a shared value instead of reviving it.
+  if let (Some(values), Some(overrides)) = (values.as_object_mut(), overrides.as_object()) {
+    for (key, value) in overrides {
+      let previous = values.keys().find(|k| same_key(k, key)).cloned();
+      let mut merged = previous.and_then(|k| values.remove(&k)).unwrap_or(Value::Null);
+      merge_settings(&mut merged, value);
+      values.insert(key.clone(), merged);
+    }
+  } else {
+    *values = overrides.clone();
+  }
 }
 pub(crate) fn option<'a>(target: &'a Target, name: &str) -> Option<&'a Value> {
   target.options.iter().find(|o| {
@@ -199,7 +226,7 @@ pub(crate) fn bind(target: &Target, config: &Value, args: &[String], root: &Path
     values.insert(name.into(), convert(option, value.as_str().unwrap(), root)?);
   }
   if !help {
-    requirements(target, config, root)?;
+    requirements(target, &settings(config, target), root)?;
   }
   Ok(Value::Object(values))
 }
@@ -231,7 +258,7 @@ pub(crate) fn convert(option: &Value, value: &str, root: &Path) -> Result<Value>
   };
   converted.ok_or_else(|| anyhow::anyhow!("Invalid {kind} value for --{name}: '{value}'."))
 }
-fn requirements(target: &Target, config: &Value, root: &Path) -> Result<()> {
+fn requirements(target: &Target, settings: &Value, root: &Path) -> Result<()> {
   for r in target
     .metadata
     .get("Requirements")
@@ -242,7 +269,7 @@ fn requirements(target: &Target, config: &Value, root: &Path) -> Result<()> {
     let kind = r["Kind"].as_str().unwrap();
     let value = r["Value"].as_str().unwrap();
     let valid = match kind {
-      "setting" => find(&config["Settings"], value).is_some(),
+      "setting" => find(settings, value).is_some(),
       "tool" => tool_exists(value, root),
       "os" => value.split(',').any(|v| {
         v.trim().eq_ignore_ascii_case(if cfg!(windows) {
