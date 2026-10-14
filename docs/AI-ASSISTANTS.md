@@ -194,11 +194,18 @@ the library before claiming it exists. Ordinary .NET APIs can fill gaps.
 ## Rules that prevent common mistakes
 
 For installation tasks, read [the installation contract](INSTALLATION.md).
-The shared `_/installer/install` always invokes `create-installer`,
-then runs its returned `InstallerArtifact`. It does not publish or copy the
-application itself. `create-installer` must build only, then call
-`SetInstallerResultAsync` once. Use `CreateInstallerAsync` and `RunInstallerAsync`
-for custom orchestration; do not scrape stdout or guess artifact paths.
+The shared `_/installer/install` finds an existing installer using
+`settings.installer.installer_file`, a literal path or version template. It never
+calls a creation task; build-task names are unrestricted. When unconfigured it
+prints a YAML example, offers valid recorded output or bounded project discovery,
+and prompts before saving a suggestion or placeholder. Without a terminal it
+fails with guidance and makes no changes. Never silently rewrite user settings.
+After all packaging steps pass, call `RecordInstallerAsync` (Rust:
+`record_installer`) to save the successful artifact separately under
+`artifacts/.dotask/installers/`. Keep that local state ignored. Returning an
+invocation result with `SetInstallerResultAsync` is a separate operation.
+Use `CreateInstallerAsync` and `RunInstallerAsync` for custom build-and-run
+orchestration; do not scrape stdout or infer arbitrary output paths.
 `installer-args` is a JSON string array replacing default installer arguments.
 An exact project `install` can delegate to `_/installer/install` explicitly.
 The console installer prompts by default. For unattended execution, pass
@@ -217,13 +224,16 @@ The creator chooses which project settings become installer configuration;
 project identity is not copied implicitly. `application.name`, `description`,
 and optional `copyright` supply the interactive console banner. Shortcut
 declarations grant permissions while defaults choose the initial answers.
-Group shared installer settings under `settings.installer` using `config`
-and `output`; accessors use dotted keys such as `installer.config`. Separately
+Group shared installer settings under `settings.installer`: `config` and `output`
+control creation; `installer_file`, optional `select: highest-version`, `kind`
+and `installer_args` control existing-output selection/launch. Accessors use
+dotted keys such as `installer.config`. Separately
 supplied tool selections belong under `settings.doinstall.builder` and
 `settings.doinstall.installer`; `source` is only an explicit development helper.
-Dotask's own stable source template is `.tasks/installer.yaml`. Its local creator
-builds the native app plus helper DLL/SDK payload, fills dynamic metadata in a
-temporary config, and delegates actual packaging to the shared creator. Other
+Dotask's own stable source template is `.tasks/installer.yaml`. Its local
+`create-dotask-installer` task builds/verifies the external tools and dotask,
+then delegates build/gather/packaging and successful-output recording to the
+shared creator. There is no local `create-installer` wrapper. Other
 applications keep their own build wrapper and installer configuration.
 Application versions are not constrained to dotask's calendar convention.
 Supply `application.build.stamp` and optional `commit` to align package and

@@ -242,6 +242,9 @@ fn task(project: &BuildContext) -> Result<()> {
   } else {
     "installer"
   }))?;
+  // Publishing a return value is invocation-local. Record only after every
+  // requested packaging/archive step succeeds, for later parameterless install.
+  project.record_installer(&artifact)?;
   project.set_installer_result(&artifact)
 }
 fn settings(prefix: &str, value: &Value, variables: &mut BTreeMap<String, Value>) {

@@ -840,3 +840,35 @@ acceptance, installation, and publication.
   guards, JSON results, invalid capture publication, timeouts, and metadata-only
   POSIX-mode help. Evaluated MSBuild outputs remain under C:/tmp/_dotnet.
   Native Linux/macOS/ARM64 acceptance remains pending.
+
+### 2026-10-14 Existing-installer selection and guided setup
+
+- Make shared `installer/install` run an existing `installer.installer_file`
+  literal path or host/version template without invoking a creation task.
+  Select numeric highest versions, reject equal-version ambiguity, preserve exact
+  argument tokens, and honor native Windows EXE activation manifests.
+- Add explicit Rust/C# successful-build recording with shared, atomic per-host
+  state and SHA-256 validation under ignored `artifacts/.dotask/installers/`.
+  The doinstall creator records only after its complete packaging sequence passes;
+  invocation results and user configuration remain separate.
+- Add bounded project discovery and terminal setup when configuration is absent.
+  Show examples and candidates, confirm use/save, infer a starting template or
+  offer an editable placeholder. Preserve comments/BOM/EOL/final-newline state;
+  refuse unsupported YAML, concurrent edits, linked state and legacy-config
+  conflicts. Redirected execution fails with guidance without changes or launch.
+- Consolidate local creation in `create-dotask-installer`, remove the redundant
+  local `create-installer` wrapper, and use the complete workflow in CI. Update
+  installer/SDK/agent references, shared catalog, identical installed sources
+  and tool-managed tracking; doinstall remains independently installed.
+- Verification: `build.cmd create-dotask-installer` passed doinstall's 100 Rust
+  tests, dotask's 312 .NET Release and 59 Rust tests, formatting/clippy/docs/
+  catalog/whitespace gates and actual packaging on Windows x64. Eight focused
+  .NET tests, nine SDK unit tests, separate .NET whitespace formatting and 82
+  local Markdown links/anchors passed; evaluated outputs remain external.
+  Package validation, temporary install/launch, installed C#/Rust recording
+  through a junction path, parameterless consumer install, and retained uninstall
+  passed without active-install or user-PATH changes. Real terminal discovery,
+  template save/use and placeholder setup preserved comments/BOM/CRLF/final
+  newline state. A sequential rerun resolved an overlapping smoke-check executable
+  lock. Native Linux/macOS/ARM64, elevated interactions and remote CI remain
+  pending. No active installation, publication or push occurred.

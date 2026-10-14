@@ -1,10 +1,11 @@
 # Application installers
 
-`dotask install` creates and runs a fresh installer for console and GUI applications.
+`dotask install` finds and runs an existing installer for console and GUI applications.
 The shared adapters live under `_/doinstall/`, with generic launching under
 `_/installer/`; they support arbitrary application payloads. Application builds
 remain project-specific.
-Custom `create-installer` targets and other installer technologies remain supported.
+It never builds the application or invokes a creation task. Projects can use
+doinstall, Inno Setup, or another installer tool, with any names for their build tasks.
 
 Dotask and doinstall tooling are installed separately. Dotask's application
 payload contains its command and SDK helpers; packaging does not download or
@@ -14,7 +15,78 @@ Consumer projects supply their own doinstall runtime/builder pair. The native CL
 has no doinstall-specific behavior; optional shared tasks invoke its ordinary
 command-line interface, just like adapters for other external utilities.
 
-## Where installer configuration comes from
+## Find and run an existing installer
+
+Install the optional `_/installer/install` shared task, then configure a literal
+project-relative or absolute file path, or a template in `.dotasks.yaml`:
+
+```yaml
+settings:
+  installer:
+    installer_file: './artifacts/installers/${os}-${arch}/MyApp-${version}-${hash}${dirty}/installer${exe-extension}'
+    select: highest-version
+```
+
+`${os}`, `${arch}`, and `${exe-extension}` resolve to the current host (for
+example, `windows`, `x64`, `.exe`). `${version}` matches a numeric dotted version
+with optional prerelease/build metadata; `${hash}` matches a 7–64 character
+hexadecimal revision; `${dirty}` matches an empty string or `-dirty`. Use only
+the captures present in your naming scheme. Each capture may appear once.
+Up to four `*` wildcards match within a single path component. Other placeholders
+are errors. The file name can be `setup.exe`, an MSI, or another supported kind;
+it need not be named `installer.exe`.
+
+The only selection policy is `highest-version` (the default). Numeric version
+components are compared numerically, with prereleases before the corresponding
+release; build metadata does not affect precedence. A pattern without a version
+must match exactly one file. Equal highest versions, including different Git
+hashes or clean/dirty builds, are ambiguous and fail with the matching paths.
+Neither file timestamps nor revision hashes break ties. A configured path or
+template is authoritative: no matching file is an error, even if a build record
+exists. Template searches are bounded to 20,000 entries and skip linked paths.
+
+The default kind comes from the file extension (`.msi`, `.sh`, `.dll`, otherwise
+executable), or from matching recorded metadata. Optional `kind` overrides it
+with `executable`, `msi`, `shell-script`, or `dotnet-assembly`. Optional
+`installer_args` is a YAML string array of default argument tokens. The CLI
+option `--installer-args '["--quiet"]'` replaces those defaults exactly.
+
+### Successful-build records and first-run setup
+
+After **all** packaging steps succeed, a task can call Rust
+`project.record_installer(&artifact)?` or C#
+`await project.RecordInstallerAsync(artifact);`. The shared doinstall creator
+does this automatically after its build/gather/archive sequence. Other tools can
+record the same generic artifact. The SDK writes
+`artifacts/.dotask/installers/<os>-<arch>.json`, separately from user settings,
+with artifact metadata, a SHA-256 digest and completion time. Keep this local
+state out of version control. Returning an invocation result alone does not
+record a build; failed creation leaves the previous record intact. Record writes
+are atomic and serialized per platform, and refuse unrecognized existing state.
+An absent or changed recorded output is rejected when using that record.
+
+When `installer_file` is missing, `install` prints a clear example. It first
+offers a valid recorded build; otherwise it searches the project for common
+`installer`/`setup` executable names and MSI files. Discovery excludes hidden,
+dependency, build-output, payload, SDK and receipt-bearing installation
+directories, and skips links. It stops at depth 12, 20,000 entries or 50
+candidates. It does not guess which of several candidates you intended.
+
+In a terminal, select/confirm an installer, review the suggested path/template,
+then choose whether to save it. Saving adds only the missing property, preserving
+comments, UTF-8 BOM, line endings and final-newline state. Unsupported YAML
+layouts and concurrent edits fail with manual guidance. Legacy task-directory
+configuration must be moved explicitly before creating a root configuration.
+Declining to save can still launch the installer you confirmed. With no candidate,
+setup offers to add an editable `YOUR-APP` placeholder and explains what to change.
+Cancellation or EOF launches nothing. Without an interactive terminal, missing
+configuration prints instructions/candidates and fails without edits or launch.
+
+Discovery suggestions are a starting point; review the path before accepting it.
+For predictable unattended use, configure `installer_file` explicitly. Installer
+creation, last-successful-build recording and installation remain separate actions.
+
+## Where build configuration comes from
 
 The source `.tasks/installer.yaml` separates three responsibilities:
 
@@ -44,6 +116,7 @@ settings:
   installer:
     config: .tasks/installer.yaml
     output: artifacts/installers
+    installer_file: './artifacts/installers/${os}-${arch}/example-${version}-${hash}${dirty}/installer${exe-extension}'
 ```
 
 Version tokens use UTC: `yyyy`, `yy`, `MM` (month), `dd` (day), `DDD` (day of
@@ -159,10 +232,9 @@ Rust/Cargo when executed. Converting those dynamic workflows is separate work.
 
 The shared creator accepts `installer.config` (`--config`) and
 `installer.output` (`--output`), with optional `--app-version` and `--build-stamp`
-overrides. Paths are project-relative or absolute. A project `create-installer`
-can call the shared creator and forward its `InstallerArtifact`. The shared
-`install` task requires that creator, waits for it to succeed, then runs the
-returned artifact with its exact argument tokens.
+overrides. Paths are project-relative or absolute. A project task can call the
+shared creator and forward its `InstallerArtifact`; its name is unrestricted.
+Creation records successful output for guided setup but never launches it.
 
 Packages live beneath
 `<output>/<os>-<architecture>/<app-id>-<version>[-<revision>][-dirty]/` and contain:
@@ -223,26 +295,24 @@ cd C:\Users\kodyb\Projects\dotask
 
 Unix uses `./build.sh create-dotask-installer`. This local Rust task builds and
 stages the configured doinstall checkout, runs its full verification gate, runs
-dotask's full gate against the staged pair, then calls `create-installer` with
+dotask's full gate against the staged pair, then calls `_/doinstall/create-installer` with
 those exact binaries. Any failure stops later steps. Tools are temporary and stay
-outside source and deliverables; the task returns an `InstallerArtifact` and
+outside source and deliverables; the task records and returns an `InstallerArtifact` and
 does not launch it. No environment or project settings are rewritten. Select a
 different checkout with `--source`; otherwise the build helper uses
 `DOINSTALL_SOURCE` or `settings.doinstall.source` (`../doinstall` here).
 `--app-version` and `--build-stamp` forward to packaging. This task is local to
 dotask and is not distributed through the shared catalog.
 
-To use an already-prepared tool pair instead, keep using `create-installer`:
-
-The local Rust `create-installer` task delegates to
-`_/doinstall/create-installer`. Its `.tasks/installer.yaml` build steps
+This is the single local installer-creation entry point; there is no local
+`create-installer` wrapper. The shared creator's `.tasks/installer.yaml` build steps
 run `build` to prepare the native app and SDKs, gather the declared files, and call
 `_/doinstall/assemble`. Optional archive steps follow. There is no local
 `pack` task; `_/dotnet/pack` remains a NuGet task for consuming C# projects.
 Tool selection comes from `--builder` / `--installer` or `settings.doinstall`
-as described above. Missing runtime paths fail before building dotask. Creating
-its installer never automatically builds doinstall. The source-build helper is
-an explicit development convenience, not a consumer prerequisite.
+as described above when invoking the shared creator directly with prebuilt tools.
+The complete local workflow explicitly builds doinstall; consumer projects can
+use the independent prebuilt tools without its source checkout.
 
 `build-sdks` publishes the maintained C# helper using evaluated MSBuild
 `PublishDir`, then copies the Rust SDK selections from `.tasks/sdks.yaml`.
@@ -256,20 +326,22 @@ No language runtime, SDK, Roslyn, or managed support host is bundled.
 .\build.cmd                         # Bootstrap and list available tasks.
 $env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt, host-matching pair.
 .\build.cmd verify                  # Includes external adapter integration.
-.\build.cmd create-installer --builder "$env:DOINSTALL_TOOL_DIR/doinstall-builder.exe" --installer "$env:DOINSTALL_TOOL_DIR/doinstall.exe"
+.\build.cmd create-dotask-installer # Complete build, verification and packaging.
+# Or invoke the optional shared adapter directly with a prebuilt pair:
+.\build.cmd _/doinstall/create-installer --builder "$env:DOINSTALL_TOOL_DIR/doinstall-builder.exe" --installer "$env:DOINSTALL_TOOL_DIR/doinstall.exe"
 # Use fresh, isolated locations for acceptance:
 # Run the generated installer.exe with --non-interactive --set add-to-path=false
 # --install-dir C:/Temp/dotask-acceptance/apps/dotask --bin-dir C:/Temp/dotask-acceptance/bin
 ```
 
-For repeated `dotask install` calls, configure `settings.doinstall.builder` and
-`settings.doinstall.installer` in `.dotasks.yaml`; the generic install target does
-not forward tool-selection options. Unix uses actual tool paths without `.exe`.
+After creation, `build.cmd install` finds the existing output using the checked-in
+`installer_file` template. It does not need doinstall build tools or source.
+Unix uses actual tool paths without `.exe`.
 `verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
 over `DOINSTALL_TOOL_DIR`. Both require a prebuilt tool pair and fail when it is
 absent. If developing against source, explicitly run
 `build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. CI performs
-that preparation as a separate step from verification and packaging.
+the complete `create-dotask-installer` workflow on each host OS.
 
 Unix uses `./build.sh`. Both launchers forward arbitrary arguments to a temporary
 native runner; no task whitelist is maintained. The Rust source SDK is available
@@ -301,10 +373,19 @@ shortcut generation, or shell command inference in the shared task.
 - `CreateInstallerAsync(target = "create-installer", parameters = null, cancellationToken)`
   builds and returns the artifact using normal target resolution and parameter binding.
 - `SetInstallerResultAsync(artifact, cancellationToken)` returns one artifact.
+- `RecordInstallerAsync(artifact, cancellationToken)` explicitly records a
+  successful build for later discovery; it never edits `.dotasks.yaml`.
 - `RunInstallerAsync(artifact, arguments = null, cancellationToken)` runs it;
   null uses defaults, while an explicit list replaces them.
 - `InstallerRunner.ParseArguments(json)` decodes argument tokens for task options.
 - `InstallerRunner.RunAsync` also works outside an ambient task context.
+
+Rust equivalents are `create_installer`, `set_installer_result`,
+`record_installer`, and `run_installer`. `find_installer()` is read-only: resolve
+the configured path/template, or return a validated successful-build record when
+no setting exists. `install(arguments)` adds the shared task's terminal setup
+flow and launching. C# tasks can record outputs for that same shared task;
+guided setup and template selection are implemented in the Rust task SDK.
 
 Launches use the artifact’s parent as the working directory and wait for the
 launched process. Windows executable installers use shell activation, honoring

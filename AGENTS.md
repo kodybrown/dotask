@@ -146,8 +146,11 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   project/target help reads YAML and checks effective defaults.
 - CLI-only `--help`/`-h` skips project discovery and reads; target completion skips project configuration; management completion stays local.
 - Keep YAML declarative and keep services deferred.
-- Shared `installer/install` requires a `create-installer` returning an
-  `InstallerArtifact`, then launches it. It never falls back to copying files.
+- Shared `installer/install` launches an existing `installer.installer_file`
+  path/template and never invokes a creation task. Missing configuration offers
+  guided setup using explicit successful-build records or bounded discovery.
+  Record successful builds through the SDK only after all packaging steps pass;
+  keep records separate from user configuration. It never copies application files.
   The external doinstall runtime uses YAML receipts and preserves
   existing ownership; payload selection stays in `.tasks/installer.yaml`. See `docs/INSTALLATION.md`.
   Preserve installation ownership, immutable builds, and activation recovery journals.

@@ -164,7 +164,7 @@ public sealed class RustInstallerWorkflowTests
       }
     });
     var config = project.Write("installer.yaml", sourceConfig.ToJsonString());
-    project.Write(".tasks/create-installer.rs", """
+    project.Write(".tasks/package-gui.rs", """
       use dotask_sdk::{json, BuildContext, Result};
       fn main() { dotask_sdk::run(task); }
       fn task(project: &BuildContext) -> Result<()> {
@@ -175,10 +175,16 @@ public sealed class RustInstallerWorkflowTests
     project.Write(".dotasks.yaml", JsonSerializer.Serialize(new {
       version = 1,
       settings = new Dictionary<string, object> {
-        ["installer"] = new { config, output = Path.Combine(project.Root, "packages") },
+        ["installer"] = new {
+          config,
+          output = Path.Combine(project.Root, "packages"),
+          installer_file = "packages/${os}-${arch}/gui-probe-${version}/installer${exe-extension}"
+        },
         ["doinstall"] = new { builder, installer = engine }
       }
     }));
+    var packageResult = await project.RunAsync("package-gui");
+    Assert.True(packageResult.ExitCode == 0, packageResult.StandardOutput + packageResult.StandardError);
     var installation = await project.RunAsync("install");
     Assert.True(installation.ExitCode == 0, installation.StandardOutput + installation.StandardError);
     var packagedConfig = Assert.Single(Directory.EnumerateFiles(Path.Combine(project.Root, "packages"), "installer.yaml", SearchOption.AllDirectories));

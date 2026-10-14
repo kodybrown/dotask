@@ -7,7 +7,7 @@
 // requires:
 //   - { kind: task, value: _/doinstall/build }
 //   - { kind: task, value: verify }
-//   - { kind: task, value: create-installer }
+//   - { kind: task, value: _/doinstall/create-installer }
 // examples: [dotask create-dotask-installer, dotask create-dotask-installer --source ../doinstall]
 // remarks: Checkout-local workflow. Runs both full verification gates before packaging; never installs the result.
 // end-dotask
@@ -41,6 +41,6 @@ fn task(project: &BuildContext) -> Result<()> {
       parameters[name] = value.into();
     }
   }
-  let artifact = project.create_installer("create-installer", parameters)?;
+  let artifact = project.create_installer("_/doinstall/create-installer", parameters)?;
   project.set_installer_result(&artifact)
 }

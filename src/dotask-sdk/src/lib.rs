@@ -10,6 +10,7 @@ use std::{
   process::{Command, Stdio},
 };
 pub use tempfile;
+pub mod installers;
 
 #[derive(Debug)]
 pub struct ProcessFailure(pub i32);
@@ -181,10 +182,28 @@ impl BuildContext {
       artifact,
     )
   }
+  /// Record a completed build for later parameterless installation. Call only
+  /// after all packaging steps succeed; returning an invocation result is separate.
+  pub fn record_installer(&self, artifact: &Value) -> Result<()> {
+    installers::record(self, artifact)
+  }
+  /// Resolve configured installer selection, or the last successful build.
+  /// This operation is read-only and never performs heuristic discovery or edits configuration.
+  pub fn find_installer(&self) -> Result<Option<Value>> {
+    installers::find(self)
+  }
+  /// Run the configured installer, offering guided setup only in a terminal.
+  pub fn install(&self, arguments: Option<&[String]>) -> Result<()> {
+    installers::install(self, arguments)
+  }
   pub fn installer_artifact(&self, file: &Path) -> Result<Value> {
-    let artifact = json!({"FilePath":file,"Kind":0,"OS":match self.os() { "windows"=>0,"linux"=>1,"macos"=>2,_=>3 },"Architecture":match self.architecture() { "x64"=>1,"arm64"=>3,_=>-1 },"DefaultArguments":[]});
+    let mut artifact = self.installer_artifact_shape();
+    artifact["FilePath"] = json!(file);
     validate_installer(&artifact, self)?;
     Ok(artifact)
+  }
+  pub(crate) fn installer_artifact_shape(&self) -> Value {
+    json!({"Kind":0,"OS":match self.os() { "windows"=>0,"linux"=>1,"macos"=>2,_=>3 },"Architecture":match self.architecture() { "x64"=>1,"arm64"=>3,_=>-1 },"DefaultArguments":[]})
   }
   /// Launch the returned installer with exact argument tokens and its own directory.
   pub fn run_installer(&self, artifact: &Value, arguments: Option<&[String]>) -> Result<()> {
@@ -199,6 +218,10 @@ impl BuildContext {
     let arguments = arguments.unwrap_or(&defaults);
     if arguments.iter().any(|arg| arg.contains('\0')) {
       bail!("Installer arguments cannot contain NUL");
+    }
+    #[cfg(windows)]
+    if artifact["Kind"] == 0 {
+      return check(installers::run_windows_executable(file, arguments)?);
     }
     let mut command = match artifact["Kind"].as_i64().unwrap() {
       0 => self.command(file),

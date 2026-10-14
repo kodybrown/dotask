@@ -3,6 +3,49 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Existing-installer selection and guided setup (2026-10-14)
+
+On Windows x64, `build.cmd create-dotask-installer` completed the whole local
+workflow: doinstall's 100 Rust tests at source revision `e5b14d0`, dotask's full
+gate with 312 .NET Release tests and 59 Rust tests, rustfmt/clippy, documentation,
+catalog freshness, whitespace checks, and actual packaging. The redundant local
+`create-installer` wrapper is gone. Canonical and installed shared sources match,
+with tool-managed tracking and regenerated catalog hashes.
+An earlier overlapping smoke check held the live Cargo executable and blocked
+packaging on Windows; the sequential bootstrap rerun above passed.
+
+Eight focused .NET installer/adapter tests and nine SDK unit tests passed.
+Coverage includes creation under an arbitrary task name, absence of implicit
+creation during install, numeric versions/prereleases, equal-version ambiguity,
+bounded matching/discovery, explicit successful-build records, changed/unknown
+state refusal, exact argument tokens and failure propagation. Guided setup tests
+cover save/decline/EOF, placeholders, noninteractive guidance, concurrent edits,
+legacy configuration conflicts, and source-preserving insertion including empty
+`settings: {}` from initialization. Separate .NET whitespace formatting and 82
+local Markdown links/anchors passed. Evaluated MSBuild output/intermediate/
+publish paths remain under `C:\tmp\_dotnet`; Cargo remains under
+`C:\tmp\_rust\dotask\target`.
+
+The generated package `dotask-0.1.26287.1803-3d4e6d6-dirty` passed its runtime
+`--validate` check. Its successful-build digest matches the installer and its
+shipped Rust installer module matches source. The payload excludes doinstall and
+its builder. A copied complete dotask command ran the project's configured
+`install` with explicit temporary app/bin roots and `add-to-path=false`.
+The installed command launched and used its shipped C#/Rust SDKs to write/read
+the same build record from a consumer project under a Windows junction ancestor.
+Parameterless consumer `install` ran a harmless native fixture using defaults;
+both project configuration and build records remained byte-identical. User PATH
+was unchanged by installation. The retained uninstaller removed the temporary
+app and launcher; its temporary running-engine copy was removed after exit.
+
+Real Windows terminal sessions confirmed discovery, template suggestion,
+confirmed save/use, and missing-installer placeholder creation. Comments, UTF-8
+BOM, CRLF and absent final newline survived. The placeholder requires editing;
+an unattended retry failed without launching or changing it. Current-workflow
+temporary tool staging was removed; pre-existing unrelated temporary files were
+preserved. Native Linux/macOS/ARM64, elevated UAC/MSI interactions, and remote CI
+acceptance remain pending. No active installation, publication or push occurred.
+
 ## Declarative archive tasks (2026-10-13)
 
 On Windows x64, `build.cmd verify --doinstall-tools C:/tmp/_rust/doinstall/target/release`

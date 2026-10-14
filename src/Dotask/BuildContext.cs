@@ -64,6 +64,14 @@ public sealed class BuildContext
     await ContextFile.WriteToAsync(System.IO.Path.Combine(_data.SessionDirectory, "installer-result.json"), artifact, linked.Token);
   }
 
+  /// <summary>Record a successfully completed installer build for later discovery.
+  /// Call after all packaging steps succeed. Does not edit project configuration.</summary>
+  public async Task RecordInstallerAsync( InstallerArtifact artifact, CancellationToken cancellationToken = default )
+  {
+    using var linked = CancellationTokenSource.CreateLinkedTokenSource(CancellationToken, cancellationToken);
+    await InstallerRecords.RecordAsync(this, artifact with { FilePath = Path(artifact.FilePath) }, linked.Token);
+  }
+
   /// <summary>Run an installer with its defaults, or replace those defaults with explicit argument tokens.</summary>
   public async Task<ProcessResult> RunInstallerAsync( InstallerArtifact artifact, IReadOnlyList<string>? arguments = null,
     CancellationToken cancellationToken = default )

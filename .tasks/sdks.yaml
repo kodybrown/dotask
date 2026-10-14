@@ -5,4 +5,4 @@ dotnet:
   files: [Dotask.dotnet.dll]
 rust:
   directory: src/dotask-sdk
-  files: [Cargo.toml, src/lib.rs]
+  files: [Cargo.toml, src/lib.rs, src/installers.rs]

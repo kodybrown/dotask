@@ -65,7 +65,7 @@
         },
         {
           "path": "doinstall/create-installer.rs",
-          "sha256": "9068a2b475eea9b0c3d87c2bf601bda611b16767810096881b97bd6a79216088"
+          "sha256": "602ac05a8156c6ff67335495d85e3b3e8765e6c113d8b7dd4eca9c5bc6be6749"
         }
       ],
       "requires": []
@@ -231,12 +231,12 @@
     {
       "id": "installer/install",
       "entryPoint": "installer/install.rs",
-      "description": "Create and run the project's installer for this OS and architecture.",
+      "description": "Find and run the project's existing installer with optional guided configuration.",
       "runtime": "rust",
       "files": [
         {
           "path": "installer/install.rs",
-          "sha256": "0c34f54789de6e37495ccba92dc2290464c207075927cc6e1ca4cedc5fa92a53"
+          "sha256": "f60e5bcc35beba51c44f3311dfcb3066f3e15549cdee435f6c7db87e64194891"
         }
       ],
       "requires": []

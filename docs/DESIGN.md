@@ -103,8 +103,8 @@ step with `:back`. Native configuration preserves quoted scalars, rejects duplic
 keys regardless of case, and bounds nesting and alias expansion.
 
 The Windows scope now combines Rust task authoring with bootstrap and packaging
-cutover. Repository orchestration tasks are `.rs` files, including `pack` and
-`create-installer`; shared C# tasks and their authoring library remain maintained.
+cutover. Repository orchestration includes `.rs` files such as
+`create-dotask-installer`; shared C# tasks and their authoring library remain maintained.
 Rust tasks declare leading ordinary-comment YAML metadata and compile through isolated,
 content-addressed manifests/source snapshots outside the project. SDK dependencies
 are pinned; Cargo retains a lockfile per snapshot and checks compiler fingerprints.
@@ -264,13 +264,26 @@ merge, source naming, and preview publishing contracts.
 
 ## Application installation
 
-The shared `_/installer/install` coordinates `create-installer`
-and launches its structured `InstallerArtifact`. Console and GUI apps use the
-same contract; there is no direct-copy fallback or search for existing packages.
-Creation and launching are separate, and invocation-scoped results prevent stale
-handoffs. The library validates platform identity and launches supported installer
-kinds with tokenized defaults or explicit replacements. Projects own packaging,
-installer UI/elevation requirements, shortcuts, and application lifecycle.
+The shared `_/installer/install` selects an existing installer through a literal
+`installer.installer_file` or host/version template. Numeric version precedence
+selects the highest version; equal-version builds remain ambiguous. Selection
+never relies on timestamps, orders hashes, or invokes a creation task. Creation
+task names are unrestricted. The library validates platform identity and launches
+supported installer kinds with tokenized defaults or explicit replacements.
+Projects own packaging, installer UI/elevation requirements, shortcuts, and
+application lifecycle; application copying is not an installation fallback.
+
+Explicit SDK calls record only successful completed builds, atomically and per
+platform under ignored `artifacts/.dotask/installers/`. Metadata and a digest
+allow guided setup to reject missing/changed recorded output; invocation results
+remain separate. A configured path/template is authoritative. When configuration
+is absent, setup prefers a valid record, then bounded project discovery. A
+terminal user confirms the installer and may save a suggested template or add an
+editable placeholder. Noninteractive calls print guidance and fail. User YAML
+is never rewritten on builds or reads: confirmed setup performs a surgical,
+source-preserving insertion, rejects unsupported layouts/concurrent changes,
+and leaves legacy configuration consolidation explicit. This policy lives in
+the optional task SDK, leaving CLI discovery and help metadata-only.
 
 Dotask's creator publishes its application and packages the Rust engine, YAML,
 and payload using the shared creator. It respects evaluated output paths and

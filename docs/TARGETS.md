@@ -433,7 +433,7 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `_/dotnet/check`   | Checks solution presence and SDK/MSBuild/formatter versions                                      |
 | `_/dotnet/verify`  | Runs installed official check/test/format tasks; skips missing ones and stops on failure         |
 | `_/dotnet/publish` | `settings.project`; publishes for the requested OS/architecture                                  |
-| `_/installer/install` | Executes `create-installer`, validates its result, and runs its installer |
+| `_/installer/install` | Finds and runs an existing configured installer; offers guided setup if unconfigured |
 | `_/doinstall/create-installer` | Runs YAML build steps and gathers their expected files into an installer |
 | `_/doinstall/build` | Explicitly builds a configured external source checkout using doinstall's own Cargo tooling |
 | `_/doinstall/assemble.task` | Directly invokes a separately supplied builder/runtime pair with resolved configuration and payload; no language toolchain |
@@ -441,7 +441,9 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `_/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
 | `_/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
 
-`install` requires a project-owned `create-installer` for console and GUI apps.
+`install` requires no creation-task convention. Configure `settings.installer.installer_file`
+as a literal path or version template. Creation tasks can explicitly record their
+successful output separately from user configuration for first-run setup.
 See [installer contracts and customization](INSTALLATION.md) for structured
 results, `installer-args`, and overriding the default task. No application files
 are copied directly by the shared task.
@@ -673,6 +675,7 @@ Use `var project = BuildContext.Current; var config = project.Config;` in `Main`
 | `Files`                                                 | Filesystem helpers                                                                      |
 | `CreateInstallerAsync(target, parameters, cancellationToken)` | Build and read the project's installer result; see [installer contract](INSTALLATION.md#installer-library-contract) |
 | `SetInstallerResultAsync(artifact, cancellationToken)` | Return one installer artifact to the calling task |
+| `RecordInstallerAsync(artifact, cancellationToken)` | Explicitly record successful output for later installation, without editing configuration |
 | `RunInstallerAsync(artifact, arguments, cancellationToken)` | Validate and run the installer, using defaults unless arguments are supplied |
 | `Path(...)`                                             | Resolve explicit portable path components against the root                              |
 | `DirSeparator`, `InvalidFileChars`, `InvalidDirChars`   | Host path facts; directory-name characters, not complete path validation                |

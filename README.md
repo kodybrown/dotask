@@ -17,7 +17,7 @@ projects without a registration step.
   build.cs
   _/dotnet/build.cs
   _/dotnet/run.cs
-  create-installer.cs
+  package-app.cs
 ```
 
 This is a **0.1 local preview**, with no public package release yet. Windows,
@@ -71,7 +71,9 @@ to PATH. If you only want to try the example, you can
 ## Install dotask
 
 To use `dotask` from any project, install it for your current user account.
-From this checkout after the build succeeds:
+From this checkout, first create the installer with
+`build.cmd create-dotask-installer` (Unix: `./build.sh create-dotask-installer`).
+Then install that existing output:
 
 **Windows (PowerShell):**
 
@@ -85,8 +87,11 @@ From this checkout after the build succeeds:
 ./build.sh install
 ```
 
-The task executes the project's `create-installer`, then runs the resulting
-standalone installer. Dotask's payload contains only the native Release command,
+The task selects the highest version using `settings.installer.installer_file`
+and runs its standalone installer. It never rebuilds. Missing configuration
+provides an example and interactive setup using recorded builds or discovered
+files; see [installer selection and setup](docs/INSTALLATION.md#find-and-run-an-existing-installer).
+Dotask's payload contains only the native Release command,
 `sdk/dotnet/Dotask.dotnet.dll`, and the Rust helper source crate in `sdk/rust/`
 and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and
@@ -403,8 +408,8 @@ Tab: it should offer `Debug` and `Release`. See [completion details](docs/USAGE.
 ./build.sh catalog                 # Regenerate the shared catalog
 ./build.sh build                   # Build the native CLI and prepare SDKs
 ./build.sh build --verify          # Rust CLI tests, rustfmt, and clippy
-./build.sh create-installer        # Create the standalone installer directory
-./build.sh install                 # Install the current source for this user
+./build.sh create-dotask-installer # Build/verify both tools, then create dotask's installer
+./build.sh install                 # Run the latest existing installer for this user
 ./build.sh help                    # Project task help
 ```
 
