@@ -28,6 +28,19 @@
       "requires": []
     },
     {
+      "id": "doinstall/assemble-self-extracting",
+      "entryPoint": "doinstall/assemble-self-extracting.task",
+      "description": "Assemble one ZIP self-extracting console launcher using prebuilt doinstall tools.",
+      "runtime": "yaml",
+      "files": [
+        {
+          "path": "doinstall/assemble-self-extracting.task",
+          "sha256": "37ab24b43a7a016dcbcaaf043d59c263a983e810fbe1785986a01c65f168692c"
+        }
+      ],
+      "requires": []
+    },
+    {
       "id": "doinstall/assemble",
       "entryPoint": "doinstall/assemble.task",
       "description": "Assemble an installer using separately supplied doinstall tools and resolved YAML.",
@@ -35,7 +48,7 @@
       "files": [
         {
           "path": "doinstall/assemble.task",
-          "sha256": "fdd13b61b78d2340df2dbfd8d95abd97db131367b513cddd75590b25c2c0287b"
+          "sha256": "63db1313daab580f921974fe7213c312c0c0503da3e96a7a4c5342747b3cfc7d"
         }
       ],
       "requires": []
@@ -48,7 +61,7 @@
       "files": [
         {
           "path": "doinstall/build.rs",
-          "sha256": "6088d3d9755eb455cb1c6c775bc4c1d28988ad9370049891b10cbf6d521ac708"
+          "sha256": "ec6faaf44a86f7688e505bb0c8e229924fffa015aa1ac3a6b12b014084993fc8"
         }
       ],
       "requires": []
@@ -65,7 +78,7 @@
         },
         {
           "path": "doinstall/create-installer.rs",
-          "sha256": "602ac05a8156c6ff67335495d85e3b3e8765e6c113d8b7dd4eca9c5bc6be6749"
+          "sha256": "8ab2c774eaacc593927e9bd304d2bd6979ab80da05f158fea6bf3ed193f70bff"
         }
       ],
       "requires": []

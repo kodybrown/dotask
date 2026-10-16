@@ -3,6 +3,34 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Self-extracting doinstall shared adapters (2026-10-16)
+
+On Windows x64, `build.cmd verify --doinstall-tools C:/tmp/dotask-se-tools`
+passed all 317 .NET Release tests and 63 Rust/native tests, formatting, clippy,
+documentation, catalog freshness, and Git whitespace checks. The tools were
+explicitly built/staged from the separate doinstall checkout; the CI source pin
+is `1a1567568393f6557c597bd2b618f4bd75ecf7fc`. No CI run or push was performed;
+that dependency must be published before remote CI can fetch it.
+
+Both declarative assembly tasks ran with no Cargo/.NET SDK on PATH, using either
+an explicit builder path or PATH lookup. Tests covered result JSON, new delivery
+names, retained extraction, matching YAML, missing tools, invalid templates, and
+refusal to replace an existing package. The Rust creator consumed the builder's
+actual FilePath for directory and self-extracting custom-named GUI packages.
+Generic install, application launch, and temporary shortcuts passed; retained
+uninstall then worked after removing the original package. A later packaging failure or absent
+result preserved the preceding successful-build record. Omitted optional runtime
+lists stayed absent rather than becoming null YAML.
+
+The complete standalone and dotask build/gather documentation recipes both
+created, extracted, and validated launchers in disposable projects. Shared
+sources/copies matched after tool-managed sync/add; catalog and tracking hashes
+were regenerated. Scoped .NET whitespace formatting and 31 local Markdown
+links/anchors passed. Cargo outputs remain under C:/tmp/_rust/dotask/target and
+C:/tmp/_rust/doinstall/target; evaluated .NET bin/obj/publish paths remain under
+C:/tmp/_dotnet. No active installation or user PATH changed. Native Linux/macOS/
+ARM64 execution of these adapter changes remains unverified.
+
 ## Existing-installer selection and guided setup (2026-10-14)
 
 On Windows x64, `build.cmd create-dotask-installer` completed the whole local

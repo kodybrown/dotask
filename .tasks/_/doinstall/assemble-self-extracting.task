@@ -1,0 +1,26 @@
+description: Assemble one ZIP self-extracting console launcher using prebuilt doinstall tools.
+options:
+  # A command name stays a command name; type:path would anchor it to the project.
+  - {name: builder, default: doinstall-builder, description: Host-native builder command on PATH or an explicit executable path.}
+  - {name: installer, type: path, required: true, description: Actual runtime executable for the target OS and architecture.}
+  - {name: launcher-template, type: path, required: true, description: Precompiled doinstall-launcher for the same target as the runtime.}
+  - {name: config, type: path, required: true, description: Resolved installer YAML including platform and payload.}
+  - {name: output, type: path, required: true, description: Fresh output directory containing only the finished launcher.}
+  - {name: result-file, type: path, required: true, description: Builder result JSON outside the package; its parent must exist.}
+remarks: No Rust SDK or ZIP utility is needed. The launcher retains extracted sources and shares the console. Writes the actual FilePath as JSON; never builds, downloads, or installs tools.
+examples: [dotask doinstall/assemble-self-extracting --installer tools/doinstall.exe --launcher-template tools/doinstall-launcher.exe --config resolved-installer.yaml --output artifacts/example --result-file artifacts/result.json]
+steps:
+  - exec:
+      executable: {parameter: builder}
+      arguments:
+        - --installer
+        - {parameter: installer}
+        - --config
+        - {parameter: config}
+        - --output
+        - {parameter: output}
+        - --self-extracting
+        - --launcher-template
+        - {parameter: launcher-template}
+        - --result-file
+        - {parameter: result-file}

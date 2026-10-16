@@ -895,3 +895,31 @@ acceptance, installation, and publication.
   .NET bin/obj/publish and Cargo outputs remain external. No active installation,
   publishing, deployment or push was performed; native Linux/macOS/ARM64 acceptance
   for this change remains pending.
+
+### 2026-10-16 Support self-extracting doinstall shared workflows
+
+- Add a declarative assemble-self-extracting task using separately supplied
+  runtime, builder, and target launcher-template tools, without a language SDK
+  or archiver. Require result-file on both assembly tasks and consume the
+  builder's actual FilePath in the Rust creator instead of guessing installer.exe.
+- Support producer-only packaging filename templates and launcher-template tool
+  selection. Preserve omitted optional runtime lists during expansion. Record
+  successful artifacts only after all build/archive steps succeed; missing results
+  and later failures preserve the preceding build record. Add no compatibility
+  loaders, filename fallbacks, or migrations.
+- Update the local source template and output selector, AI/installer/agent
+  guidance with complete recipes, staging metadata, prebuilt test-tool requirements,
+  and the doinstall CI pin. Regenerate the shared catalog and synchronize installed
+  task copies/tracking using shared management. Retained uninstall names stay
+  internal and independent of delivery filenames.
+- Verification: build.cmd verify --doinstall-tools C:/tmp/dotask-se-tools passed
+  317 .NET Release and 63 Rust/native tests on Windows x64, formatting, clippy,
+  documentation, catalog freshness, and whitespace gates. Tests covered SDK-free
+  assembly, custom names, extraction/validation, GUI install/launch/uninstall,
+  failure-safe recording, and omitted runtime lists. Both documented recipes,
+  metadata help, scoped .NET formatting, and 31 local links/anchors passed.
+  Evaluated Cargo and .NET outputs remain external. Tests used disposable roots
+  without changing active installs or user PATH. Native Linux/macOS/ARM64 adapter
+  acceptance and remote CI remain unverified; the pinned doinstall dependency
+  must be published before remote CI can fetch it. No active installation,
+  publication, or push was performed.

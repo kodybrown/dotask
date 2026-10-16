@@ -11,7 +11,8 @@ Dotask and doinstall tooling are installed separately. Dotask's application
 payload contains its command and SDK helpers; packaging does not download or
 install doinstall tools automatically. Its installer package carries the runtime
 as `installer`, which is also retained for uninstall, as with other applications.
-Consumer projects supply their own doinstall runtime/builder pair. The native CLI
+Consumer projects supply their own doinstall runtime/builder, plus the precompiled
+launcher template for self-extracting delivery. The native CLI
 has no doinstall-specific behavior; optional shared tasks invoke its ordinary
 command-line interface, just like adapters for other external utilities.
 
@@ -23,7 +24,7 @@ project-relative or absolute file path, or a template in `.dotasks.yaml`:
 ```yaml
 settings:
   installer:
-    installer_file: './artifacts/installers/${os}-${arch}/MyApp-${version}-${hash}${dirty}/installer${exe-extension}'
+    installer_file: './artifacts/installers/${os}-${arch}/MyApp-*/MyApp-setup-v${version}-se${exe-extension}'
     select: highest-version
 ```
 
@@ -88,9 +89,10 @@ creation, last-successful-build recording and installation remain separate actio
 
 ## Where build configuration comes from
 
-The source `.tasks/installer.yaml` separates three responsibilities:
+The source `.tasks/installer.yaml` separates four responsibilities:
 
 - `application` declares application identity and banner metadata.
+- Optional `packaging` sets producer-only installer/launcher delivery filenames.
 - `build-steps` runs producer tasks, gathers their expected files, assembles the
   installer directory, and optionally runs archive tasks.
 - `runtime` defines destination behavior: `interactive`, `inputs`, `defaults`,
@@ -98,8 +100,9 @@ The source `.tasks/installer.yaml` separates three responsibilities:
 
 The creator removes `build-steps`, supplies the resolved version/build, platform,
 architecture, and payload location, and preserves the nested `runtime` mapping
-in the distributed `installer.yaml`. The standalone installer reads that file
-beside its executable, or the file selected with `--config`. It never discovers
+in the distributed matching-name YAML. The builder consumes `packaging`; the
+standalone installer reads YAML matching its executable name beside itself,
+or the file selected with `--config`. It never discovers
 `.dotasks.yaml`, runs build tasks, or accepts source-only `build-steps`.
 Old root-level runtime fields are rejected; there is no compatibility loader.
 
@@ -116,7 +119,7 @@ settings:
   installer:
     config: .tasks/installer.yaml
     output: artifacts/installers
-    installer_file: './artifacts/installers/${os}-${arch}/example-${version}-${hash}${dirty}/installer${exe-extension}'
+    installer_file: './artifacts/installers/${os}-${arch}/example-*/example-setup-v${version}${exe-extension}'
 ```
 
 Version tokens use UTC: `yyyy`, `yy`, `MM` (month), `dd` (day), `DDD` (day of
@@ -147,6 +150,7 @@ build-steps:
       installer: '${installer}'
       config: '${config}'
       output: '${package}'
+      result-file: '${result-file}'
   - run: _/archive/create-zip
     enabled: false
     with:
@@ -171,11 +175,19 @@ relationship. Configure SDK file selections in `.tasks/sdks.yaml` for the reusab
 `build-sdks` task; installer payload selections belong in `build-steps`.
 
 Available build values are `${staging}`, `${payload}`, `${config}`, `${package}`,
-`${version}`, `${build-info}`, `${exe-extension}`, and `${settings.NAME}`.
+`${version}`, `${build-info}`, `${exe-extension}`, `${result-file}`, and `${settings.NAME}`.
 The doinstall creator also supplies `${builder}` (the `--builder` option,
 `settings.doinstall.builder`, or `doinstall-builder` on PATH) and `${installer}`
 (the `--installer` option or `settings.doinstall.installer`, resolved from the
-project root). Supply the actual runtime executable, not a command launcher shim.
+project root). `${launcher-template}` comes from `--launcher-template` or
+`settings.doinstall.launcher-template`, also resolved from the project root.
+Supply actual runtime/template executables, not command launcher shims.
+The creator expands build placeholders inside `packaging` to literal filenames;
+the native builder itself does not expand filename templates.
+Assembly must pass `${result-file}` to the builder. The creator reads its
+absolute `FilePath`, verifies it is inside the package, and records/returns that
+artifact only after all build steps succeed. No fixed filename or fallback search
+is used; failed packaging leaves the preceding successful-build record intact.
 `build-info` is JSON metadata for a producer that embeds the same application
 version/stamp. Runtime input placeholders, such as `${shortcut-name}`, remain for
 the destination installer. Only command/shortcut executable paths resolve build
@@ -213,16 +225,40 @@ Rust task compilation. For an already-resolved configuration and payload:
 
 ```powershell
 dotask --add "_/doinstall/assemble.task"
-dotask doinstall/assemble --installer C:/Tools/doinstall/doinstall.exe --config .tasks/resolved-installer.yaml --output artifacts/example-installer
+New-Item -ItemType Directory -Force artifacts | Out-Null
+dotask doinstall/assemble --installer C:/Tools/doinstall/doinstall.exe --config .tasks/resolved-installer.yaml --output artifacts/example-installer --result-file artifacts/example-result.json
 ```
 
 The builder defaults to `doinstall-builder` on PATH; `--builder` accepts an
 explicit executable path. `--installer` must point to the matching actual
-runtime executable because a PATH command may be a launcher shim. Both tools
-must match the host OS/architecture. The adapter takes resolved doinstall YAML,
+runtime executable because a PATH command may be a launcher shim. The builder
+must run on the host; the runtime must match the YAML's target OS/architecture.
+The adapter takes resolved doinstall YAML,
 not dotask's source-only `build-steps`, and does not return an `InstallerArtifact`.
 Missing tools and builder failures stop execution; no fallback build or download
-occurs. Configure recurring paths in `targets._/doinstall/assemble.defaults`.
+occurs. Both assembly tasks require `--result-file`, outside the package with
+an existing parent. They write the builder's JSON result, not an invocation-local
+SDK result. Configure recurring paths in the selected target's `defaults`.
+When updating existing task copies, add `result-file: '${result-file}'` to each
+creator assembly step and supply `--result-file FILE` on direct assembly calls.
+Sync updates tracked tasks; explicitly add the new self-extracting task because
+sync does not install newly published sibling tasks.
+
+For a single self-extracting launcher, use the separate declarative task:
+
+```powershell
+dotask --add "_/doinstall/assemble-self-extracting.task"
+New-Item -ItemType Directory -Force artifacts | Out-Null
+dotask doinstall/assemble-self-extracting --builder C:/Tools/doinstall/doinstall-builder.exe --installer C:/Tools/doinstall/doinstall.exe --launcher-template C:/Tools/doinstall/doinstall-launcher.exe --config .tasks/resolved-installer.yaml --output artifacts/example-se --result-file artifacts/example-se-result.json
+$launcher = (Get-Content artifacts/example-se-result.json -Raw | ConvertFrom-Json).FilePath
+& $launcher --validate
+```
+
+Neither assembly task needs Rust/Cargo, .NET, or an archiver. Supply a prebuilt
+launcher template matching the runtime's target OS/architecture. The output
+directory contains only the finished launcher; its ZIP contains the installer,
+matching YAML, and payload. Validation extracts and retains sources without
+installing the application. Use the returned `FilePath` rather than guessing it.
 
 Replace old tracked `assemble.rs` copies explicitly with `--remove` followed by
 `--add`; shared sync does not silently change their implementation. Review local
@@ -240,8 +276,8 @@ Packages live beneath
 `<output>/<os>-<architecture>/<app-id>-<version>[-<revision>][-dirty]/` and contain:
 
 ```text
-installer.exe             # installer on Linux/macOS
-installer.yaml            # resolved application and nested runtime settings
+example-setup-v1.0.0.exe   # omit .exe on Linux/macOS
+example-setup-v1.0.0.yaml  # resolved application and nested runtime settings
 payload/
 ```
 
@@ -261,9 +297,85 @@ source directory; failed commands leave no final archive. Staged publication
 refuses concurrent destination creation. Replace old tracked `.rs` copies
 explicitly using shared-task remove/add after reviewing local edits.
 
-Supply binaries matching the host OS/architecture; cross-platform release
-production is not automated. Native acceptance is recorded separately in
+Supply a host-native builder and target-native runtime/template. The builder
+can assemble another target's package without executing it; the build/gather
+creator still selects the current host OS/architecture. Cross-platform application
+builds remain project-owned. Native acceptance is recorded separately in
 [VERIFICATION.md](VERIFICATION.md).
+
+### Self-extracting build-and-gather workflow
+
+An AI creating a project installer should first read the project's tasks and
+settings, select separately supplied prebuilt tools, then choose resolved-YAML
+assembly above or the Rust build/gather creator below. Do not put build steps
+in native doinstall YAML or add SDK/runtime requirements to the launcher.
+
+Add `_/doinstall/create-installer.rs` and
+`_/doinstall/assemble-self-extracting.task` with `dotask --add`, then configure:
+
+```yaml
+# .dotasks.yaml
+version: 1
+settings:
+  app:
+    version: '1.2.0'
+    git-hash: none
+    dirty-suffix: false
+  doinstall:
+    builder: C:/Tools/doinstall/doinstall-builder.exe
+    installer: C:/Tools/doinstall/doinstall.exe
+    launcher-template: C:/Tools/doinstall/doinstall-launcher.exe
+  installer:
+    config: .tasks/installer.yaml
+    output: artifacts/installers
+    installer_file: 'artifacts/installers/${os}-${arch}/example-*/example-setup-v${version}-se${exe-extension}'
+```
+
+```yaml
+# .tasks/installer.yaml; published/ already contains the application's build.
+schema: 1
+application: {id: example, name: Example App}
+packaging:
+  installer-name: 'example-setup-v${version}${exe-extension}'
+  launcher-name: 'example-setup-v${version}-se${exe-extension}'
+build-steps:
+  - gather:
+      - from: published
+        files: ['example${exe-extension}']
+  - run: _/doinstall/assemble-self-extracting
+    with:
+      builder: '${builder}'
+      installer: '${installer}'
+      launcher-template: '${launcher-template}'
+      config: '${config}'
+      output: '${package}'
+      result-file: '${result-file}'
+runtime:
+  interactive: true
+  commands:
+    - {name: example, executable: 'example${exe-extension}'}
+  defaults:
+    windows: {add-to-path: false}
+```
+
+Run `dotask _/doinstall/create-installer` to create and record the artifact without
+installing it. Then use `dotask install` after adding `_/installer/install` when
+installation is intended. The creator requires Rust/Cargo for its build/gather
+logic; the standalone builder and declarative assembly task do not.
+Replace the gather step with application build/publish steps as needed.
+The output directory contains `example-setup-v1.2.0-se.exe` on Windows.
+Omit `packaging` to use doinstall's defaults. Custom names are literal after
+the creator expands them, must be portable filenames, and need `.exe` on Windows.
+The inner YAML follows the installer name; installed recovery files retain
+their internal `installer[.exe]` and `installer.yaml` names.
+
+The launcher shares stdin/stdout/stderr with the installer, retains extracted
+sources, and uses a fresh OS temp directory for every execution. To choose a
+directory, run the returned artifact with `--extract-to NEW_OR_EMPTY_PATH`.
+Windows waits and returns the installer status; Unix replaces the launcher
+process. Sign the completed launcher after packaging; macOS targets assembled
+elsewhere require final signing on macOS. See doinstall's
+[authoritative self-extracting contract](https://github.com/kodybrown/doinstall/blob/develop/docs/INSTALLATION.md#self-extracting-launchers).
 
 ## Installer runtime configuration
 
@@ -277,7 +389,8 @@ The project can use prebuilt doinstall and doinstall-builder tools with the
 `_/doinstall/assemble` wrapper's explicit paths. For local development, set
 `settings.doinstall.source` to an external checkout and explicitly run
 `_/doinstall/build`. That wrapper delegates to the external project's Cargo
-helper and can stage both tools. It does not add the external package to dotask's
+helper and can stage the runtime, builder, launcher template, and optional server
+helper. It does not add the external package to dotask's
 Cargo workspace. No source download or tool installation happens implicitly.
 Consumers do not need `settings.doinstall.source`. Keep the builder/runtime pair
 from the same doinstall build; this adapter requires its schema-1 resolved YAML
@@ -295,7 +408,7 @@ cd C:\Users\kodyb\Projects\dotask
 
 Unix uses `./build.sh create-dotask-installer`. This local Rust task builds and
 stages the configured doinstall checkout, runs its full verification gate, runs
-dotask's full gate against the staged pair, then calls `_/doinstall/create-installer` with
+dotask's full gate against the staged tools, then calls `_/doinstall/create-installer` with
 those exact binaries. Any failure stops later steps. Tools are temporary and stay
 outside source and deliverables; the task records and returns an `InstallerArtifact` and
 does not launch it. No environment or project settings are rewritten. Select a
@@ -324,13 +437,13 @@ No language runtime, SDK, Roslyn, or managed support host is bundled.
 
 ```powershell
 .\build.cmd                         # Bootstrap and list available tasks.
-$env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt, host-matching pair.
+$env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt runtime, builder, and launcher template.
 .\build.cmd verify                  # Includes external adapter integration.
 .\build.cmd create-dotask-installer # Complete build, verification and packaging.
 # Or invoke the optional shared adapter directly with a prebuilt pair:
 .\build.cmd _/doinstall/create-installer --builder "$env:DOINSTALL_TOOL_DIR/doinstall-builder.exe" --installer "$env:DOINSTALL_TOOL_DIR/doinstall.exe"
 # Use fresh, isolated locations for acceptance:
-# Run the generated installer.exe with --non-interactive --set add-to-path=false
+# Run the recorded FilePath with --non-interactive --set add-to-path=false
 # --install-dir C:/Temp/dotask-acceptance/apps/dotask --bin-dir C:/Temp/dotask-acceptance/bin
 ```
 
@@ -338,7 +451,8 @@ After creation, `build.cmd install` finds the existing output using the checked-
 `installer_file` template. It does not need doinstall build tools or source.
 Unix uses actual tool paths without `.exe`.
 `verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
-over `DOINSTALL_TOOL_DIR`. Both require a prebuilt tool pair and fail when it is
+over `DOINSTALL_TOOL_DIR`. Both require prebuilt runtime, builder, and launcher
+template tools and fail when one is
 absent. If developing against source, explicitly run
 `build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. CI performs
 the complete `create-dotask-installer` workflow on each host OS.

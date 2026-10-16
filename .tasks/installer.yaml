@@ -21,6 +21,7 @@ build-steps:
       installer: '${installer}'
       config: '${config}'
       output: '${package}'
+      result-file: '${result-file}'
   # Enable either step, or substitute another archive task such as a RAR creator.
   - run: _/archive/create-zip
     enabled: false

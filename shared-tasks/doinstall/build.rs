@@ -2,7 +2,7 @@
 // description: Build an explicitly selected doinstall source checkout using its own Cargo tooling.
 // options:
 //   - { name: source, type: path, description: Source checkout; otherwise doinstall.source. }
-//   - { name: stage-dir, type: path, description: Copy both release tools here. }
+//   - { name: stage-dir, type: path, description: 'Copy runtime, builder, launcher template, and optional server helper here.' }
 //   - { name: verify, type: bool, default: false, description: Run doinstall's independent verification. }
 // requires: [{ kind: tool, value: cargo }]
 // end-dotask

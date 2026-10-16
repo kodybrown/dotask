@@ -16,23 +16,29 @@ tasks:
       _/archive/create-zip.task: a09fcbd69d51c3ff50f8361a61ab334b46897487c7d02e9aaec9a11e0c6b4028
   _/doinstall/assemble:
     source: _
-    revision: bde889accc868cee771ee2fb00cf0b8a1858697457de7c8d9e9aa15aa47eba9a
+    revision: b50c0f1db33cbd8e2be8fc7a1e9d99563011c74bdadbfecbd22a9fd2cd79c11a
     requires: []
     files:
-      _/doinstall/assemble.task: fdd13b61b78d2340df2dbfd8d95abd97db131367b513cddd75590b25c2c0287b
+      _/doinstall/assemble.task: 63db1313daab580f921974fe7213c312c0c0503da3e96a7a4c5342747b3cfc7d
+  _/doinstall/assemble-self-extracting:
+    source: _
+    revision: 5587f22bfe95d42859966a703d897490b8265f2e9bf328c1423c1b56295c4a92
+    requires: []
+    files:
+      _/doinstall/assemble-self-extracting.task: 37ab24b43a7a016dcbcaaf043d59c263a983e810fbe1785986a01c65f168692c
   _/doinstall/build:
     source: _
-    revision: a1bcd781795257dee23cd39d1bfea605abe969570701fcef61894498ff745f99
+    revision: 19cad1cf5fcf46f6d6bcedae9011af1a0e6b902c4833725eda854997bc3fdbb2
     requires: []
     files:
-      _/doinstall/build.rs: 6088d3d9755eb455cb1c6c775bc4c1d28988ad9370049891b10cbf6d521ac708
+      _/doinstall/build.rs: ec6faaf44a86f7688e505bb0c8e229924fffa015aa1ac3a6b12b014084993fc8
   _/doinstall/create-installer:
     source: _
-    revision: e7fd8ab6034e178f093119c2e7c35c8b5ca1012a2834447324afae31725ce40e
+    revision: 6b79bb5c7fb7ab936bbd440178f73ffef1dff96c69385781327417e31ffc8867
     requires: []
     files:
       _/doinstall/_support/BuildInfo.rs: ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53
-      _/doinstall/create-installer.rs: 602ac05a8156c6ff67335495d85e3b3e8765e6c113d8b7dd4eca9c5bc6be6749
+      _/doinstall/create-installer.rs: 8ab2c774eaacc593927e9bd304d2bd6979ab80da05f158fea6bf3ed193f70bff
   _/doinstall/uninstall:
     source: _
     revision: 0d7e8b9c8897d89974fd096630d61f5369268f8ea9595e22f06e0c406cb429e8

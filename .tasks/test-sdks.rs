@@ -2,7 +2,7 @@
 // description: Test the maintained C# helper and native CLI integration fixtures.
 // options:
 //   - { name: configuration, alias: c, choices: [Debug, Release], default: Release }
-//   - { name: doinstall-tools, type: path, description: Prebuilt external tool pair; otherwise DOINSTALL_TOOL_DIR. }
+//   - { name: doinstall-tools, type: path, description: 'Prebuilt runtime, builder, and launcher template; otherwise DOINSTALL_TOOL_DIR.' }
 // requires: [{ kind: tool, value: dotnet }, { kind: setting, value: solution }]
 // end-dotask
 use dotask_sdk::{BuildContext, Result};
@@ -17,9 +17,9 @@ fn task(project: &BuildContext) -> Result<()> {
     .ok()
     .map(std::path::PathBuf::from)
     .or_else(|| std::env::var_os("DOINSTALL_TOOL_DIR").map(std::path::PathBuf::from))
-    .ok_or_else(|| dotask_sdk::anyhow!("Supply --doinstall-tools PATH or set DOINSTALL_TOOL_DIR to a prebuilt, host-matching doinstall/doinstall-builder pair. To build a development checkout explicitly, run build.cmd _/doinstall/build --stage-dir PATH (Unix: ./build.sh)."))?;
+    .ok_or_else(|| dotask_sdk::anyhow!("Supply --doinstall-tools PATH or set DOINSTALL_TOOL_DIR to prebuilt, host-matching doinstall, doinstall-builder, and doinstall-launcher tools. To build a development checkout explicitly, run build.cmd _/doinstall/build --stage-dir PATH (Unix: ./build.sh)."))?;
   let tools = project.path(tools);
-  for name in ["doinstall", "doinstall-builder"] {
+  for name in ["doinstall", "doinstall-builder", "doinstall-launcher"] {
     let file = tools.join(format!("{name}{}", if cfg!(windows) { ".exe" } else { "" }));
     if !file.is_file() {
       dotask_sdk::bail!("Required prebuilt doinstall tool is missing: {}", file.display());

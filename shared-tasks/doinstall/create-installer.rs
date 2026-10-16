@@ -7,6 +7,7 @@
 //   - { name: build-stamp, description: Reproducible UTC YYDDD-HHMM build stamp. }
 //   - { name: builder, description: "Builder command/path for the optional '${builder}' build value; otherwise doinstall.builder or doinstall-builder." }
 //   - { name: installer, type: path, description: "Actual runtime path for the optional '${installer}' build value; otherwise doinstall.installer." }
+//   - { name: launcher-template, type: path, description: "Precompiled target launcher for '${launcher-template}'; otherwise doinstall.launcher-template." }
 // requires: [{ kind: file, value: doinstall/_support/BuildInfo.rs }]
 // end-dotask
 #[path = "_support/BuildInfo.rs"]
@@ -35,7 +36,15 @@ fn task(project: &BuildContext) -> Result<()> {
     dotask_sdk::bail!("Source installer YAML requires schema: 1");
   }
   for key in mapping.keys() {
-    if !["schema", "application", "build-steps", "runtime"].contains(&key.as_str()) {
+    if ![
+      "schema",
+      "application",
+      "packaging",
+      "build-steps",
+      "runtime",
+    ]
+    .contains(&key.as_str())
+    {
       dotask_sdk::bail!("Unknown source installer field: {key}. Destination options belong under runtime.");
     }
   }
@@ -132,6 +141,9 @@ fn task(project: &BuildContext) -> Result<()> {
   let payload = staging.join("payload");
   fs::create_dir(&payload)?;
   let resolved = staging.join("installer.yaml");
+  // The builder owns delivery names. Keep its result outside the package and
+  // in this invocation's private staging directory, never guess a filename.
+  let result_file = staging.join("installer-result.json");
   let build = json!({"version":version,"stamp":stamp.text(),"commit":if commit.is_empty(){None}else{Some(&commit)},"dirty":dirty,
     "git-hash":mode,"dirty-suffix":suffix});
   config["schema"] = 1.into();
@@ -144,6 +156,7 @@ fn task(project: &BuildContext) -> Result<()> {
     ("staging".into(), json!(staging)),
     ("payload".into(), json!(payload)),
     ("config".into(), json!(resolved)),
+    ("result-file".into(), json!(result_file)),
     ("package".into(), json!(directory)),
     ("version".into(), json!(version)),
     ("build-info".into(), json!(serde_json::to_string(&build)?)),
@@ -165,8 +178,20 @@ fn task(project: &BuildContext) -> Result<()> {
   {
     variables.insert("installer".into(), json!(project.path(installer)));
   }
+  if let Some(template) = project
+    .string("launcher-template")
+    .ok()
+    .or_else(|| project.setting("doinstall.launcher-template").ok().and_then(Value::as_str))
+  {
+    variables.insert("launcher-template".into(), json!(project.path(template)));
+  }
+  // These are producer templates. The native builder receives only literal
+  // filenames and removes packaging from the destination configuration.
+  if let Some(packaging) = config.get_mut("packaging") {
+    *packaging = expand(packaging, &variables)?;
+  }
   for key in ["commands", "shortcuts"] {
-    if let Some(entries) = config["runtime"][key].as_array_mut() {
+    if let Some(entries) = config["runtime"].get_mut(key).and_then(Value::as_array_mut) {
       for entry in entries {
         if let Some(executable) = entry.get_mut("executable") {
           *executable = expand(executable, &variables)?;
@@ -237,11 +262,17 @@ fn task(project: &BuildContext) -> Result<()> {
       }
     }
   }
-  let artifact = project.installer_artifact(&directory.join(if cfg!(windows) {
-    "installer.exe"
-  } else {
-    "installer"
-  }))?;
+  let result: Value = serde_json::from_slice(
+    &fs::read(&result_file).context("Assembly must write '${result-file}' using the builder's --result-file option")?,
+  )?;
+  let file = result["FilePath"]
+    .as_str()
+    .context("Builder result requires an absolute FilePath")?;
+  let file = Path::new(file);
+  if !file.is_absolute() || !fs::canonicalize(file)?.starts_with(fs::canonicalize(&directory)?) {
+    dotask_sdk::bail!("Builder result FilePath must be an absolute file inside the package directory");
+  }
+  let artifact = project.installer_artifact(file)?;
   // Publishing a return value is invocation-local. Record only after every
   // requested packaging/archive step succeeds, for later parameterless install.
   project.record_installer(&artifact)?;

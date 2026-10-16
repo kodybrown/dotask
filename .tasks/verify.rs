@@ -2,7 +2,7 @@
 // description: Build and test dotask, then check formatting, documentation, and the shared catalog.
 // options:
 //   - { name: configuration, alias: c, choices: [Debug, Release], default: Release, description: Build configuration. }
-//   - { name: doinstall-tools, type: path, description: Prebuilt external tool pair; otherwise DOINSTALL_TOOL_DIR. }
+//   - { name: doinstall-tools, type: path, description: 'Prebuilt runtime, builder, and launcher template; otherwise DOINSTALL_TOOL_DIR.' }
 // remarks: Every verification task is required. A missing task or failure stops verification.
 // examples: [dotask verify, dotask verify -c Debug]
 // end-dotask

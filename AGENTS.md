@@ -190,11 +190,16 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   separately supplied prebuilt tools; never bundle them in dotask's app payload.
   Dotask owns optional task adapters, not doinstall-specific native CLI behavior.
 - The gate tests dotask's Rust CLI/SDK with Rust 1.95+, rustfmt, and clippy, then
-  SDK and external-tool adapter integration. `test-sdks` requires a prebuilt pair
+  SDK and external-tool adapter integration. `test-sdks` requires prebuilt
+  runtime, builder, and launcher-template tools
   through `--doinstall-tools` or `DOINSTALL_TOOL_DIR`; source preparation is an
   explicit development/CI step using the shared build wrapper. Independent doinstall
   tests belong to its own `build.cmd verify`/`./build.sh verify` gate. Keep outputs
   external and query each project's evaluated Cargo target directory.
+- For self-extracting consumer installers, follow the build/gather recipe in
+  docs/INSTALLATION.md. Use the declarative assemble-self-extracting task and
+  the builder's result FilePath; never guess delivery names. Keep source-only
+  packaging templates outside distributed runtime YAML.
 - The Rust CLI reads common YAML headers without language toolchains and runs
   Rust tasks, C# tasks and YAML groups. C# compilation invokes the installed
   .NET SDK directly with isolated MSBuild hooks and the maintained helper DLL.

@@ -67,11 +67,20 @@ staged publication without overwriting. See [process file output](TARGETS.md#sta
 Replace old tracked Rust copies explicitly; invocation requires no `--lang`.
 `_/doinstall/assemble.task` similarly invokes separately supplied doinstall tools
 without a language compiler. The builder defaults to PATH; provide the matching
-actual runtime path with `--installer`, not a command shim. It takes resolved
+actual runtime path with `--installer`, not a command shim. Both assembly tasks
+require `--result-file FILE` outside the package, with an existing parent.
+Use `_/doinstall/assemble-self-extracting.task` plus an explicit
+`--launcher-template FILE` for one self-extracting launcher. Use the returned
+JSON `FilePath`, never a guessed `installer.exe` or launcher name. It takes resolved
 YAML/payload, does not return an installer artifact, and never builds/downloads
 doinstall. Dotask's build/gather creator and generic install launcher remain Rust
 tasks. See [installation](INSTALLATION.md) for tool configuration and replacement
 of tracked `assemble.rs` copies. The two products are installed independently.
+For the build/gather creator, allow source-only `packaging` filename templates,
+pass `${result-file}` through the assembly step, and supply `${launcher-template}`
+from `--launcher-template` or `settings.doinstall.launcher-template` for that mode.
+The creator records the actual artifact only after every packaging step passes.
+Follow the complete [self-extracting recipe](INSTALLATION.md#self-extracting-build-and-gather-workflow).
 
 ## Establish the project context
 
@@ -222,7 +231,8 @@ use `name: '${shortcut-name}'` in installer YAML to enable a safe custom name;
 `start-menu-nested` selects Windows `name/name.lnk` placement. Dotask's own
 package declares no menu shortcut. Use temporary Start Menu/desktop roots when
 testing shortcut creation, updates, and ownership-safe cleanup.
-The standalone engine reads packaged `installer.yaml`, never `.dotasks.yaml`.
+The standalone engine reads packaged YAML matching its executable filename,
+never `.dotasks.yaml`. Installed recovery YAML retains its internal name.
 The creator chooses which project settings become installer configuration;
 project identity is not copied implicitly. `application.name`, `description`,
 and optional `copyright` supply the interactive console banner. Shortcut

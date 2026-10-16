@@ -29,7 +29,7 @@ fn task(project: &BuildContext) -> Result<()> {
   project.exec_target("_/doinstall/build", build)?;
   project.exec_target("_/doinstall/build", verify)?;
   // Pass the directory through invocation parameters so only this workflow's
-  // verification uses the staged pair; no process-global environment mutation.
+  // verification uses the staged tools; no process-global environment mutation.
   project.exec_target("verify", json!({"doinstall-tools":tools}))?;
   let extension = if cfg!(windows) { ".exe" } else { "" };
   let mut parameters = json!({

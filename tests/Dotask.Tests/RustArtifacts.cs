@@ -63,7 +63,7 @@ internal static class RustArtifacts
     }
     var external = Environment.GetEnvironmentVariable("DOINSTALL_TOOL_DIR");
     if (!string.IsNullOrWhiteSpace(external)) {
-      foreach (var name in new[] { "doinstall", "doinstall-builder" }) {
+      foreach (var name in new[] { "doinstall", "doinstall-builder", "doinstall-launcher" }) {
         var file = name + (OperatingSystem.IsWindows() ? ".exe" : "");
         File.Copy(Path.Combine(external, file), Path.Combine(destination, file));
       }
