@@ -3,6 +3,23 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Dotask self-extracting delivery (2026-10-16)
+
+`build.cmd create-dotask-installer` passed doinstall's full verification and
+dotask's full gate on Windows x64: 319 .NET Release and 75 dotask Rust/native
+tests, formatting, clippy, documentation, catalog freshness, and whitespace.
+The recipe forwards the matching staged builder, runtime, and launcher template
+to the existing self-extracting assembly task. Evaluated .NET outputs remain
+under C:/tmp/_dotnet and Cargo under C:/tmp/_rust/dotask/target.
+
+The generated delivery directory contained only `dotask-setup-v<version>-se.exe`.
+The configured `install` task selected that launcher and passed `--validate`
+with explicit retained extraction. Separate temporary-root installation,
+installed-command launch, SDK payload checks, and retained-engine uninstall
+passed; the extracted payload remained available. Persistent user and machine
+PATH values were unchanged. No active installation or push occurred. Native
+Linux/macOS/ARM64 acceptance of this recipe change remains unverified.
+
 ## Installed doinstall builder discovery (2026-10-16)
 
 `build.cmd verify --doinstall-tools C:/tmp/doinstall-self-install-tools` passed

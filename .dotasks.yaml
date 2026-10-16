@@ -12,7 +12,7 @@ settings:
   installer:
     config: .tasks/installer.yaml
     output: artifacts/installers
-    installer_file: './artifacts/installers/${os}-${arch}/dotask-*/dotask-setup-v${version}${exe-extension}'
+    installer_file: './artifacts/installers/${os}-${arch}/dotask-*/dotask-setup-v${version}-se${exe-extension}'
     select: highest-version
   doinstall:
     source: ../doinstall

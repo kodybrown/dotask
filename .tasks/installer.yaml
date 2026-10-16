@@ -15,14 +15,15 @@ build-steps:
       - from: '${staging}/app'
         files: ['dotask${exe-extension}', 'sdk/**']
         to: .
-  - run: _/doinstall/assemble
+  - run: _/doinstall/assemble-self-extracting
     with:
       builder: '${builder}'
       installer: '${installer}'
+      launcher-template: '${launcher-template}'
       config: '${config}'
       output: '${package}'
       result-file: '${result-file}'
-  # Enable either step, or substitute another archive task such as a RAR creator.
+  # Optional archives wrap the delivery directory containing the single launcher.
   - run: _/archive/create-zip
     enabled: false
     with:

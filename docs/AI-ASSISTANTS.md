@@ -34,8 +34,11 @@ below applies to consuming projects, not that repository gate.
 For dotask's own complete source installer workflow, use
 `./build.sh create-dotask-installer` (Windows: `.\build.cmd create-dotask-installer`).
 This local task explicitly builds/stages the configured doinstall checkout,
-verifies both projects, and creates the installer without launching it. It is
-not a shared consumer task; see [installation](INSTALLATION.md#build-and-install-dotask-itself).
+verifies both projects, and creates a single self-extracting installer without
+launching it. It forwards the staged launcher template along with the builder
+and runtime; the configured install task selects the resulting `-se` launcher.
+It is not a shared consumer task; see
+[installation](INSTALLATION.md#build-and-install-dotask-itself).
 
 After final edits/formatting to any shared task or declared support file, run
 `./build.sh catalog`, then `./build.sh verify`; its catalog check detects stale output

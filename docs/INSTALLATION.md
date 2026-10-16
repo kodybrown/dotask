@@ -424,7 +424,8 @@ cd C:\Users\kodyb\Projects\dotask
 Unix uses `./build.sh create-dotask-installer`. This local Rust task builds and
 stages the configured doinstall checkout, runs its full verification gate, runs
 dotask's full gate against the staged tools, then calls `_/doinstall/create-installer` with
-those exact binaries. Any failure stops later steps. Tools are temporary and stay
+those exact builder, runtime, and launcher-template binaries. Any failure stops
+later steps. Tools are temporary and stay
 outside source and deliverables; the task records and returns an `InstallerArtifact` and
 does not launch it. No environment or project settings are rewritten. Select a
 different checkout with `--source`; otherwise the build helper uses
@@ -435,9 +436,14 @@ dotask and is not distributed through the shared catalog.
 This is the single local installer-creation entry point; there is no local
 `create-installer` wrapper. The shared creator's `.tasks/installer.yaml` build steps
 run `build` to prepare the native app and SDKs, gather the declared files, and call
-`_/doinstall/assemble`. Optional archive steps follow. There is no local
+`_/doinstall/assemble-self-extracting`. The delivery directory contains only
+`dotask-setup-v<version>-se.exe` on Windows (without `.exe` on Unix); distribute
+that single file. The launcher extracts and retains the inner installer, YAML,
+and payload before running the installer in the same console. Optional archive
+steps wrap this delivery directory. There is no local
 `pack` task; `_/dotnet/pack` remains a NuGet task for consuming C# projects.
-Tool selection comes from `--builder` / `--installer` or `settings.doinstall`
+Tool selection comes from `--builder`, `--installer`, and `--launcher-template`,
+or `settings.doinstall`
 as described above when invoking the shared creator directly with prebuilt tools.
 The complete local workflow explicitly builds doinstall; consumer projects can
 use the independent prebuilt tools without its source checkout.
@@ -462,8 +468,9 @@ $env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt runtime, builder, and 
 # --install-dir C:/Temp/dotask-acceptance/apps/dotask --bin-dir C:/Temp/dotask-acceptance/bin
 ```
 
-After creation, `build.cmd install` finds the existing output using the checked-in
-`installer_file` template. It does not need doinstall build tools or source.
+After creation, `build.cmd install` finds the existing self-extracting launcher
+using the checked-in `installer_file` template ending in `-se${exe-extension}`.
+It does not need doinstall build tools or source.
 Unix uses actual tool paths without `.exe`.
 `verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
 over `DOINSTALL_TOOL_DIR`. Both require prebuilt runtime, builder, and launcher

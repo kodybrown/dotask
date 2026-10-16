@@ -968,3 +968,20 @@ acceptance, installation, and publication.
   anchors passed. Cargo and evaluated .NET outputs remain external. Native Linux
   acceptance is unverified; macOS/ARM64 tests are deferred. No active installation,
   publication or push occurred; remote CI requires publishing the new dependency.
+
+### 2026-10-16 Deliver dotask as a self-extracting installer
+
+- Switch dotask's source installer recipe to the existing declarative
+  self-extracting assembly task. Forward the staged launcher template alongside
+  the matching builder/runtime, and select the resulting `-se` launcher through
+  the configured existing-installer pattern.
+- Document single-file delivery and retained extraction. Keep the build and
+  verification entry point `build.cmd create-dotask-installer` unchanged.
+- Verification: `build.cmd create-dotask-installer` passed both full gates on
+  Windows x64, including 319 .NET Release and 75 dotask Rust/native tests,
+  formatting, clippy, documentation, catalog, and whitespace checks. The output
+  contained only the launcher; configured selection, validation, retained
+  extraction, temporary installation/launch/uninstall, and both SDK payloads
+  passed. Persistent user/machine PATH was unchanged. Evaluated .NET and Cargo
+  outputs remain external. Native Linux/macOS/ARM64 acceptance is unverified;
+  no active installation or push occurred.

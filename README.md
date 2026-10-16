@@ -73,7 +73,8 @@ to PATH. If you only want to try the example, you can
 To use `dotask` from any project, install it for your current user account.
 From this checkout, first create the installer with
 `build.cmd create-dotask-installer` (Unix: `./build.sh create-dotask-installer`).
-Then install that existing output:
+This creates one self-extracting launcher containing the installer, YAML, and
+application payload. Then install that existing output:
 
 **Windows (PowerShell):**
 

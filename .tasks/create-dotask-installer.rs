@@ -1,5 +1,5 @@
 // dotask: 1
-// description: Build and verify doinstall and dotask, then create dotask's installer.
+// description: Build and verify doinstall and dotask, then create dotask's self-extracting installer.
 // options:
 //   - { name: source, type: path, description: Doinstall checkout; otherwise DOINSTALL_SOURCE or doinstall.source. }
 //   - { name: app-version, description: Optional application version pattern override. }
@@ -34,7 +34,8 @@ fn task(project: &BuildContext) -> Result<()> {
   let extension = if cfg!(windows) { ".exe" } else { "" };
   let mut parameters = json!({
     "builder":tools.join(format!("doinstall-builder{extension}")),
-    "installer":tools.join(format!("doinstall{extension}"))
+    "installer":tools.join(format!("doinstall{extension}")),
+    "launcher-template":tools.join(format!("doinstall-launcher{extension}"))
   });
   for name in ["app-version", "build-stamp"] {
     if let Ok(value) = project.string(name) {
