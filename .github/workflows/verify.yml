@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: kodybrown/doinstall
-          ref: 1a1567568393f6557c597bd2b618f4bd75ecf7fc
+          ref: d986d33b60eb8da0c46816ac6c2b1257231664a1
           path: doinstall-source
       - uses: actions/setup-dotnet@v4
         with:

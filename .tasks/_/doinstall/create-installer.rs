@@ -6,8 +6,8 @@
 //   - { name: app-version, description: Override the application version pattern. }
 //   - { name: build-stamp, description: Reproducible UTC YYDDD-HHMM build stamp. }
 //   - { name: builder, description: "Builder command/path for the optional '${builder}' build value; otherwise doinstall.builder or doinstall-builder." }
-//   - { name: installer, type: path, description: "Actual runtime path for the optional '${installer}' build value; otherwise doinstall.installer." }
-//   - { name: launcher-template, type: path, description: "Precompiled target launcher for '${launcher-template}'; otherwise doinstall.launcher-template." }
+//   - { name: installer, type: path, description: "Actual runtime for '${installer}'; otherwise doinstall.installer or the builder's tool-path query." }
+//   - { name: launcher-template, type: path, description: "Target launcher for '${launcher-template}'; otherwise doinstall.launcher-template or the builder's tool-path query." }
 // requires: [{ kind: file, value: doinstall/_support/BuildInfo.rs }]
 // end-dotask
 #[path = "_support/BuildInfo.rs"]
@@ -164,7 +164,8 @@ fn task(project: &BuildContext) -> Result<()> {
   ]);
   settings("settings", project.settings(), &mut variables);
   // Tool selection belongs to this optional adapter, never to the native CLI.
-  // An explicit runtime path avoids accidentally packaging a PATH launcher shim.
+  // Explicit paths select custom/target tools. Otherwise ask the selected native
+  // builder for its real siblings; its PATH entry can safely be a command shim.
   let builder = project
     .string("builder")
     .ok()
@@ -184,6 +185,27 @@ fn task(project: &BuildContext) -> Result<()> {
     .or_else(|| project.setting("doinstall.launcher-template").ok().and_then(Value::as_str))
   {
     variables.insert("launcher-template".into(), json!(project.path(template)));
+  }
+  let needs_installer = !variables.contains_key("installer");
+  let needs_template =
+    !variables.contains_key("launcher-template") && steps.to_string().contains("${launcher-template}");
+  if needs_installer || needs_template {
+    let output = project.capture(project.command(builder).arg("--print-tool-paths"))?;
+    let tools: Value = serde_json::from_str(&output).context("Builder returned invalid tool-path JSON")?;
+    for (needed, variable, field) in [
+      (needs_installer, "installer", "Installer"),
+      (needs_template, "launcher-template", "LauncherTemplate"),
+    ] {
+      if needed {
+        let value = tools[field]
+          .as_str()
+          .with_context(|| format!("Builder tool paths require {field}"))?;
+        if !Path::new(value).is_absolute() {
+          dotask_sdk::bail!("Builder {field} must be an absolute executable path");
+        }
+        variables.insert(variable.into(), json!(value));
+      }
+    }
   }
   // These are producer templates. The native builder receives only literal
   // filenames and removes packaging from the destination configuration.

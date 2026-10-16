@@ -3,6 +3,28 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Installed doinstall builder discovery (2026-10-16)
+
+`build.cmd verify --doinstall-tools C:/tmp/doinstall-self-install-tools` passed
+319 .NET Release tests and 75 Rust/native tests on Windows x64, plus formatting,
+clippy, documentation, catalog freshness, and Git whitespace checks. Both
+directory and self-extracting GUI workflows passed with no doinstall settings
+and only the prebuilt builder added to the child process's PATH. Explicit tool
+selections still passed. Sources and installed creator copies match after
+tool-managed sync; the catalog/tracking hashes were regenerated.
+
+Separate acceptance installed doinstall's own self-extracting package into
+temporary roots, exposed its builder command shim only to the test child, and
+ran the documented consumer recipe without project tool-path settings. The
+creator queried real sibling runtime/template paths, created and recorded a
+self-extracting application installer, and validation passed. The temporary
+tools were uninstalled; persistent user/machine PATH values were unchanged.
+The self-installer itself is owned and verified by the separate doinstall
+repository. No active installation, publishing, push, or remote CI run occurred;
+the new pinned doinstall dependency must be published before CI can fetch it.
+Cargo and evaluated .NET outputs remain external. Native Linux acceptance of
+this adapter change is unverified; macOS/ARM64 testing is deferred.
+
 ## Composable HTTP/JSON project-page workflows (2026-10-16)
 
 `build.cmd verify --doinstall-tools C:/tmp/dotask-se-tools` passed on Windows x64:

@@ -116,14 +116,32 @@ public sealed class RustInstallerWorkflowTests
   }
 
   [Theory]
-  [InlineData(false)]
-  [InlineData(true)]
-  public async Task SharedTasksPackageInstallLaunchAndUninstallGuiPayloadWithoutOriginalPackage( bool selfExtracting )
+  [InlineData(false, false)]
+  [InlineData(true, false)]
+  [InlineData(false, true)]
+  [InlineData(true, true)]
+  public async Task SharedTasksPackageInstallLaunchAndUninstallGuiPayloadWithoutOriginalPackage( bool selfExtracting, bool discoverTools )
   {
     using var project = new TestProject();
     var engine = RustArtifacts.Binary("doinstall");
     var builder = RustArtifacts.Binary("doinstall-builder");
     Assert.True(File.Exists(engine) && File.Exists(builder), "Supply prebuilt doinstall tools through --doinstall-tools or DOINSTALL_TOOL_DIR.");
+    async Task<ProcessResult> RunTask( params string[] arguments )
+    {
+      using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+      return await ProcessRunner.RunAsync(new ProcessDefinition {
+        Executable = RustArtifacts.Binary("dotask"),
+        Arguments = arguments,
+        WorkingDirectory = project.Root,
+        CaptureOutput = true,
+        ThrowOnError = false,
+        // Only this fixture's child receives the PATH entry. Discovery cases
+        // have no doinstall settings, matching the installed-builder workflow.
+        Environment = new Dictionary<string, string?> {
+          ["PATH"] = Path.GetDirectoryName(builder) + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH")
+        }
+      }, timeout.Token);
+    }
     project.WriteBuildProperties();
     var source = project.Write("GuiProbe/GuiProbe.csproj", """
       <Project Sdk="Microsoft.NET.Sdk">
@@ -226,10 +244,10 @@ public sealed class RustInstallerWorkflowTests
           output = Path.Combine(project.Root, "packages"),
           installer_file = "packages/${os}-${arch}/gui-probe-*/custom-gui-v${version}" + (selfExtracting ? "-se" : "") + "${exe-extension}"
         },
-        ["doinstall"] = new Dictionary<string, object> { ["builder"] = builder, ["installer"] = engine, ["launcher-template"] = RustArtifacts.Binary("doinstall-launcher") }
+        ["doinstall"] = discoverTools ? new Dictionary<string, object>() : new Dictionary<string, object> { ["builder"] = builder, ["installer"] = engine, ["launcher-template"] = RustArtifacts.Binary("doinstall-launcher") }
       }
     }));
-    var packageResult = await project.RunAsync("package-gui");
+    var packageResult = await RunTask("package-gui");
     Assert.True(packageResult.ExitCode == 0, packageResult.StandardOutput + packageResult.StandardError);
     var recordFile = Path.Combine(project.Root, "artifacts", ".dotask", "installers",
       project.Context().OS.ToString().ToLowerInvariant() + "-" + project.Context().Architecture.ToString().ToLowerInvariant() + ".json");
@@ -242,7 +260,7 @@ public sealed class RustInstallerWorkflowTests
     }
     // Launch the recorded custom artifact through the generic installer task.
     // Its settings template independently exercises versioned launcher selection.
-    var installation = await project.RunAsync(installArguments.ToArray());
+    var installation = await RunTask(installArguments.ToArray());
     Assert.True(installation.ExitCode == 0, installation.StandardOutput + installation.StandardError);
     var packagedConfig = Assert.Single(Directory.EnumerateFiles(selfExtracting ? sources : Path.Combine(project.Root, "packages"), "custom-gui-v1.0.0.yaml", SearchOption.AllDirectories));
     var shippedConfig = File.ReadAllText(packagedConfig);
@@ -263,7 +281,7 @@ public sealed class RustInstallerWorkflowTests
     sourceConfig["build-steps"]!.AsArray().Add(JsonSerializer.SerializeToNode(new { run = "reject-package" }));
     project.Write(".tasks/reject-package.task", "steps:\n  - exec: {executable: missing-packaging-tool}\n");
     File.WriteAllText(config, sourceConfig.ToJsonString());
-    var failedPackage = await project.RunAsync("package-gui");
+    var failedPackage = await RunTask("package-gui");
     Assert.NotEqual(0, failedPackage.ExitCode);
     Assert.Equal(recorded, File.ReadAllBytes(recordFile));
     sourceConfig["application"]!["version"] = "3.0.0";
@@ -271,7 +289,7 @@ public sealed class RustInstallerWorkflowTests
       sourceConfig["build-steps"]!.AsArray().RemoveAt(1);
     }
     File.WriteAllText(config, sourceConfig.ToJsonString());
-    var missingResult = await project.RunAsync("package-gui");
+    var missingResult = await RunTask("package-gui");
     Assert.NotEqual(0, missingResult.ExitCode);
     Assert.Contains("Assembly must write '${result-file}'", missingResult.StandardError);
     Assert.Equal(recorded, File.ReadAllBytes(recordFile));
@@ -281,12 +299,12 @@ public sealed class RustInstallerWorkflowTests
     sourceConfig["runtime"]!.AsObject().Remove("shortcuts");
     sourceConfig["build-steps"]!.AsArray().Add(assemblyStep);
     File.WriteAllText(config, sourceConfig.ToJsonString());
-    var withoutShortcuts = await project.RunAsync("package-gui");
+    var withoutShortcuts = await RunTask("package-gui");
     Assert.True(withoutShortcuts.ExitCode == 0, withoutShortcuts.StandardOutput + withoutShortcuts.StandardError);
     Assert.Contains("custom-gui-v4.0.0" + (selfExtracting ? "-se" : ""), File.ReadAllText(recordFile));
     Directory.Delete(Path.Combine(project.Root, "packages"), recursive: true);
     File.Delete(config);
-    var removed = await project.RunAsync("uninstall", "--install-dir", installed);
+    var removed = await RunTask("uninstall", "--install-dir", installed);
     Assert.True(removed.ExitCode == 0, removed.StandardOutput + removed.StandardError);
     Assert.False(Directory.Exists(installed));
     Assert.False(File.Exists(Path.Combine(desktop, "GUI Probe" + extension)));

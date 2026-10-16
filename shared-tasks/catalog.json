@@ -78,7 +78,7 @@
         },
         {
           "path": "doinstall/create-installer.rs",
-          "sha256": "8ab2c774eaacc593927e9bd304d2bd6979ab80da05f158fea6bf3ed193f70bff"
+          "sha256": "3b11b22e62c755f1caa50d4b4c8af6fe091e6b25ad4d26ceb4afa9f295f992a6"
         }
       ],
       "requires": []

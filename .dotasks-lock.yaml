@@ -34,11 +34,11 @@ tasks:
       _/doinstall/build.rs: ec6faaf44a86f7688e505bb0c8e229924fffa015aa1ac3a6b12b014084993fc8
   _/doinstall/create-installer:
     source: _
-    revision: 6b79bb5c7fb7ab936bbd440178f73ffef1dff96c69385781327417e31ffc8867
+    revision: 97af88a6af40c97dee0a8b80211613a43cfcc9055f79756183742f9aefa8a0a1
     requires: []
     files:
       _/doinstall/_support/BuildInfo.rs: ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53
-      _/doinstall/create-installer.rs: 8ab2c774eaacc593927e9bd304d2bd6979ab80da05f158fea6bf3ed193f70bff
+      _/doinstall/create-installer.rs: 3b11b22e62c755f1caa50d4b4c8af6fe091e6b25ad4d26ceb4afa9f295f992a6
   _/doinstall/uninstall:
     source: _
     revision: 0d7e8b9c8897d89974fd096630d61f5369268f8ea9595e22f06e0c406cb429e8

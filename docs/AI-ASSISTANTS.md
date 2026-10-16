@@ -87,6 +87,10 @@ of tracked `assemble.rs` copies. The two products are installed independently.
 For the build/gather creator, allow source-only `packaging` filename templates,
 pass `${result-file}` through the assembly step, and supply `${launcher-template}`
 from `--launcher-template` or `settings.doinstall.launcher-template` for that mode.
+When paths are unspecified, the creator asks the selected builder for
+`--print-tool-paths` JSON instead. Installing doinstall's own self-extracting
+package once makes its builder available on PATH; ordinary creator recipes then
+need no project tool-path settings. Explicit target paths still override discovery.
 The creator records the actual artifact only after every packaging step passes.
 Follow the complete [self-extracting recipe](INSTALLATION.md#self-extracting-build-and-gather-workflow).
 

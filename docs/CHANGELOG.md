@@ -946,3 +946,25 @@ acceptance, installation, and publication.
   content, bytes, and no-op mtime. Local Markdown link/anchor checks passed.
   Native Linux/macOS/ARM64 acceptance remains pending. No active installation,
   publishing, deployment, or push was performed.
+
+### 2026-10-16 Find installed doinstall tools through the builder
+
+- Query the selected builder's --print-tool-paths JSON when the shared creator
+  needs unspecified runtime/template paths. Respect explicit options/settings,
+  require absolute results, and preserve command failure diagnostics. A builder
+  command shim on PATH now suffices without per-project tool-path configuration.
+  Do not parse shims/receipts, scan version directories, or fall back to old tools.
+- Document installation through doinstall's own self-extracting package and
+  simplify the consumer recipe. Update the external CI dependency pin, shared
+  catalog, and installed task/tracking using tool-managed sync. Keep installer
+  implementation and the native query entirely in the independent product.
+- Verification: build.cmd verify --doinstall-tools C:/tmp/doinstall-self-install-tools
+  passed 319 .NET Release and 75 Rust/native tests on Windows x64, formatting,
+  clippy, documentation, catalog and whitespace gates. Directory/self-extracting
+  GUI workflows passed with PATH-only builder discovery and explicit overrides.
+  Temporary installed-tool acceptance created and validated a consumer launcher
+  without tool-path settings, then uninstalled the tools; persistent user/machine
+  PATH was unchanged. Scoped .NET formatting and 35 local documentation links/
+  anchors passed. Cargo and evaluated .NET outputs remain external. Native Linux
+  acceptance is unverified; macOS/ARM64 tests are deferred. No active installation,
+  publication or push occurred; remote CI requires publishing the new dependency.

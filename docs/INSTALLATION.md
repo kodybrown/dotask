@@ -16,6 +16,23 @@ launcher template for self-extracting delivery. The native CLI
 has no doinstall-specific behavior; optional shared tasks invoke its ordinary
 command-line interface, just like adapters for other external utilities.
 
+## Install doinstall's tools once
+
+Use doinstall's own self-extracting installer. From its source checkout,
+`build.cmd package` (Unix: `./build.sh package`) builds it and prints the file
+to run. The installer creates its owned tool commands and retains its launcher
+template beside the real binaries. See
+[doinstall tool installation](https://github.com/kodybrown/doinstall/blob/develop/docs/INSTALLATION.md#install-doinstall-tools).
+
+With `doinstall-builder` available on PATH, the updated shared
+`_/doinstall/create-installer` needs no doinstall tool-path settings. It queries
+`doinstall-builder --print-tool-paths` for real `Installer` and `LauncherTemplate`
+paths, so a command shim is safe for the builder. Explicit `--builder`,
+`--installer`, `--launcher-template`, and corresponding `settings.doinstall`
+values override that selection. Queries fail directly on missing/invalid tools;
+there is no registry, receipt, version-directory, or older-tool fallback search.
+Sync the creator task before using the new query contract.
+
 ## Find and run an existing installer
 
 Install the optional `_/installer/install` shared task, then configure a literal
@@ -179,8 +196,10 @@ Available build values are `${staging}`, `${payload}`, `${config}`, `${package}`
 The doinstall creator also supplies `${builder}` (the `--builder` option,
 `settings.doinstall.builder`, or `doinstall-builder` on PATH) and `${installer}`
 (the `--installer` option or `settings.doinstall.installer`, resolved from the
-project root). `${launcher-template}` comes from `--launcher-template` or
-`settings.doinstall.launcher-template`, also resolved from the project root.
+project root, otherwise the selected builder's tool-path query).
+`${launcher-template}` comes from `--launcher-template` or
+`settings.doinstall.launcher-template`, also resolved from the project root,
+otherwise that query when a recipe needs the build value.
 Supply actual runtime/template executables, not command launcher shims.
 The creator expands build placeholders inside `packaging` to literal filenames;
 the native builder itself does not expand filename templates.
@@ -321,10 +340,6 @@ settings:
     version: '1.2.0'
     git-hash: none
     dirty-suffix: false
-  doinstall:
-    builder: C:/Tools/doinstall/doinstall-builder.exe
-    installer: C:/Tools/doinstall/doinstall.exe
-    launcher-template: C:/Tools/doinstall/doinstall-launcher.exe
   installer:
     config: .tasks/installer.yaml
     output: artifacts/installers
