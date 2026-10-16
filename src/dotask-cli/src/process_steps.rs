@@ -50,7 +50,7 @@ fn validate_value(value: &Value, target: &Target, output: bool, depth: usize) ->
     {
       Ok(())
     }
-    "setting" | "result" | "environment" => Ok(()),
+    "setting" | "result" | "environment" | "item" => Ok(()),
     _ => bail!("Unknown process reference {kind}: {name}."),
   }
 }

@@ -25,6 +25,15 @@ pub(crate) fn validate(action: &Value, target: &Target) -> Result<()> {
     "replace" => &["find", "replacement", "expected-sha256", "mode"],
     "copy" => &["source", "expected-sha256", "mode"],
     "directory" => &["mode"],
+    "frontmatter" => &[
+      "create-if-missing",
+      "initial",
+      "fill-empty",
+      "set",
+      "match-existing",
+      "expected-sha256",
+      "mode",
+    ],
     _ => bail!("Unknown file operation '{operation}'."),
   };
   let allowed = ["operation", "path"]
@@ -32,6 +41,9 @@ pub(crate) fn validate(action: &Value, target: &Target) -> Result<()> {
     .chain(extra.iter().copied())
     .collect::<Vec<_>>();
   keys(action, &allowed)?;
+  if operation == "frontmatter" {
+    crate::frontmatter::validate(action, target)?;
+  }
   let path = action.get("path").ok_or_else(|| anyhow::anyhow!("file requires path."))?;
   process_steps::validate(path, target)?;
   for name in [
@@ -194,7 +206,7 @@ fn encode(text: &str, original: Option<&[u8]>) -> Result<Vec<u8>> {
   Ok(text.into_bytes())
 }
 
-fn render(
+pub(crate) fn render(
   template: &str,
   values: &serde_json::Map<String, Value>,
   resolve: impl Fn(&Value) -> Result<String>,
@@ -306,6 +318,21 @@ pub(crate) fn execute(action: &Value, directory: &Directory, parameters: &Value,
     return Ok(json!({"path":destination,"changed":!exists,"exists":true}));
   }
   let original = read(&destination)?;
+  if operation == "frontmatter" {
+    ensure!(
+      original.is_some() || action["create-if-missing"] == true,
+      "Frontmatter file does not exist: {}",
+      destination.display()
+    );
+    let old_text = original.as_deref().map(decode).transpose()?;
+    let text = crate::frontmatter::update(old_text.as_deref(), action)?;
+    let bytes = encode(&text, original.as_deref())?;
+    ensure!(bytes.len() <= 16 * 1024 * 1024, "File exceeds the 16 MiB file-action limit.");
+    let observed = original.as_ref().map(|b| hash(b)).unwrap_or_else(|| "missing".into());
+    let expected = action.get("expected-sha256").map(resolve).transpose()?.unwrap_or(observed);
+    let changed = write(&destination, &bytes, Some(&expected), mode)?;
+    return Ok(json!({"path":destination,"exists":true,"changed":changed,"sha256":hash(&bytes)}));
+  }
   if operation == "read" {
     if let Some(bytes) = original {
       let content = decode(&bytes)?;

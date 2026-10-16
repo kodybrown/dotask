@@ -206,6 +206,30 @@ pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) 
       if let Some(condition) = &step.when {
         out.row("  When: ", &condition.to_string());
       }
+      if let Some(iteration) = &step.iteration {
+        out.row(
+          "  - foreach: ",
+          &format!(
+            "{} as {} ({} nested steps)",
+            iteration.items,
+            iteration.name,
+            iteration.steps.len()
+          ),
+        );
+        continue;
+      }
+      if let Some(action) = &step.http {
+        out.row("  - http: ", &format!("GET {}", action["url"]));
+        continue;
+      }
+      if let Some(action) = &step.json {
+        out.row("  - json: ", &action["operation"].to_string());
+        continue;
+      }
+      if let Some(action) = &step.text {
+        out.row("  - text: ", &action["template"].to_string());
+        continue;
+      }
       if let Some(file) = &step.file {
         out.row("  - file: ", &file["operation"].to_string());
         out.row("    path: ", &file["path"].to_string());

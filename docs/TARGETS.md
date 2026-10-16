@@ -181,8 +181,9 @@ or query groups.
 The file contains one YAML mapping. Keys are case-sensitive; unknown keys,
 duplicate keys (including case variants), invalid types, and multiple documents
 are errors. `description` is an optional string; `steps` is a required sequence
-and may be empty (`steps: []`). Each step requires exactly one `run`, `exec`, or `file`
-action. Top-level `options`, `requires`, `remarks`, `examples`, and `capabilities`
+and may be empty (`steps: []`). Each step requires exactly one `run`, `exec`, `file`,
+`http`, `json`, `text`, or `foreach` action. A `foreach` also declares nested `steps`.
+Top-level `options`, `requires`, `remarks`, `examples`, and `capabilities`
 use the same metadata contract as C# and Rust headers.
 
 - Steps execute sequentially in listed order, including repeated calls.
@@ -210,8 +211,11 @@ prefer source-qualified names such as `_/dotnet/test`. Execution never downloads
 missing targets. Shared-task add/sync/catalog distribution supports C#, Rust and
 YAML `.task` files; reuse preserves the same ownership and hash protections.
 
-See [native YAML workflows](YAML-WORKFLOWS.md) for file actions, named results,
-boolean result guards, process environment, captured output, and timeouts.
+See [native YAML workflows](YAML-WORKFLOWS.md) for HTTP GET/pagination, JSON
+filtering/projection, sequential loops, text formatting, frontmatter updates,
+file actions, named results, boolean result guards, process environment, captured
+output, and timeouts. The [GitHub project-page example](../examples/github-projects/README.md)
+combines these capabilities without a code task or domain-specific command.
 
 ## Direct process steps
 

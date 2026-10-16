@@ -106,6 +106,21 @@ pub(crate) struct Step {
   pub when: Option<Value>,
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub file: Option<Value>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub http: Option<Value>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub json: Option<Value>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub text: Option<Value>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub iteration: Option<Iteration>,
+}
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub(crate) struct Iteration {
+  pub items: Value,
+  pub name: String,
+  pub steps: Vec<Step>,
 }
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]

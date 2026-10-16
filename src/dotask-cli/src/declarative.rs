@@ -31,17 +31,97 @@ fn flag(value: &Value, name: &str) -> Result<bool> {
 }
 
 pub(crate) fn steps(value: &Value, target: &Target) -> Result<Vec<Step>> {
-  let mut previous = BTreeSet::new();
+  scoped_steps(value, target, BTreeSet::new(), &BTreeSet::new(), 0)
+}
+fn scoped_steps(
+  value: &Value,
+  target: &Target,
+  mut previous: BTreeSet<String>,
+  items: &BTreeSet<String>,
+  depth: usize,
+) -> Result<Vec<Step>> {
+  if depth > 16 {
+    bail!("foreach nesting exceeds 16 levels.");
+  }
   let mut parsed = Vec::new();
   for step in value
     .as_array()
     .ok_or_else(|| anyhow::anyhow!("steps must be a sequence (use steps: [] for an empty group)."))?
   {
-    keys(step, &["id", "run", "exec", "file", "optional", "with", "when"])?;
-    if ["run", "exec", "file"].iter().filter(|key| step.get(**key).is_some()).count() != 1 {
-      bail!("Every step requires exactly one run, exec, or file action.");
+    keys(
+      step,
+      &[
+        "id", "run", "exec", "file", "http", "json", "text", "foreach", "steps", "optional", "with", "when",
+      ],
+    )?;
+    if ["run", "exec", "file", "http", "json", "text", "foreach"]
+      .iter()
+      .filter(|key| step.get(**key).is_some())
+      .count()
+      != 1
+    {
+      bail!("Every step requires exactly one run, exec, file, http, json, text, or foreach action.");
     }
-    crate::bindings::validate(step, &previous)?;
+    let mut bindings = step.clone();
+    bindings.as_object_mut().unwrap().remove("steps");
+    // These mappings declare names, not references themselves. Validate their
+    // values so fields/placeholders named 'result' or 'item' remain ordinary names.
+    for (action, names) in [
+      ("http", &["headers", "query"][..]),
+      ("text", &["values"][..]),
+      ("file", &["values", "initial", "fill-empty", "set", "match-existing"][..]),
+    ] {
+      if let Some(action) = bindings.get_mut(action) {
+        for name in names {
+          if let Some(value) = action.get_mut(*name)
+            && let Some(map) = value.as_object()
+          {
+            *value = Value::Array(map.values().cloned().collect());
+          }
+        }
+      }
+    }
+    if let Some(action) = bindings.get_mut("json") {
+      action.as_object_mut().map(|m| m.remove("fields"));
+    }
+    if let Some(values) = bindings.get_mut("with")
+      && let Some(map) = values.as_object()
+    {
+      *values = Value::Array(map.values().cloned().collect());
+    }
+    crate::bindings::validate_scoped(&bindings, &previous, items)?;
+    let iteration = if let Some(iteration) = step.get("foreach") {
+      keys(iteration, &["items", "as"])?;
+      let input = iteration
+        .get("items")
+        .ok_or_else(|| anyhow::anyhow!("foreach requires items."))?;
+      crate::workflow_values::validate(input, target)?;
+      if !input.is_array() {
+        crate::process_steps::validate(input, target)?;
+      }
+      let name = text(&iteration["as"], "foreach.as")?;
+      if !crate::catalog::identifier(name) || items.contains(name) {
+        bail!("foreach.as must be a unique enclosing item name.");
+      }
+      let mut nested_items = items.clone();
+      nested_items.insert(name.into());
+      Some(crate::project::Iteration {
+        items: input.clone(),
+        name: name.into(),
+        steps: scoped_steps(
+          step.get("steps").ok_or_else(|| anyhow::anyhow!("foreach requires steps."))?,
+          target,
+          previous.clone(),
+          &nested_items,
+          depth + 1,
+        )?,
+      })
+    } else {
+      if step.get("steps").is_some() {
+        bail!("Only foreach may declare nested steps.");
+      }
+      None
+    };
     let id = step.get("id").map(|v| text(v, "id").map(str::to_owned)).transpose()?;
     if let Some(id) = &id
       && (!crate::catalog::identifier(id) || !previous.insert(id.clone()))
@@ -67,7 +147,19 @@ pub(crate) fn steps(value: &Value, target: &Target) -> Result<Vec<Step>> {
       crate::file_steps::validate(file, target)?;
     }
     if run.is_empty() && (step.get("optional").is_some() || step.get("with").is_some()) {
-      bail!("exec and file steps cannot declare optional or with.");
+      bail!("Only run steps may declare optional or with.");
+    }
+    let http = step.get("http").cloned();
+    if let Some(action) = &http {
+      crate::http_steps::validate(action, target)?;
+    }
+    let json = step.get("json").cloned();
+    if let Some(action) = &json {
+      crate::workflow_values::validate_json(action, target)?;
+    }
+    let text_action = step.get("text").cloned();
+    if let Some(action) = &text_action {
+      crate::workflow_values::validate_text(action, target)?;
     }
     let exec = step.get("exec").map(|v| process(v, target)).transpose()?;
     let parameters = step.get("with").cloned().unwrap_or(json!({}));
@@ -88,6 +180,10 @@ pub(crate) fn steps(value: &Value, target: &Target) -> Result<Vec<Step>> {
       parameters,
       exec,
       file,
+      http,
+      json,
+      text: text_action,
+      iteration,
       when,
     });
   }

@@ -923,3 +923,26 @@ acceptance, installation, and publication.
   acceptance and remote CI remain unverified; the pinned doinstall dependency
   must be published before remote CI can fetch it. No active installation,
   publication, or push was performed.
+
+### 2026-10-16 Composable HTTP and JSON project-page workflows
+
+- Add native `.task` HTTP GET with typed query/header references, bounded
+  same-origin Link pagination, whole-action timeout/cancellation, and complete
+  JSON results. Add JSON filtering/projection, explicit text templates, and
+  sequential foreach bodies with lexical items/results and ordinary task calls.
+- Add `file: {operation: frontmatter}` with creation-only defaults, fill-empty
+  values, explicit field updates, and existing identity checks. Preserve unknown
+  metadata, comments, Markdown body, encoding, line endings, final-newline state,
+  and no-op timestamps through guarded atomic writes. Refuse unsupported edits.
+- Add the runnable GitHub/Eleventy project-page example using plain repository
+  filenames and task-owned GitHub mappings. Refresh imported fields while keeping
+  summaries, screenshots, visibility, and notes editorial. Document action
+  contracts, scope/limits, manual renames, and per-file failure behavior.
+- Verification: `build.cmd verify --doinstall-tools C:/tmp/dotask-se-tools` passed
+  on Windows x64: 317 .NET Release and 75 Rust/native tests, formatting, clippy,
+  documentation, catalog, and whitespace gates. Coverage includes eight native
+  HTTP/workflow integration tests and four frontmatter unit tests. A live GitHub
+  refresh created 58 public non-fork pages; another refresh preserved authored
+  content, bytes, and no-op mtime. Local Markdown link/anchor checks passed.
+  Native Linux/macOS/ARM64 acceptance remains pending. No active installation,
+  publishing, deployment, or push was performed.

@@ -3,7 +3,12 @@ use anyhow::{bail, Result};
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 
+#[cfg(test)]
 pub(crate) fn validate(value: &Value, previous: &BTreeSet<String>) -> Result<()> {
+  validate_scoped(value, previous, &BTreeSet::new())
+}
+
+pub(crate) fn validate_scoped(value: &Value, previous: &BTreeSet<String>, items: &BTreeSet<String>) -> Result<()> {
   match value {
     Value::Object(object) => {
       if let Some(reference) = object.get("result") {
@@ -16,15 +21,23 @@ pub(crate) fn validate(value: &Value, previous: &BTreeSet<String>) -> Result<()>
         if object.len() != 1 || field.is_empty() || !previous.contains(id) {
           bail!("Result '{name}' must reference a previously named step.");
         }
+      } else if let Some(reference) = object.get("item") {
+        let name = reference
+          .as_str()
+          .ok_or_else(|| anyhow::anyhow!("item requires a loop name and optional field."))?;
+        let name = name.split('.').next().unwrap();
+        if object.len() != 1 || !items.contains(name) {
+          bail!("Item '{name}' must reference an enclosing foreach.");
+        }
       } else {
         for value in object.values() {
-          validate(value, previous)?;
+          validate_scoped(value, previous, items)?;
         }
       }
     }
     Value::Array(values) => {
       for value in values {
-        validate(value, previous)?;
+        validate_scoped(value, previous, items)?;
       }
     }
     _ => {}
@@ -32,7 +45,12 @@ pub(crate) fn validate(value: &Value, previous: &BTreeSet<String>) -> Result<()>
   Ok(())
 }
 
+#[cfg(test)]
 pub(crate) fn resolve(value: &Value, results: &Map<String, Value>) -> Result<Value> {
+  resolve_scoped(value, results, &Map::new())
+}
+
+pub(crate) fn resolve_scoped(value: &Value, results: &Map<String, Value>, items: &Map<String, Value>) -> Result<Value> {
   match value {
     Value::Object(object) if object.len() == 1 && object.contains_key("result") => {
       let reference = object["result"]
@@ -58,13 +76,27 @@ pub(crate) fn resolve(value: &Value, results: &Map<String, Value>) -> Result<Val
         std::env::var(name).map_err(|_| anyhow::anyhow!("Missing UTF-8 environment variable '{name}'."))?,
       ))
     }
+    Value::Object(object) if object.len() == 1 && object.contains_key("item") => {
+      let reference = object["item"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Invalid item reference."))?;
+      let mut parts = reference.split('.');
+      let name = parts.next().unwrap();
+      let item = items.get(name).ok_or_else(|| anyhow::anyhow!("Unavailable item '{name}'."))?;
+      Ok(crate::workflow_values::field(item, &parts.collect::<Vec<_>>().join("."))?.clone())
+    }
     Value::Object(object) => Ok(Value::Object(
       object
         .iter()
-        .map(|(key, value)| Ok((key.clone(), resolve(value, results)?)))
+        .map(|(key, value)| Ok((key.clone(), resolve_scoped(value, results, items)?)))
         .collect::<Result<_>>()?,
     )),
-    Value::Array(values) => Ok(Value::Array(values.iter().map(|v| resolve(v, results)).collect::<Result<_>>()?)),
+    Value::Array(values) => Ok(Value::Array(
+      values
+        .iter()
+        .map(|v| resolve_scoped(v, results, items))
+        .collect::<Result<_>>()?,
+    )),
     _ => Ok(value.clone()),
   }
 }

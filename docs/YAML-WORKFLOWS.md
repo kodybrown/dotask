@@ -1,8 +1,10 @@
 # Native YAML workflow actions
 
 A `.task` runs without a language SDK. Each step declares exactly one `run`,
-`exec`, or `file` action. These primitives support installation recipes while
-keeping application publishing and remote transport in the consuming project.
+`exec`, `file`, `http`, `json`, `text`, or `foreach` action. Tasks combine these
+primitives to describe their own workflows; dotask contains no GitHub or website
+synchronization command. Help/completion validate metadata without making requests
+or executing actions.
 
 ## Named results and guards
 
@@ -111,3 +113,154 @@ dotask workflow; its server recipes should use that outer timeout.
 Configuration ownership, backups, activation, and recovery belong to the installer.
 These file primitives do not roll back arbitrary commands, OS packages, databases,
 or certificates.
+
+## HTTP GET and pagination
+
+```yaml
+steps:
+  - id: repositories
+    http:
+      method: GET
+      url: https://api.github.com/users/kodybrown/repos
+      query: {type: owner, per_page: 100}
+      headers: {Accept: application/vnd.github+json}
+      response-format: json
+      pagination: {mode: link-header, relation: next, max-pages: 100}
+      timeout-seconds: 30
+```
+
+The result contains `status-code`, `headers` (lowercase names mapped to arrays of
+strings), `data`, and `pages`. Without pagination, `data` can be any JSON value.
+With pagination, each response must be an array; `data` combines all pages in
+order. Headers/status describe the final page. Every page must succeed before the
+step publishes a result. There are no automatic retries or cached responses.
+
+URLs, header values, and query values accept exact parameter/setting/environment/
+result/item references. Query values are encoded as individual scalar values.
+The client sends `User-Agent: dotask` along with configured headers. Only GET and JSON
+responses are supported. Non-2xx status, invalid JSON, invalid links, transport
+failure, or timeout stop the workflow. Redirects are not followed. Diagnostics
+exclude response bodies, request header values, and runtime URLs.
+
+`timeout-seconds` defaults to 30, accepts 1 through 86400, and covers the entire
+HTTP action, including all pages and body reads. Cancellation remains responsive
+during DNS/TLS/reads. Total decoded response bytes are limited to 16 MiB. Pagination
+defaults to at most 100 pages; `max-pages` accepts 1 through 1000. Next links must
+be absolute HTTP(S) URLs with the original scheme and authority; repeated links,
+ambiguous next links, and limits fail rather than returning a partial collection.
+
+## JSON filtering and projection
+
+```yaml
+steps:
+  - id: source
+    file: {operation: read, path: repositories.json, format: json}
+  - id: originals
+    json:
+      operation: filter
+      input: {result: source.data}
+      where: {field: fork, equals: false}
+  - id: names
+    json:
+      operation: select
+      input: {result: originals.data}
+      fields: {id: id, name: name, url: html_url}
+```
+
+Both operations return `data`. `filter` requires an array and retains records
+whose selected field equals the supplied value with JSON type preserved (false
+differs from `"false"`). `select` constructs an object from a field mapping, or
+maps that construction over an input array. Field paths are case-sensitive,
+dot-separated object keys or array indexes; an empty projection path selects the
+entire input. Missing fields fail; existing JSON nulls remain null. Input and
+filter comparison values support exact references. These are bounded data
+operations, not general expressions or a script language. Referenced values are
+data and are never reinterpreted as another reference.
+
+## Sequential foreach and text formatting
+
+```yaml
+steps:
+  - id: source
+    file: {operation: read, path: repositories.json, format: json}
+  - foreach: {items: {result: source.data}, as: repo}
+    steps:
+      - id: path
+        text:
+          template: "src/projects/{{name}}.md"
+          values: {name: {item: repo.name}}
+      - run: update-project
+        with:
+          path: {result: path.text}
+          repository-id: {item: repo.id}
+```
+
+`foreach.items` is an array or exact structured reference. `as` declares an item
+name; `{item: repo}` selects the whole item, and `{item: repo.name}` selects a
+field with the same paths as JSON operations. Loop bodies may contain any action,
+including nested loops and ordinary `run` calls. Calls still accept only scalar
+parameters through `with`; nulls/objects/arrays are not implicitly serialized.
+
+Steps execute sequentially and stop on the first failure. Outer earlier results
+are visible inside a loop; each iteration starts without results from previous
+iterations. Body results are unavailable after the loop. Result IDs cannot
+shadow an enclosing result; item names cannot shadow an enclosing item. A named
+loop publishes only `iterations`, not its body results. Each loop accepts at most
+10000 items; nesting is limited to 16 levels. An empty loop does not satisfy
+`require_at_least_1_step`. There is no parallel execution, break, or goto.
+
+`text` returns `text`. Its literal `template` uses `{{name}}` placeholders and an
+explicit `values` mapping of scalar literals/references. Inserted data is literal
+and is never reparsed. Missing placeholders, invalid scalar values, and unclosed
+placeholders fail. Arbitrary process arguments still have no interpolation.
+
+## Markdown frontmatter updates
+
+```yaml
+steps:
+  - file:
+      operation: frontmatter
+      path: src/projects/fixeol.md
+      create-if-missing: true
+      initial: {title: FixEOL, summary: "", screenshot: "", hidden: false}
+      match-existing: {github.id: 123456}
+      fill-empty: {summary: "An optional initial blurb"}
+      set:
+        github.id: 123456
+        github.description: Fixes line endings in files.
+        github.archived: false
+```
+
+This operation edits YAML frontmatter delimited by `---` at the start of a text
+document. It creates a missing file only with `create-if-missing: true`. Existing
+documents without a header can gain one without changing their body. A file
+beginning with an unclosed header is refused. No filename extension is required.
+
+All four mappings use explicit dot-separated field paths with simple ASCII
+letters/digits/underscore/hyphen keys, and accept typed values/references:
+
+| Mapping | Policy |
+| --- | --- |
+| `match-existing` | Before edits, require each existing non-null field to equal the supplied value; missing fields are allowed. |
+| `initial` | Apply only when creating the document. |
+| `fill-empty` | Fill absent/null/blank-string fields from non-null, nonblank values; preserve false, zero, and existing collections. |
+| `set` | Update exactly these fields, including explicit nulls and false values. |
+
+Policies apply in the order shown. Parent/child paths may not overlap within one
+mapping. Unknown fields and all Markdown body text remain untouched. Existing
+block YAML mappings and single-line values are patched without serializing the
+document; new values use JSON-compatible YAML, with strings/dates quoted. Untouched
+multiline fields remain literal. Changing multiline/block scalar values, traversing
+flow mappings, or editing anchored/tagged values/mappings is refused. Convert
+those particular fields to simple block YAML manually before retrying. A
+nonmapping parent is an error; it is never silently replaced.
+
+Results are `path`, `exists`, `changed`, and `sha256`. File safety, size, encoding,
+permission, and no-op rules above apply. The operation observes the current hash
+and uses a guarded atomic write internally; optional `expected-sha256` adds a
+caller-supplied precondition. A stale guard or a concurrent edit refuses the write.
+Edits are atomic per file, not a transaction across loop iterations.
+
+See the [GitHub project-page example](../examples/github-projects/README.md) for
+the complete Eleventy content workflow with plain repository-name filenames and
+separate editorial and refreshed metadata.

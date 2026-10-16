@@ -1,0 +1,65 @@
+description: Create project pages and refresh their GitHub metadata.
+options:
+  - name: api-url
+    default: https://api.github.com/users/kodybrown/repos
+    description: Public repository API endpoint for the website owner.
+  - name: output
+    type: path
+    default: src/projects
+    description: Project content directory relative to the website root.
+
+steps:
+  - id: repositories
+    http:
+      method: GET
+      url: {parameter: api-url}
+      query:
+        type: owner
+        per_page: 100
+      headers:
+        Accept: application/vnd.github+json
+      response-format: json
+      pagination:
+        mode: link-header
+        relation: next
+      timeout-seconds: 30
+
+  - id: originals
+    json:
+      operation: filter
+      input: {result: repositories.data}
+      where:
+        field: fork
+        equals: false
+
+  - foreach:
+      items: {result: originals.data}
+      as: repo
+    steps:
+      - id: documentPath
+        text:
+          template: "{{directory}}/{{name}}.md"
+          values:
+            directory: {parameter: output}
+            name: {item: repo.name}
+
+      - file:
+          operation: frontmatter
+          path: {result: documentPath.text}
+          create-if-missing: true
+          initial:
+            title: {item: repo.name}
+            summary: ""
+            screenshot: ""
+            hidden: false
+          # A name reused by another repository must not overwrite this page.
+          match-existing:
+            github.id: {item: repo.id}
+          set:
+            github.id: {item: repo.id}
+            github.repository: {item: repo.full_name}
+            github.url: {item: repo.html_url}
+            github.description: {item: repo.description}
+            github.pushedAt: {item: repo.pushed_at}
+            github.language: {item: repo.language}
+            github.archived: {item: repo.archived}

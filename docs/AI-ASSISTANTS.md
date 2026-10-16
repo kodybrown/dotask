@@ -55,6 +55,14 @@ never construct shell command strings for ordinary argument passing. Interpreter
 must be explicit. The reusable Git task is now only `git/check.task`; invoke/add
 it without `--lang` and do not silently replace consumers' tracked code copies.
 See [direct process steps](TARGETS.md#direct-process-steps).
+For HTTP/JSON workflows, compose native `http`, `json`, `foreach`, `text`, and
+`file` actions. Named results are local to the invocation; loop item references
+and results stay lexical. Use `file: {operation: frontmatter}` with separate
+`initial`, `fill-empty`, `set`, and `match-existing` policies to preserve handwritten
+Markdown. No GitHub-specific synchronization command exists. See
+[native YAML workflows](YAML-WORKFLOWS.md) and the
+[project-page example](../examples/github-projects/README.md); do not introduce a
+shell helper or regenerate an existing authored document from a template.
 The reusable `text/fixeol.task` also calls its app directly: it requires `fixeol`
 on PATH, preserves recursive exclusions, and always normalizes batch files to
 CRLF. It defaults other text to LF; `--eol crlf` changes that pass. Missing tools

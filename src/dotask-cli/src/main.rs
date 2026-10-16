@@ -7,8 +7,10 @@ mod csharp_tasks;
 mod declarative;
 mod execution;
 mod file_steps;
+mod frontmatter;
 mod help;
 mod host;
+mod http_steps;
 mod initialization;
 mod process;
 mod process_output;
@@ -20,6 +22,7 @@ mod shared_files;
 mod task_metadata;
 mod transaction;
 mod wizard;
+mod workflow_values;
 mod yaml;
 
 #[cfg(test)]

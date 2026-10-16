@@ -127,6 +127,15 @@ explicit executable paths resolve from the project root. Boolean parameter
 conditions can skip either action; no general expression language is provided.
 
 The native process runner owns streams, exit codes and cancellation for `exec`.
+Native `http`, `json`, `text`, and sequential `foreach` steps compose remote-data
+workflows without a language SDK. HTTP publishes only complete bounded collections;
+loop-local results are cleared between iterations without repeatedly copying the
+outer collection. Data references preserve JSON types and never reinterpret
+inserted values as references. The frontmatter file operation patches selected
+YAML fields with guarded atomic writes while preserving editorial text and the
+Markdown body; unsupported source layouts fail before publication. Ownership
+policies and GitHub-specific mappings belong to the consuming `.task`. See
+[native YAML workflows](YAML-WORKFLOWS.md).
 No compiler, restore or SDK helper is involved. Shared catalog/lock version 1
 supports runtime `yaml` and exact `.task` entry-file ownership. Old code copies
 are never migrated or adopted. Only `git/check.task` remains reusable; dotask's

@@ -3,6 +3,34 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Composable HTTP/JSON project-page workflows (2026-10-16)
+
+`build.cmd verify --doinstall-tools C:/tmp/dotask-se-tools` passed on Windows x64:
+317 .NET Release tests, 75 Rust/native tests, formatting, clippy, documentation,
+catalog freshness, and whitespace checks. Evaluated MSBuild output/intermediate/
+publish directories remain under C:/tmp/_dotnet; Cargo remains under
+C:/tmp/_rust/dotask/target.
+
+On Windows x64, eight native HTTP/workflow integration tests and four focused
+frontmatter unit tests passed. The documented GitHub task executed against local
+HTTP fixtures without language tools on PATH. Coverage includes encoded queries,
+pagination, failed later pages, redirects/cross-origin links, repeated links,
+size/page limits, timeouts, metadata-only help, typed JSON filtering/projection,
+lexical nested loops, reserved field/placeholder names, child task calls, and
+uninterpreted referenced data. Existing native declarative tests also passed.
+
+File coverage verifies creation, field ownership policies, ID mismatch refusal,
+unknown fields/comments/body preservation, quoted timestamps, explicit nulls and
+false values, no-op bytes/mtime, CRLF, UTF-8 BOM, UTF-16 LE/BE, and refusal of
+unsupported source layouts. These are atomic per-file edits, not batch rollback.
+
+A live GitHub run created 58 public non-fork project pages in a disposable
+directory. A second run preserved an authored fixeol summary/comment, screenshot,
+Markdown notes/image, exact file bytes, and modification time. Sixty-eight local
+Markdown link targets and 32 anchors passed checks. No website checkout, active
+installation, or user PATH changed. Native Linux/macOS/ARM64 execution remains
+unverified; repository renames in this example require manual filename changes.
+
 ## Self-extracting doinstall shared adapters (2026-10-16)
 
 On Windows x64, `build.cmd verify --doinstall-tools C:/tmp/dotask-se-tools`
