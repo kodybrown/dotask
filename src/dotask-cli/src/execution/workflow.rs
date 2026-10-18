@@ -29,7 +29,13 @@ impl Workflow<'_> {
     let mappings: &[&str] = match kind {
       "http" => &["query", "headers"],
       "text" => &["values"],
-      "file" => &["initial", "fill-empty", "set", "match-existing"],
+      "file" => &[
+        "initial",
+        "fill-empty",
+        "set",
+        "match-existing",
+        "body-if-empty",
+      ],
       _ => &[],
     };
     for name in mappings {

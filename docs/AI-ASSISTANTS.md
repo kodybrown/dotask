@@ -62,7 +62,11 @@ For HTTP/JSON workflows, compose native `http`, `json`, `foreach`, `text`, and
 `file` actions. Named results are local to the invocation; loop item references
 and results stay lexical. Use `file: {operation: frontmatter}` with separate
 `initial`, `fill-empty`, `set`, and `match-existing` policies to preserve handwritten
-Markdown. No GitHub-specific synchronization command exists. See
+Markdown. For one-time Markdown seeding, inspect the frontmatter result's
+`body-empty` flag and use explicit `body-if-empty` with optional `strip-first-h1`.
+HTTP can return JSON or UTF-8 text; an optional 404 returns `found: false` and
+must be guarded before consuming its data. Other request failures still stop the
+workflow. No GitHub-specific synchronization command exists. See
 [native YAML workflows](YAML-WORKFLOWS.md) and the
 [project-page example](../examples/github-projects/README.md); do not introduce a
 shell helper or regenerate an existing authored document from a template.

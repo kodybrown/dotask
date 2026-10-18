@@ -3,6 +3,26 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Downloaded text and blank Markdown bodies (2026-10-18)
+
+`build.cmd verify --doinstall-tools
+C:/Users/kodyb/AppData/Local/Programs/doinstall/app/0.1.0-26289-1952` passed on
+Windows x64: 319 .NET Release and 81 Rust/native tests, formatting, clippy,
+documentation, catalog freshness, and Git whitespace checks. Cargo output remains
+under C:/tmp/_rust/dotask/target and evaluated .NET output/intermediate/publish
+paths remain under C:/tmp/_dotnet.
+
+Twelve native HTTP/workflow tests and six frontmatter unit tests cover UTF-8
+text, explicit Windows-1252 fallback, optional 404 versus server errors,
+pagination refusal, typed body-content references, nonblank-body preservation,
+ATX/Setext removal without deleting fenced examples, UTF encodings/CRLF,
+disabled filenames, stale hashes, and byte/mtime no-op repeats. Consumer fixtures
+also exercised the complete static-site rebuild, skipped README requests for
+authored/commented bodies, missing READMEs, and edits made during a download.
+
+No active installation, PATH change, publication, or push occurred. Native
+Linux/macOS/ARM64 execution remains unverified.
+
 ## Dotask self-extracting delivery (2026-10-16)
 
 `build.cmd create-dotask-installer` passed doinstall's full verification and

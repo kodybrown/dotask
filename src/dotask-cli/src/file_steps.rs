@@ -27,6 +27,7 @@ pub(crate) fn validate(action: &Value, target: &Target) -> Result<()> {
     "directory" => &["mode"],
     "frontmatter" => &[
       "create-if-missing",
+      "body-if-empty",
       "initial",
       "fill-empty",
       "set",
@@ -331,7 +332,10 @@ pub(crate) fn execute(action: &Value, directory: &Directory, parameters: &Value,
     let observed = original.as_ref().map(|b| hash(b)).unwrap_or_else(|| "missing".into());
     let expected = action.get("expected-sha256").map(resolve).transpose()?.unwrap_or(observed);
     let changed = write(&destination, &bytes, Some(&expected), mode)?;
-    return Ok(json!({"path":destination,"exists":true,"changed":changed,"sha256":hash(&bytes)}));
+    let body_empty = crate::frontmatter::body_empty(&text)?;
+    return Ok(
+      json!({"path":destination,"exists":true,"changed":changed,"sha256":hash(&bytes),"body-empty":body_empty}),
+    );
   }
   if operation == "read" {
     if let Some(bytes) = original {

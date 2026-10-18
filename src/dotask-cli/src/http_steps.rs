@@ -20,12 +20,30 @@ pub(crate) fn validate(action: &Value, target: &Target) -> Result<()> {
       "query",
       "headers",
       "response-format",
+      "fallback-encoding",
+      "optional",
       "pagination",
       "timeout-seconds",
     ],
   )?;
   ensure!(action["method"] == "GET", "http currently supports method: GET only.");
-  ensure!(action["response-format"] == "json", "http requires response-format: json.");
+  ensure!(
+    matches!(action["response-format"].as_str(), Some("json" | "text")),
+    "http requires response-format: json or text."
+  );
+  if let Some(optional) = action.get("optional") {
+    ensure!(optional.is_boolean(), "http optional must be boolean.");
+  }
+  if let Some(encoding) = action.get("fallback-encoding") {
+    ensure!(
+      action["response-format"] == "text" && encoding == "windows-1252",
+      "fallback-encoding requires response-format: text and value: windows-1252."
+    );
+  }
+  if action.get("pagination").is_some() {
+    ensure!(action["response-format"] == "json", "HTTP pagination requires JSON responses.");
+    ensure!(action["optional"] != true, "Optional HTTP requests cannot use pagination.");
+  }
   crate::process_steps::validate(&action["url"], target)?;
   if let Some(url) = action["url"].as_str() {
     uri(url)?;
@@ -169,6 +187,7 @@ fn fetch(action: &Value, timeout: Duration) -> Result<Value> {
       ureq::Agent::config_builder()
         .max_redirects(0)
         .max_redirects_will_error(false)
+        .http_status_as_error(false)
         .timeout_global(Some(remaining))
         .build(),
     );
@@ -193,7 +212,7 @@ fn fetch(action: &Value, timeout: Duration) -> Result<Value> {
     })?;
     let status = response.status().as_u16();
     ensure!(
-      (200..300).contains(&status),
+      (200..300).contains(&status) || status == 404 && action["optional"] == true,
       "HTTP GET returned status {status}; redirects are not followed."
     );
     let mut headers = Map::new();
@@ -206,6 +225,11 @@ fn fetch(action: &Value, timeout: Duration) -> Result<Value> {
         .collect::<std::result::Result<Vec<_>, _>>()
         .map_err(|_| anyhow::anyhow!("HTTP response has non-text headers."))?;
       headers.insert(name.to_string(), json!(values));
+    }
+    // Only an explicitly optional 404 is a normal absence. Do not parse its
+    // error body or allow pagination to return a partially accumulated result.
+    if status == 404 {
+      return Ok(json!({"status-code":status,"headers":headers,"data":null,"pages":1,"found":false}));
     }
     let links = response
       .headers()
@@ -223,10 +247,23 @@ fn fetch(action: &Value, timeout: Duration) -> Result<Value> {
       .map_err(|_| anyhow::anyhow!("HTTP response read failed."))?;
     total += bytes.len();
     ensure!(total <= LIMIT, "HTTP responses exceed 16 MiB total.");
-    let value: Value =
-      serde_json::from_slice(&bytes).map_err(|_| anyhow::anyhow!("HTTP response is not valid JSON."))?;
+    let value: Value = if action["response-format"] == "text" {
+      Value::String(match String::from_utf8(bytes) {
+        Ok(text) => text,
+        Err(error) if action["fallback-encoding"] == "windows-1252" => {
+          // Legacy text can opt into this specific fallback. Never guess for
+          // normal requests, reinterpret valid UTF-8, or insert replacement characters.
+          let (text, invalid) = encoding_rs::WINDOWS_1252.decode_without_bom_handling(error.as_bytes());
+          ensure!(!invalid, "HTTP response is not valid Windows-1252 text.");
+          text.into_owned()
+        }
+        Err(_) => bail!("HTTP response is not valid UTF-8 text."),
+      })
+    } else {
+      serde_json::from_slice(&bytes).map_err(|_| anyhow::anyhow!("HTTP response is not valid JSON."))?
+    };
     if !paginated {
-      return Ok(json!({"status-code":status,"headers":headers,"data":value,"pages":1}));
+      return Ok(json!({"status-code":status,"headers":headers,"data":value,"pages":1,"found":true}));
     }
     data.extend(
       value
@@ -236,7 +273,7 @@ fn fetch(action: &Value, timeout: Duration) -> Result<Value> {
         .cloned(),
     );
     let Some(next) = next_link(&links)? else {
-      return Ok(json!({"status-code":status,"headers":headers,"data":data,"pages":page}));
+      return Ok(json!({"status-code":status,"headers":headers,"data":data,"pages":page,"found":true}));
     };
     let next_uri = uri(&next)?;
     ensure!(

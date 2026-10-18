@@ -1,5 +1,5 @@
 //! Patch selected YAML tokens instead of serializing the author's document.
-//! Unsupported edits fail before publication; unrelated YAML and body stay literal.
+//! Unsupported edits fail before publication; nonblank bodies always stay literal.
 use crate::{project::Target, workflow_values};
 use anyhow::{bail, ensure, Result};
 use serde_json::{json, Value};
@@ -11,6 +11,14 @@ use yaml_rust2::{
 pub(crate) fn validate(action: &Value, target: &Target) -> Result<()> {
   if let Some(flag) = action.get("create-if-missing") {
     ensure!(flag.is_boolean(), "create-if-missing must be boolean.");
+  }
+  if let Some(body) = action.get("body-if-empty") {
+    crate::declarative::keys(body, &["content", "strip-first-h1"])?;
+    ensure!(body.get("content").is_some(), "body-if-empty requires content.");
+    crate::process_steps::validate(&body["content"], target)?;
+    if let Some(flag) = body.get("strip-first-h1") {
+      ensure!(flag.is_boolean(), "strip-first-h1 must be boolean.");
+    }
   }
   for name in ["initial", "fill-empty", "set", "match-existing"] {
     if let Some(values) = action.get(name) {
@@ -53,6 +61,68 @@ fn lookup<'a>(data: &'a Value, path: &str) -> Option<&'a Value> {
     value = value.get(key)?;
   }
   Some(value)
+}
+
+// Match the updater's delimiter rules, including refusing an unclosed header.
+// Comments, code and every other non-whitespace body character count as content.
+fn body_start(text: &str) -> Result<usize> {
+  let mut lines = text.split_inclusive('\n');
+  let first = lines.next().unwrap_or("");
+  if first.trim_end_matches(['\r', '\n']) != "---" {
+    return Ok(0);
+  }
+  let mut offset = first.len();
+  for line in lines {
+    offset += line.len();
+    if line.trim_end_matches(['\r', '\n']) == "---" {
+      return Ok(offset);
+    }
+  }
+  bail!("Unclosed YAML frontmatter; file was preserved.")
+}
+
+pub(crate) fn body_empty(text: &str) -> Result<bool> {
+  Ok(text[body_start(text)?..].trim().is_empty())
+}
+
+fn fill_body(text: String, action: &Value) -> Result<String> {
+  let Some(body) = action.get("body-if-empty") else {
+    return Ok(text);
+  };
+  let start = body_start(&text)?;
+  if !text[start..].trim().is_empty() {
+    return Ok(text);
+  }
+  let mut content = body["content"]
+    .as_str()
+    .ok_or_else(|| anyhow::anyhow!("body-if-empty content must be text."))?
+    .to_owned();
+  if body["strip-first-h1"] == true {
+    // Parser offsets remove only a real Markdown H1 (ATX or Setext), never
+    // a heading-looking line inside a fenced code sample. All other text stays literal.
+    if let Some(range) = pulldown_cmark::Parser::new(&content)
+      .into_offset_iter()
+      .find_map(|(event, range)| {
+        matches!(
+          event,
+          pulldown_cmark::Event::Start(pulldown_cmark::Tag::Heading {
+            level: pulldown_cmark::HeadingLevel::H1,
+            ..
+          })
+        )
+        .then_some(range)
+      })
+    {
+      content.replace_range(range, "");
+    }
+  }
+  if content.trim().is_empty() {
+    return Ok(text);
+  }
+  // Existing whitespace-only bodies may lack a line break after the closing
+  // delimiter. Preserve the header and supply an unambiguous Markdown boundary.
+  let eol = if text.contains("\r\n") { "\r\n" } else { "\n" };
+  Ok(format!("{}{eol}{eol}{content}", text[..start].trim_end_matches(['\r', '\n'])))
 }
 
 pub(crate) fn update(original: Option<&str>, action: &Value) -> Result<String> {
@@ -112,16 +182,17 @@ pub(crate) fn update(original: Option<&str>, action: &Value) -> Result<String> {
     }
   }
   if original.is_some() && yaml == before {
-    return Ok(text.into());
+    return fill_body(text.into(), action);
   }
-  if has_header {
+  let updated = if has_header {
     // Only the header substring changes; the closing delimiter and every body
     // character are copied verbatim, including the final-newline policy.
     let body_start = prefix.len() + before.len() + suffix.len();
-    Ok(format!("{prefix}{yaml}{suffix}{}", &text[body_start..]))
+    format!("{prefix}{yaml}{suffix}{}", &text[body_start..])
   } else {
-    Ok(format!("---{eol}{yaml}---{eol}{text}"))
-  }
+    format!("---{eol}{yaml}---{eol}{text}")
+  };
+  fill_body(updated, action)
 }
 
 struct Node {
@@ -283,6 +354,46 @@ fn comment_start(text: &str) -> usize {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn empty_body_fill_removes_only_first_real_h1_and_preserves_other_markdown() {
+    let original = "---\n# keep this comment\ntitle: Mine\n---\n \t\n";
+    let readme = "[badge](https://example.test)\n\n```md\n# example, not a heading\n```\n\n# The title\n\nCaf\u{e9} notes.\n\n# Second H1\n\n![image](docs/image.png)\n";
+    let action = json!({"body-if-empty":{"content":readme,"strip-first-h1":true}});
+    let actual = update(Some(original), &action).unwrap();
+    assert_eq!(
+      actual,
+      format!(
+        "---\n# keep this comment\ntitle: Mine\n---\n\n{}",
+        readme.replacen("# The title\n", "", 1)
+      )
+    );
+    assert!(!body_empty(&actual).unwrap());
+    assert_eq!(update(Some(&actual), &action).unwrap(), actual);
+    for body in ["notes", "<!-- keep -->", "```\n```", "# My title"] {
+      let authored = format!("---\ntitle: Mine\n---\n\n{body}\n");
+      assert_eq!(update(Some(&authored), &action).unwrap(), authored);
+    }
+  }
+
+  #[test]
+  fn setext_title_empty_content_and_headerless_text_are_handled() {
+    let action = json!({"body-if-empty":{"content":"The title\n=========\n\nThe rest.\n","strip-first-h1":true}});
+    assert_eq!(update(Some(" \n"), &action).unwrap(), "\n\n\nThe rest.\n");
+    assert_eq!(
+      update(
+        Some("---\n---\n"),
+        &json!({"body-if-empty":{"content":"# Only a title\n","strip-first-h1":true}})
+      )
+      .unwrap(),
+      "---\n---\n"
+    );
+    assert!(body_empty("---\ntitle: x\n---").unwrap());
+    assert!(body_empty("---\nunclosed").is_err());
+    assert!(update(Some("---\nunclosed"), &action).is_err());
+    let without_title = json!({"body-if-empty":{"content":"## Keep this\n\nAll of it."}});
+    assert!(update(None, &without_title).unwrap().ends_with("## Keep this\n\nAll of it."));
+  }
 
   #[test]
   fn creation_refresh_and_noop_preserve_editorial_content() {

@@ -10,6 +10,15 @@ use std::{
 };
 
 fn fixture(responses: Vec<(u16, String, String)>) -> (String, thread::JoinHandle<Vec<String>>) {
+  fixture_bytes(
+    responses
+      .into_iter()
+      .map(|(status, headers, body)| (status, headers, body.into_bytes()))
+      .collect(),
+  )
+}
+
+fn fixture_bytes(responses: Vec<(u16, String, Vec<u8>)>) -> (String, thread::JoinHandle<Vec<String>>) {
   let listener = TcpListener::bind("127.0.0.1:0").unwrap();
   listener.set_nonblocking(true).unwrap();
   let base = format!("http://{}", listener.local_addr().unwrap());
@@ -36,8 +45,9 @@ fn fixture(responses: Vec<(u16, String, String)>) -> (String, thread::JoinHandle
       }
       requests.push(String::from_utf8(bytes).unwrap());
       let headers = headers.replace("{base}", &url);
-      let response = format!("HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n{headers}\r\n{body}",body.len());
+      let response = format!("HTTP/1.1 {status} Response\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n{headers}\r\n",body.len());
       let _ = stream.write_all(response.as_bytes());
+      let _ = stream.write_all(&body);
     }
     requests
   });
@@ -330,4 +340,137 @@ steps:
   assert!(fs::read_to_string(root.path().join("page.md"))
     .unwrap()
     .contains("result: \"literal\""));
+}
+
+#[test]
+fn text_download_seeds_empty_body_and_exposes_body_state() {
+  let root = tempfile::tempdir().unwrap();
+  let readme = "# Title\n\nAll text, including Caf\u{e9}.\n\n## Details\n\n```rust\n// keep this comment\n```\n";
+  let (url, worker) = fixture(vec![(200, String::new(), readme.into())]);
+  setup(
+    root.path(),
+    r#"steps:
+  - id: remote
+    http: {method: GET, url: {setting: url}, response-format: text}
+  - id: document
+    file:
+      operation: frontmatter
+      path: page.md
+      create-if-missing: true
+      initial: {title: Local}
+      body-if-empty: {content: {result: remote.data}, strip-first-h1: true}
+  - when: {result: document.body-empty}
+    file: {operation: write, path: wrong, content: wrong}
+"#,
+    &url,
+  );
+  let output = run(root.path(), &["refresh"]);
+  assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+  assert!(fs::read_to_string(root.path().join("page.md"))
+    .unwrap()
+    .ends_with(&readme.replacen("# Title\n", "", 1)));
+  assert!(!root.path().join("wrong").exists());
+  assert_eq!(worker.join().unwrap().len(), 1);
+}
+
+#[test]
+fn legacy_text_requires_explicit_fallback_and_valid_utf8_is_never_reinterpreted() {
+  for (bytes, fallback, expected) in [
+    (b"column \xa6 next".to_vec(), false, None),
+    (b"column \xa6 next".to_vec(), true, Some("column \u{a6} next")),
+    ("Caf\u{e9}".as_bytes().to_vec(), true, Some("Caf\u{e9}")),
+  ] {
+    let root = tempfile::tempdir().unwrap();
+    let (url, worker) = fixture_bytes(vec![(200, String::new(), bytes)]);
+    let option = if fallback {
+      ", fallback-encoding: windows-1252"
+    } else {
+      ""
+    };
+    setup(root.path(), &format!("steps:\n  - id: remote\n    http: {{method: GET, url: {{setting: url}}, response-format: text{option}}}\n  - file: {{operation: write, path: downloaded, content: {{result: remote.data}}}}\n"), &url);
+    let output = run(root.path(), &["refresh"]);
+    assert_eq!(output.status.success(), expected.is_some(), "{output:?}");
+    if let Some(expected) = expected {
+      assert_eq!(fs::read_to_string(root.path().join("downloaded")).unwrap(), expected);
+    } else {
+      assert!(!root.path().join("downloaded").exists());
+    }
+    worker.join().unwrap();
+  }
+}
+
+#[test]
+fn optional_http_only_accepts_missing_resources_and_text_cannot_paginate() {
+  for (status, succeeds) in [(404, true), (503, false)] {
+    let root = tempfile::tempdir().unwrap();
+    let (url, worker) = fixture(vec![(status, String::new(), "not JSON".into())]);
+    setup(
+      root.path(),
+      r#"steps:
+  - id: remote
+    http: {method: GET, url: {setting: url}, response-format: json, optional: true}
+  - when: {result: remote.found}
+    file: {operation: write, path: wrong, content: wrong}
+"#,
+      &url,
+    );
+    let output = run(root.path(), &["refresh"]);
+    assert_eq!(output.status.success(), succeeds, "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(!root.path().join("wrong").exists());
+    worker.join().unwrap();
+  }
+  for extra in [
+    "response-format: text",
+    "response-format: json, optional: true",
+  ] {
+    let root = tempfile::tempdir().unwrap();
+    setup(root.path(), &format!("steps: [{{http: {{method: GET, url: 'http://127.0.0.1:1', {extra}, pagination: {{mode: link-header, relation: next}}}}}}]"), "");
+    assert!(!run(root.path(), &["help", "refresh"]).status.success());
+  }
+}
+
+#[test]
+fn body_fill_preserves_encoding_final_newlines_and_concurrent_edit_guards() {
+  for encoding in ["utf8", "utf8-bom", "utf16-le", "utf16-be"] {
+    let root = tempfile::tempdir().unwrap();
+    let original = "---\r\n# retain\r\ntitle: 'My title'\r\n---\r\n\r\n";
+    let encode = |text: &str| -> Vec<u8> {
+      match encoding {
+        "utf8-bom" => [b"\xef\xbb\xbf".as_slice(), text.as_bytes()].concat(),
+        "utf16-le" => [
+          vec![0xff, 0xfe],
+          text.encode_utf16().flat_map(u16::to_le_bytes).collect(),
+        ]
+        .concat(),
+        "utf16-be" => [
+          vec![0xfe, 0xff],
+          text.encode_utf16().flat_map(u16::to_be_bytes).collect(),
+        ]
+        .concat(),
+        _ => text.as_bytes().to_vec(),
+      }
+    };
+    let page = root.path().join("page.md.disabled");
+    fs::write(&page, encode(original)).unwrap();
+    setup(
+      root.path(),
+      r#"steps:
+  - file:
+      operation: frontmatter
+      path: page.md.disabled
+      body-if-empty: {content: "Heading\n=======\n\nText.\n", strip-first-h1: true}
+"#,
+      "",
+    );
+    let output = run(root.path(), &["refresh"]);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(fs::read(&page).unwrap(), encode(&format!("{original}\r\nText.\r\n")));
+    let modified = fs::metadata(&page).unwrap().modified().unwrap();
+    assert!(run(root.path(), &["refresh"]).status.success());
+    assert_eq!(fs::metadata(&page).unwrap().modified().unwrap(), modified);
+    let saved = fs::read(&page).unwrap();
+    setup(root.path(), "steps: [{file: {operation: frontmatter, path: page.md.disabled, expected-sha256: stale, body-if-empty: {content: wrong}}}]", "");
+    assert!(!run(root.path(), &["refresh"]).status.success());
+    assert_eq!(fs::read(&page).unwrap(), saved);
+  }
 }

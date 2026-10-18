@@ -985,3 +985,20 @@ acceptance, installation, and publication.
   passed. Persistent user/machine PATH was unchanged. Evaluated .NET and Cargo
   outputs remain external. Native Linux/macOS/ARM64 acceptance is unverified;
   no active installation or push occurred.
+
+### 2026-10-18 Seed blank Markdown bodies from downloaded text
+
+- Added native HTTP text responses and optional 404 handling with an explicit
+  found flag. Other failures still stop the workflow; text and optional requests
+  cannot paginate. Known legacy text can opt into Windows-1252 fallback without
+  reinterpreting valid UTF-8 or inserting replacement characters.
+- Added frontmatter body-empty results and body-if-empty content seeding. Any
+  non-whitespace body, including comments and code, is preserved. Optional
+  strip-first-h1 removes only the first parsed Markdown ATX/Setext H1; other
+  Markdown remains literal. Identity/hash guards, atomic writes, encoding,
+  line endings, final-newline policy, and no-op timestamps still apply.
+- Updated the YAML reference and agent guide. Verification on Windows x64:
+  build.cmd verify with explicitly selected prebuilt doinstall tools passed
+  319 .NET Release and 81 Rust/native tests, formatting, clippy, documentation,
+  catalog freshness, and whitespace checks. Native Linux/macOS/ARM64 acceptance
+  remains unverified. No active installation, publication, or push occurred.
