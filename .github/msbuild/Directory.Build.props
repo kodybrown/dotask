@@ -1,0 +1,33 @@
+<Project>
+
+  <!-- Build Settings (applies to all C# projects) -->
+  <PropertyGroup>
+    <!-- Mirror the full project directory beneath the temp root so projects with the
+         same name in different repositories or worktrees never share build state. -->
+    <_BuildProjectPath>$([System.String]::Copy('$(MSBuildProjectDirectory)').Replace(':', ''))</_BuildProjectPath>
+    <_DotNetArtifactsRoot Condition="'$(OS)' == 'Windows_NT'">C:\tmp\_dotnet</_DotNetArtifactsRoot>
+    <_DotNetArtifactsRoot Condition="'$(OS)' != 'Windows_NT'">/tmp/_dotnet</_DotNetArtifactsRoot>
+    <_UserBuildOutputPolicyLoaded>true</_UserBuildOutputPolicyLoaded>
+
+    <!-- Base directory for binary outputs (e.g., bin). -->
+    <BaseOutputPath Condition="'$(OS)' == 'Windows_NT'">$(_DotNetArtifactsRoot)\$(_BuildProjectPath)\bin\</BaseOutputPath>
+    <BaseOutputPath Condition="'$(OS)' != 'Windows_NT'">$(_DotNetArtifactsRoot)/$(_BuildProjectPath)/bin/</BaseOutputPath>
+
+    <!-- Base directory for intermediate files (e.g., obj). -->
+    <BaseIntermediateOutputPath Condition="'$(OS)' == 'Windows_NT'">$(_DotNetArtifactsRoot)\$(_BuildProjectPath)\obj\</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath Condition="'$(OS)' != 'Windows_NT'">$(_DotNetArtifactsRoot)/$(_BuildProjectPath)/obj/</BaseIntermediateOutputPath>
+
+    <!-- Keep legacy source-local output trees out of SDK default item globs. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin/**;obj/**</DefaultItemExcludes>
+
+    <!-- Publish beside the external build outputs, never in the source tree. -->
+    <PublishDir Condition="'$(OS)' == 'Windows_NT'">$(_DotNetArtifactsRoot)\$(_BuildProjectPath)\publish\$(RuntimeIdentifier)\$(Configuration)\</PublishDir>
+    <PublishDir Condition="'$(OS)' != 'Windows_NT'">$(_DotNetArtifactsRoot)/$(_BuildProjectPath)/publish/$(RuntimeIdentifier)/$(Configuration)/</PublishDir>
+  </PropertyGroup>
+
+  <!-- Clean PublishDir before publishing to prevent nesting. -->
+  <Target Name="CleanPublishDir" BeforeTargets="PrepareForPublish">
+    <RemoveDir Directories="$(PublishDir)" />
+  </Target>
+
+</Project>

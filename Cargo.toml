@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/dotask-cli", "src/dotask-sdk"]
+members = ["src/dotask-cli", "src/dotask-sdk", ".tasks/_release"]
 resolver = "3"
 
 # Cargo reads profiles from the workspace root. Keep native delivery optimized.

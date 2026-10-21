@@ -30,6 +30,11 @@ impl Host {
       .then_some("requires .NET SDK 10.0.300+ (the .NET 10 family)")
   }
   pub fn locate() -> Result<Self> {
+    // Report the missing toolchain independently of whether this checkout has
+    // staged helper files yet. Help and execution share the same prerequisite.
+    if let Some(reason) = Self::unavailable(&std::env::current_dir()?) {
+      bail!("C# tasks {reason}");
+    }
     let assembly = std::env::current_exe()?
       .parent()
       .context("CLI has no parent")?

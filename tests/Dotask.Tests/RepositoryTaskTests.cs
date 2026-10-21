@@ -191,12 +191,12 @@ public sealed class RepositoryTaskTests
     var result = await RustArtifacts.Run(project.Root, ["test", "-c", "Debug", "--doinstall-tools", "tools with spaces"]);
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
-    Assert.Equal("native:dotask-cli:False;check;stage:Debug;test:dotask-sdk;lint:dotask-sdk;Debug:tools with spaces;format:True;docs;catalog:True;", File.ReadAllText(order));
+    Assert.Equal("native:dotask-cli:False;check;stage:Debug;test:dotask-sdk;lint:dotask-sdk;test:dotask-release;lint:dotask-release;Debug:tools with spaces;format:True;docs;catalog:True;", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify-docs.cs"));
     result = await RustArtifacts.Run(project.Root, ["test", "--doinstall-tools", "tools"]);
     Assert.Equal(1, result.ExitCode);
-    Assert.Equal("native:dotask-cli:False;check;stage:Release;test:dotask-sdk;lint:dotask-sdk;Release:tools;format:True;", File.ReadAllText(order));
+    Assert.Equal("native:dotask-cli:False;check;stage:Release;test:dotask-sdk;lint:dotask-sdk;test:dotask-release;lint:dotask-release;Release:tools;format:True;", File.ReadAllText(order));
     File.Delete(order);
     project.Target("stage-build", "Environment.Exit(23);", "// dotask: 1\n// options: " + configOptions + "\n// end-dotask\n");
     Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["test"])).ExitCode);
@@ -316,7 +316,7 @@ public sealed class RepositoryTaskTests
     Copy(project, "verify-docs.rs");
     foreach (var path in new[] {
       "README.md", "LICENSE.md", "AGENTS.md", "docs/README.md", "docs/USAGE.md",
-      "docs/SHARED-TASKS.md", "docs/INSTALLATION.md", "docs/TARGETS.md", "docs/AI-ASSISTANTS.md",
+      "docs/SHARED-TASKS.md", "docs/INSTALLATION.md", "docs/RELEASING.md", "docs/TARGETS.md", "docs/AI-ASSISTANTS.md",
       "docs/DESIGN.md", "docs/VERIFICATION.md", "docs/CHANGELOG.md", "examples/basic/README.md"
     }) {
       project.Write(path, "fixture documentation\n");

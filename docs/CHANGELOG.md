@@ -1063,3 +1063,39 @@ acceptance, installation, and publication.
   conflicts and source-local output refusal. Actionlint 1.7.11 passed. Evaluated
   Cargo target/build and .NET output/intermediate/publish paths remain external.
   Keep package version 0.1.0; native Linux/macOS/ARM64 acceptance is not claimed.
+
+### 2026-10-21 Publish native bundles from verified main pushes
+
+- Add pinned Windows Server 2022/Linux Ubuntu 22.04 x64 release jobs, retaining
+  push/PR verification and the explicit macOS source installer gate. Main pushes
+  publish the committed stable SemVer after every gate; manual runs upload tested
+  artifacts only. Pin Rust/.NET/actions, keep builds read-only, and let only the
+  publisher upload assets to a draft and publish it with GitHub's required tag
+  at the exact tested commit. Reject reused versions, incomplete drafts and
+  transport failures; published same-commit reruns leave existing assets intact.
+- Pin doinstall v0.1.1's published native tools archives and their reviewed
+  SHA256 hashes. Verify before extraction/execution and again before assembly;
+  preserve explicit source development and refuse unpinned development deliveries
+  at the publication collector. Never bundle doinstall tools in dotask's payload.
+- Add a Cargo-only release driver under .tasks for native portable ZIP/tar.gz
+  and self-extracting deliveries with identical native/Rust SDK/.NET SDK/license
+  payloads, complete dependency notices, source/toolchain provenance and SHA256SUMS.
+  Preserve Linux executable modes and enforce the glibc 2.35 compatibility baseline.
+  Package inspected build bytes, keep output external, and record the returned
+  installer only after temporary native task/package/install/uninstall acceptance.
+- Remove private .NET helper PDB paths, remap source paths, and scan expanded
+  archive/installer content in ASCII and UTF-16 with closed file inventories.
+  Fix clean-runner SDK prerequisite ordering and isolate standalone Unix timeout
+  probes from inherited repository process groups, isolate console-control tests,
+  and use literal native CI shells for quoted Windows paths. Document release
+  preparation, manual artifact review and pinned filekeep consumption without
+  source builds.
+- Verification: full gates passed 96 Rust/319 .NET Release tests on Windows x64
+  and 98 Rust/319 .NET on native Ubuntu 22.04 x64 in Docker with init, plus strict
+  Clippy, formatting, docs, catalog and whitespace. Both platforms passed native
+  portable and installed Rust/C#/YAML execution, downstream packaging, artifact
+  recording, temporary uninstall and unchanged persistent PATH/profile checks.
+  Real combined artifact collection/checksums and dirty-source publication refusal
+  passed, along with Actionlint 1.7.11 and fake-publisher failure/idempotence tests.
+  Version remains 0.1.2; hosted Actions/macOS acceptance is not claimed. No
+  promotion, push, remote tag or release publication was performed.

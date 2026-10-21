@@ -184,6 +184,13 @@ build. Use `./build.sh test` or `.\build.cmd test` to bootstrap the full gate
 without installed dotask. `format --check` checks formatting without edits.
 See the [development commands](../README.md#development).
 
+`create-dotask-installer` builds and tests the Windows/Linux portable and installer
+deliveries with prebuilt doinstall tools; `--reuse-build` packages the inspected
+build after `test`. The [release procedure](RELEASING.md) documents pinned tools,
+main-push publication, and manual artifact-only builds. C# execution reports a
+missing .NET SDK even when no helper has been staged yet; metadata/help remain
+available without language toolchains.
+
 The separate reusable `dotnet/verify` task runs available `dotnet-check`,
 `dotnet-test`, and `dotnet-format` tasks, with formatting in verification mode.
 It reports and skips missing targets, stops on failure, and fails if none are

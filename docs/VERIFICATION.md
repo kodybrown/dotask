@@ -3,6 +3,53 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Main-push native release automation (2026-10-21)
+
+Windows x64 `build.cmd test` passed 96 Rust tests (CLI, SDK and release driver)
+and 319 .NET Release tests, strict Clippy, formatting, docs, catalog freshness
+and whitespace checks. Native portable ZIP and self-extracting installer
+acceptance passed with doinstall v0.1.1's checksum-verified published tools.
+Both representations ran Rust, C# and YAML tasks with fresh external caches and
+source SDK overrides removed, used the declarative adapter to package a second
+application, exercised the Rust installer artifact adapter, installed/uninstalled
+in temporary roots, and left persistent user/machine PATH unchanged. Their
+expanded payload inventories/hashes matched and passed ASCII/UTF-16 privacy scans.
+
+Ubuntu 22.04 x64 / glibc 2.35 passed `./build.sh test`: 98 Rust and 319 .NET
+Release tests plus the same required checks. Acceptance ran natively in a Docker
+container with init for normal orphan-process reaping. Its extracted tar.gz and
+self-extracting installer passed the same portable/installed SDK, downstream
+package/install/uninstall checks. The native command retains mode 0755. Evaluated
+Cargo target/build paths remain `/tmp/_rust/dotask/target`; .NET evaluated
+output/intermediate/publish remain under `/tmp/_dotnet`.
+
+The collector accepted both real platform outputs and all seven combined asset
+checksums passed. It refused publishing these dirty-source review builds before
+creating output. Clean hosted CI rebuilds the committed version for publication.
+Windows packaging was exercised through the native cmd workflow step, including
+quoted output paths. Updated publisher/shell boundary tests pass on both systems.
+
+Release-driver tests cover unsafe/duplicate archive paths, links, executable
+modes, malformed self-extracting footers, private paths/credential patterns,
+stable version validation, and collection failures for wrong commits, dirty
+source, unpinned tools, missing files and tampering. Actual publisher shell tests
+use a fake GitHub CLI and cover new/existing releases, commit/version conflicts,
+incomplete drafts, network failures, metadata mismatch and failed uploads. No
+real tags or releases are created by those tests. Actionlint 1.7.11 passed.
+
+Clean Linux verification exposed two pre-existing assumptions: missing .NET SDK
+guidance depended on a previously staged helper, and outer-workflow timeout probes
+inherited the repository runner's Unix process-group owner. Execution now checks
+the shared SDK prerequisite first; standalone probes clear inherited group owners
+without weakening nested cancellation/timeout policy.
+Console-control tests run in a nonparallel collection so they cannot cancel an
+unrelated installer integration test during the gate.
+
+Evaluated Windows Cargo target/build paths remain `C:/tmp/_rust/dotask/target`;
+.NET output/intermediate/publish remain under `C:/tmp/_dotnet`. The committed CLI
+version stays 0.1.2. GitHub-hosted workflow execution, local macOS acceptance,
+main promotion, pushing and actual publication have not been performed here.
+
 ## Shared local task flow and stable CLI version (2026-10-21)
 
 `build.cmd create-dotask-installer --doinstall-tools <verified-v0.1.1-tools>`

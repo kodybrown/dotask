@@ -1,0 +1,213 @@
+name: Verify and release
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  native:
+    name: Verify and package ${{ matrix.platform }} x64
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows
+          - os: ubuntu-22.04
+            platform: linux
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+      - name: Prepare external .NET output policy for this ephemeral runner
+        shell: pwsh
+        run: |
+          $destination = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Directory.Build.props'
+          if (!(Test-Path -LiteralPath $destination)) {
+            Copy-Item -LiteralPath .github/msbuild/Directory.Build.props -Destination $destination
+          }
+      - name: Load pinned toolchain and validate committed version
+        run: |
+          rustup show active-toolchain
+          cargo run --quiet --locked --package dotask-release -- version
+      - name: Download and verify pinned published doinstall tools
+        env:
+          TOOLS_OUTPUT: ${{ runner.temp }}/doinstall-bundle
+        run: cargo run --quiet --locked --package dotask-release -- prepare --output "$TOOLS_OUTPUT"
+      - name: Verify standalone project with published tools (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        env:
+          DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-bundle/tools
+        run: build.cmd test
+      - name: Verify standalone project with published tools (Linux)
+        if: runner.os != 'Windows'
+        env:
+          DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-bundle/tools
+        run: ./build.sh test
+      - name: Package inspected build and exercise both native deliveries (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        env:
+          DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-bundle/tools
+          RELEASE_OUTPUT: ${{ runner.temp }}/dotask-release
+        run: build.cmd create-dotask-installer --reuse-build --output "%RELEASE_OUTPUT%"
+      - name: Package inspected build and exercise both native deliveries (Linux)
+        if: runner.os != 'Windows'
+        env:
+          DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-bundle/tools
+          RELEASE_OUTPUT: ${{ runner.temp }}/dotask-release
+        run: ./build.sh create-dotask-installer --reuse-build --output "$RELEASE_OUTPUT"
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: native-${{ matrix.platform }}
+          path: ${{ runner.temp }}/dotask-release/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  macos:
+    # Retain the existing native CLI/SDK regression gate. Doinstall publishes
+    # no macOS tools bundle yet; only this non-release gate uses explicit source.
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+      - name: Prepare external .NET output policy
+        shell: pwsh
+        run: |
+          $destination = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Directory.Build.props'
+          if (!(Test-Path -LiteralPath $destination)) {
+            Copy-Item -LiteralPath .github/msbuild/Directory.Build.props -Destination $destination
+          }
+      - name: Prepare pinned development tools and verify
+        shell: bash
+        env:
+          SOURCE: ${{ runner.temp }}/doinstall-source
+          DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-tools
+        run: |
+          rustup show active-toolchain
+          git clone --no-checkout https://github.com/kodybrown/doinstall.git "$SOURCE"
+          git -C "$SOURCE" checkout --detach 208b9a915db1efe1404b421d9070c534aec8bafb
+          ./build.sh create-dotask-installer --source "$SOURCE"
+
+  collect:
+    needs: [native, macos]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          pattern: native-*
+          path: ${{ runner.temp }}/native
+      - name: Validate both platforms and create combined checksums
+        env:
+          SOURCE: ${{ runner.temp }}/native
+          OUTPUT: ${{ runner.temp }}/release
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          args=()
+          if [[ "$EVENT" == push && "$REF" == refs/heads/main ]]; then
+            args+=(--publishing)
+          fi
+          cargo run --quiet --locked --package dotask-release -- collect --source "$SOURCE" --output "$OUTPUT" --commit "$SOURCE_COMMIT" "${args[@]}"
+          cd "$OUTPUT"
+          sha256sum --check SHA256SUMS
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: release-ready
+          path: ${{ runner.temp }}/release/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: collect
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: release-ready
+          path: ${{ runner.temp }}/release
+      - name: Verify final assets
+        working-directory: ${{ runner.temp }}/release
+        run: sha256sum --check SHA256SUMS
+      - name: Publish new release after uploading all assets to a draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+          ASSETS: ${{ runner.temp }}/release
+        run: |
+          set -euo pipefail
+          export TAG
+          # Let the shell open files. Passing JSON through stdin also works with
+          # native Windows jq when shell acceptance uses MSYS-only temp paths.
+          TAG=$(jq -er '.tag | select(test("^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"))' < "$ASSETS/RELEASE-METADATA.json")
+          jq -e --arg commit "$COMMIT" '.source_commit == $commit' < "$ASSETS/RELEASE-METADATA.json" > /dev/null
+
+          # Query successful API responses rather than treating authentication or
+          # network failures as "not found". Never move an existing version tag.
+          reference=$(gh api "repos/$GH_REPO/git/matching-refs/tags/$TAG" --jq '[.[] | select(.ref == ("refs/tags/" + env.TAG))] | first // empty')
+          if [[ -n "$reference" ]]; then
+            kind=$(jq -er '.object.type' <<< "$reference")
+            target=$(jq -er '.object.sha' <<< "$reference")
+            while [[ "$kind" == tag ]]; do
+              reference=$(gh api "repos/$GH_REPO/git/tags/$target")
+              kind=$(jq -er '.object.type' <<< "$reference")
+              target=$(jq -er '.object.sha' <<< "$reference")
+            done
+            if [[ "$kind" != commit || "$target" != "$COMMIT" ]]; then
+              echo "Version $TAG already identifies different source. Run dotask update-version, commit, and push main again." >&2
+              exit 1
+            fi
+          fi
+          existing=$(gh api "repos/$GH_REPO/releases" --paginate --jq '.[] | select(.tag_name == env.TAG)')
+          if [[ -n "$existing" ]]; then
+            if [[ -z "$reference" ]] || ! jq -e '.draft == false' <<< "$existing" > /dev/null; then
+              echo "An incomplete release for $TAG exists. Inspect its draft and workflow artifacts before retrying." >&2
+              exit 1
+            fi
+            review=$(mktemp -d)
+            gh release download "$TAG" --pattern RELEASE-METADATA.json --dir "$review"
+            jq -e --arg tag "$TAG" --arg commit "$COMMIT" '.tag == $tag and .source_commit == $commit' < "$review/RELEASE-METADATA.json" > /dev/null
+            echo "Release $TAG already published for this commit; existing assets remain unchanged."
+            exit 0
+          fi
+
+          # GitHub creates its required tag at the exact tested SHA. All assets
+          # enter a draft before publication; failure leaves it for inspection.
+          printf 'Source commit: %s\n\nNative Windows Server 2022 x64 and Ubuntu 22.04 x64 verification, archive inspection, and temporary-root install/package/uninstall acceptance passed.\n\nUse the portable archive for CI or the setup executable for interactive installation. Check SHA256SUMS before running any downloaded file. Exact toolchains, the pinned doinstall dependency, and per-platform file hashes are in RELEASE-METADATA.json. Linux baseline: Ubuntu 22.04 x64 / glibc 2.35; other platforms are not release-tested.\n' "$COMMIT" > "$RUNNER_TEMP/release-notes.md"
+          gh release create "$TAG" "$ASSETS"/* --target "$COMMIT" --title "dotask $TAG" --draft --notes-file "$RUNNER_TEMP/release-notes.md"
+          gh release edit "$TAG" --draft=false

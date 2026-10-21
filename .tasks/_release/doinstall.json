@@ -1,0 +1,12 @@
+{
+  "version": "v0.1.1",
+  "source_commit": "208b9a915db1efe1404b421d9070c534aec8bafb",
+  "windows": {
+    "archive": "doinstall-v0.1.1-windows-x64-tools.zip",
+    "sha256": "1f80fcf8289e071a48654e58755cc6d5a15753ebf8e06b4990df07610021455d"
+  },
+  "linux": {
+    "archive": "doinstall-v0.1.1-linux-x64-tools.tar.gz",
+    "sha256": "34b254bb9eaad821ea8907f579766c1f35f8c9507cb9f7b33591b95b7406a9cb"
+  }
+}

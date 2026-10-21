@@ -3,6 +3,7 @@ using System.Text.Json;
 
 namespace DoTask.Tests;
 
+[Collection("Native process control")]
 public sealed class RustCliTests
 {
   private static string Executable => RustArtifacts.Binary("dotask");
@@ -369,6 +370,10 @@ public sealed class RustCliTests
           Console.CancelKeyPress += (_, e) => e.Cancel = true;
           var p = BuildContext.Current;
           var start = new ProcessStartInfo(p.Parameters.GetPath("executable")) { UseShellExecute = false };
+          // This CLI is the outer cancellation owner under test, independent of
+          // the repository runner that launched the test suite/control driver.
+          start.Environment.Remove("DOTASK_PROCESS_GROUP_OWNER");
+          start.Environment.Remove("DOINSTALL_PROCESS_GROUP_OWNER");
           start.ArgumentList.Add(p.Parameters.Get<string>("target"));
           using var child = Process.Start(start)!;
           try {
@@ -411,3 +416,8 @@ public sealed class RustCliTests
     Assert.False(File.Exists(contextPath), "The cancelled execution context was not removed.");
   }
 }
+
+// Control-event probes manipulate console/process-group state. Keep their
+// collection from overlapping installer tests that must never be cancelled.
+[CollectionDefinition("Native process control", DisableParallelization = true)]
+public sealed class NativeProcessControlCollection { }

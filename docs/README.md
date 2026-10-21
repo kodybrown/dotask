@@ -6,6 +6,7 @@ run your first example. The preview is not yet published to a public package fee
 | Goal                                                  | Read                                                             |
 | ----------------------------------------------------- | ---------------------------------------------------------------- |
 | Build and verify the source checkout                 | [Build instructions](../README.md#build-and-verify)               |
+| Publish native releases and consume pinned bundles | [Release procedure](RELEASING.md) |
 | Install after building                               | [Install dotask](../README.md#install-dotask)                     |
 | Initialize a project                                 | [Project setup](USAGE.md#initialize-a-project)                    |
 | Install applications, choose directories, or uninstall | [Application installers](INSTALLATION.md) |

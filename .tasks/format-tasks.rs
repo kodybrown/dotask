@@ -13,9 +13,15 @@ fn task(project: &BuildContext) -> Result<()> {
   if project.boolean("check")? {
     command.arg("--check");
   }
-  // These files are outside Cargo's targets. Canonical sources belong here;
-  // installed .tasks/_ copies belong to the shared-task manager.
-  for directory in [".tasks", ".tasks/_support", "shared-tasks/rust"] {
+  // Include task entry/support files and the release driver's included source
+  // fragment (Cargo fmt does not follow include!). Managed .tasks/_ copies
+  // remain owned by the shared-task manager.
+  for directory in [
+    ".tasks",
+    ".tasks/_support",
+    ".tasks/_release/src",
+    "shared-tasks/rust",
+  ] {
     for entry in std::fs::read_dir(project.path(directory))? {
       let path = entry?.path();
       if path.extension().is_some_and(|extension| extension == "rs") {

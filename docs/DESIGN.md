@@ -113,6 +113,12 @@ a separate Cargo profile so it cannot replace the inspected release executable.
 Staging and run validate the successful build hash; installer assembly reuses
 that executable. Cargo's committed SemVer is authoritative; UTC build metadata
 does not change package precedence. Only explicit update-version edits it.
+Native Windows/Linux releases add a Cargo-only driver under `.tasks/_release/`
+for verified published doinstall tools, closed payload inventories, portable and
+self-extracting assembly, privacy scans, and native downstream acceptance. The
+driver and tools are producer inputs; only the CLI, SDKs, notices and provenance
+ship. Main-push CI publishes the tested artifacts after all platform gates;
+manual runs only upload artifacts. See [native releases](RELEASING.md).
 Rust tasks declare leading ordinary-comment YAML metadata and compile through isolated,
 content-addressed manifests/source snapshots outside the project. SDK dependencies
 are pinned; Cargo retains a lockfile per snapshot and checks compiler fingerprints.
@@ -122,8 +128,9 @@ and Rust entries, with extension-qualified IDs for coexisting variants. Language
 selection filters shared roots; dependencies use explicitly resolved files.
 Existing tracking identities and revision serialization remain stable on no-op
 sync. No untracked files are adopted and no language is chosen implicitly.
-Linux/macOS and live remote catalog acceptance remain pending independently of
-the Windows cutover. Installation and publication are separate user actions.
+Windows/Linux native release acceptance is recorded in [verification](VERIFICATION.md).
+macOS and live remote catalog acceptance remain separate. Installation and
+publication are separate user actions.
 
 ## Declarative process tasks
 

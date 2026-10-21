@@ -20,9 +20,8 @@ projects without a registration step.
   package-app.cs
 ```
 
-This is a **0.1 local preview**, with no public package release yet. Windows,
-Linux, and macOS are intended hosts. Current native CLI/task work is verified on
-Windows x64; Linux/macOS acceptance for this cutover is deferred. See
+This is a **0.1 preview**. Release automation targets Windows x64 and Linux x64
+(Ubuntu 22.04 / glibc 2.35), with a separate macOS verification gate. See
 [verification status](docs/VERIFICATION.md).
 
 Use **.NET SDK 10.0.300 or later in the .NET 10 family** for C# execution, and
@@ -56,7 +55,8 @@ From the repository checkout, bootstrap and verify the project:
 ```
 
 The .NET SDK, Git, and Rust 1.95+ with rustfmt, clippy, and the host linker are
-required; dotask does not need to be installed.
+required; dotask does not need to be installed. The release publisher simulation
+in the full gate also requires Bash and `jq` (Git Bash on Windows).
 The launchers compile this checkout, stage a temporary runner, and use it to run
 the requested tasks. Use `test` for the complete repository gate: the shared Rust
 build/tests followed by dotask's required extra `verify` checks for SDKs,
@@ -75,8 +75,9 @@ to PATH. If you only want to try the example, you can
 To use `dotask` from any project, install it for your current user account.
 From this checkout, first create the installer with
 `build.cmd create-dotask-installer` (Unix: `./build.sh create-dotask-installer`).
-This creates one self-extracting launcher containing the installer, YAML, and
-application payload. Then install that existing output:
+This builds and tests a portable archive and self-extracting launcher containing
+the complete application/SDK payload. For CI, use the portable delivery; see
+[native releases and pinned downloads](docs/RELEASING.md). Then install that existing output:
 
 **Windows (PowerShell):**
 
@@ -96,7 +97,7 @@ and run its standalone installer. Installation never rebuilds. Missing configura
 provides an example and interactive setup using recorded builds or discovered
 files; see [installer selection and setup](docs/INSTALLATION.md#find-and-run-an-existing-installer).
 Dotask's payload contains only the native Release command,
-`sdk/dotnet/Dotask.dotnet.dll`, the Rust helper source crate in `sdk/rust/`, and license
+`sdk/dotnet/Dotask.dotnet.dll`, the Rust helper source crate in `sdk/rust/`, license, notices and provenance,
 and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and
 `.shim` file; Linux/macOS get a symlink. No shim compiler is needed.
@@ -475,7 +476,7 @@ projects; they do not build a managed dotask executable.
 
 Repository builds respect an existing user-level `Directory.Build.props` output
 policy. Runtime task builds use an isolated external cache. Windows, Linux, and
-macOS verification is configured in [.github/workflows/verify.yml](.github/workflows/verify.yml).
+macOS verification is configured in [.github/workflows/release.yml](.github/workflows/release.yml).
 Local results are documented in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 The [documentation index](docs/README.md) links to all guides and design contracts.

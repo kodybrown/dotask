@@ -32,10 +32,13 @@ fn task(project: &BuildContext) -> Result<()> {
         "quiet",
         "--self-contained=false",
         "-p:UseAppHost=false",
+        // Distributed helper DLLs must not retain private CodeView/PDB paths.
+        "-p:DebugType=none",
         "-getProperty:PublishDir",
         "-getItem:ResolvedFileToPublish",
       ])
-      .arg(format!("-p:Configuration={}", project.string("configuration")?)),
+      .arg(format!("-p:Configuration={}", project.string("configuration")?))
+      .arg(format!("-p:PathMap={}=/dotask", project.root().display())),
   )?;
   let start = output
     .find("{\n")

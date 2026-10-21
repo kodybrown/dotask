@@ -34,9 +34,11 @@ Standalone `verify` requires a prior inspected native build and never calls
 
 For dotask's own complete source installer workflow, use
 `./build.sh create-dotask-installer` (Windows: `.\build.cmd create-dotask-installer`).
-This local task consumes matching prebuilt doinstall tools, runs dotask's full
-gate, and packages the inspected application and SDKs without rebuilding the
-CLI or launching the installer. Use `--doinstall-tools PATH`, `DOINSTALL_TOOL_DIR`
+This local task consumes matching prebuilt doinstall tools, builds/lints/stages
+dotask, and packages both Windows/Linux deliveries with native temporary-install acceptance.
+Run the full `test` gate first, then use `--reuse-build` to package its inspected
+executable. See [native releases](RELEASING.md) for the main-push workflow and
+the retained macOS source installer gate. Use `--doinstall-tools PATH`, `DOINSTALL_TOOL_DIR`
 or builder discovery; `--source ../doinstall` explicitly selects source development
 and verifies that project too. The install task uses the successful-build record.
 It is not a shared consumer task; see

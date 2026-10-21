@@ -17,6 +17,7 @@ fn task(project: &BuildContext) -> Result<()> {
     "docs/USAGE.md",
     "docs/SHARED-TASKS.md",
     "docs/INSTALLATION.md",
+    "docs/RELEASING.md",
     "docs/TARGETS.md",
     "docs/AI-ASSISTANTS.md",
     "docs/DESIGN.md",

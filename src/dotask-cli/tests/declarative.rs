@@ -10,6 +10,10 @@ fn run(root: &std::path::Path) -> std::process::Output {
   Command::new(env!("CARGO_BIN_EXE_dotask"))
     .arg("install")
     .current_dir(root)
+    // These probes model a fresh outer workflow, including its own timeout.
+    // Cargo itself can be running inside dotask's repository verification tree.
+    .env_remove("DOTASK_PROCESS_GROUP_OWNER")
+    .env_remove("DOINSTALL_PROCESS_GROUP_OWNER")
     .env("PATH", "")
     .env("DOTASK_CACHE_HOME", root.join("cache"))
     .output()

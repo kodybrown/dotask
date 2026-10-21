@@ -426,34 +426,30 @@ bundle with `--doinstall-tools PATH` or `DOINSTALL_TOOL_DIR`. Otherwise the task
 asks `doinstall-builder` on PATH for its real adjacent tools. Nothing downloads
 or builds doinstall implicitly. To develop against source explicitly, use
 `--source ../doinstall`; that mode builds/stages the checkout and runs its
-independent verification before dotask's gate, ignoring ambient prebuilt tools.
+independent verification before dotask's build, ignoring ambient prebuilt tools.
 Do not combine `--source` and `--doinstall-tools`. This task is local to dotask,
 not a shared consumer task.
 
-The task runs `test`, including dotask's additional required `verify` checks,
-then packages the successful inspected native executable, both SDKs and license.
-Any failure stops later steps. It records and returns the actual
-`InstallerArtifact` without launching it or rewriting environment/settings.
+The task builds/lints/stages dotask, then assembles and tests both a portable
+archive and self-extracting installer. Run `test` beforehand for the complete
+repository gate; `--reuse-build` packages that exact inspected executable without
+rebuilding it. It records/returns the installer only after native acceptance,
+using temporary app/bin/cache locations with source SDK overrides cleared and
+persistent PATH unchanged. No active installation is changed.
+
 Version comes from `src/dotask-cli/Cargo.toml`; build time is display metadata.
 Only explicit `update-version` changes the package version, patch by default.
 `--increment-minor`, `--increment-major`, and `--dry-run` are available there.
-SDK package versions are independent of the executable's release version.
+SDK versions remain independent. See [native releases](RELEASING.md) for asset
+names, pinned published doinstall tools, main-push publication, and manual builds.
 
-This is the single local installer-creation entry point; there is no local
-`create-installer` wrapper. The shared creator's `.tasks/installer.yaml` build steps
-run `stage-build` to copy the inspected app and prepare SDKs without recompiling
-the CLI, gather the declared files, and call
-`_/doinstall/assemble-self-extracting`. The delivery directory contains only
-`dotask-setup-v<version>-se.exe` on Windows (without `.exe` on Unix); distribute
-that single file. The launcher extracts and retains the inner installer, YAML,
-and payload before running the installer in the same console. Optional archive
-steps wrap this delivery directory. There is no local
-`pack` task; `_/dotnet/pack` remains a NuGet task for consuming C# projects.
-Tool selection comes from `--builder`, `--installer`, and `--launcher-template`,
-or `settings.doinstall`
-as described above when invoking the shared creator directly with prebuilt tools.
-The normal local workflow uses those independent prebuilt tools without a
-doinstall source checkout. Source development requires explicit `--source`.
+The release driver packages the inspected app, complete SDKs, license, dependency
+notices and provenance. The source-only `.tasks/installer.yaml` supplies runtime
+configuration; its generic build/gather recipe remains available to the shared
+creator. Dotask's release driver supplies a curated identical payload to both
+forms and follows the builder's result `FilePath`. Doinstall tools are separate
+inputs and never become dotask application payload. There is no local `pack`
+task; `_/dotnet/pack` remains a NuGet task for consumers.
 
 `build-sdks` publishes the maintained C# helper using evaluated MSBuild
 `PublishDir`, then copies the Rust SDK selections from `.tasks/sdks.yaml`.
@@ -470,7 +466,7 @@ No language runtime, SDK, Roslyn, or managed support host is bundled.
 $env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt runtime, builder, and launcher template.
 .\build.cmd test                    # Complete gate, including external adapters.
 .\build.cmd verify                  # Extra checks; requires a prior inspected build.
-.\build.cmd create-dotask-installer # Complete build, verification and packaging.
+.\build.cmd create-dotask-installer --reuse-build # Package the inspected build and test both deliveries.
 # Or invoke the optional shared adapter directly with a prebuilt pair:
 .\build.cmd _/doinstall/create-installer --builder "$env:DOINSTALL_TOOL_DIR/doinstall-builder.exe" --installer "$env:DOINSTALL_TOOL_DIR/doinstall.exe"
 # Use fresh, isolated locations for acceptance:
@@ -486,8 +482,8 @@ Unix uses actual tool paths without `.exe`.
 over `DOINSTALL_TOOL_DIR`. They require prebuilt runtime, builder, and launcher
 template tools and fail when one is
 absent. If developing against source, explicitly run
-`build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. CI performs
-the complete `create-dotask-installer --source PATH` workflow on each host OS.
+`build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. Release CI uses verified published Windows/Linux bundles; macOS verification
+uses a pinned explicit source build because no macOS bundle is published.
 
 Unix uses `./build.sh`. Both launchers forward arbitrary arguments to a temporary
 native runner; no task whitelist is maintained. The Rust source SDK is available
@@ -495,7 +491,7 @@ to bootstrapped Rust tasks. The launcher prepares the C# helper through
 `build-sdks` only when a C# task is executed. `build` calls `build-sdks` explicitly
 for a distributable native app. Doinstall owns installer Rust tests, formatting,
 clippy, and shim verification. Rust 1.95+, rustfmt, and clippy are required for
-source verification. Native Linux/macOS acceptance remains pending.
+source verification. See [verification status](VERIFICATION.md) for platform evidence.
 
 ## Installer library contract
 

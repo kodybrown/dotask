@@ -15,6 +15,8 @@ fn task(project: &BuildContext) -> Result<()> {
   project.exec_target("stage-build", json!({"configuration":project.string("configuration")?}))?;
   project.exec_target("_/rust/cargo.rs", json!({"operation":"test","package":"dotask-sdk"}))?;
   project.exec_target("_/rust/clippy", json!({"package":"dotask-sdk"}))?;
+  project.exec_target("_/rust/cargo.rs", json!({"operation":"test","package":"dotask-release"}))?;
+  project.exec_target("_/rust/clippy", json!({"package":"dotask-release"}))?;
   let mut tests = json!({"configuration":project.string("configuration")?});
   if let Ok(tools) = project.string("doinstall-tools")
     && !tools.is_empty()
