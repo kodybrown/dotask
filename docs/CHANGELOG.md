@@ -1027,3 +1027,12 @@ acceptance, installation, and publication.
   .NET output/intermediate/publish directories remain external. No active
   installation, persistent PATH or package version was changed. Native
   Linux/macOS/ARM64 task acceptance remains unverified locally.
+
+### 2026-10-20 Select native CI shells explicitly
+
+- Replace the existing matrix.shell expression rejected by GitHub's workflow
+  validator with literal cmd/bash steps selected by runner.os. Retain the same
+  native platform matrix, source preparation and verification/installer commands.
+- Verification: checksum-verified Actionlint 1.7.11 and git diff --check passed.
+  The preceding full Windows gate passed 319 .NET and 86 Rust/native tests;
+  canonical task sources, SDKs and catalog are unchanged by this workflow fix.

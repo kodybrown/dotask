@@ -12,14 +12,8 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            launcher: ./build.sh
-            shell: bash
           - os: macos-latest
-            launcher: ./build.sh
-            shell: bash
           - os: windows-latest
-            launcher: build.cmd
-            shell: cmd
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +28,16 @@ jobs:
           dotnet-version: 10.0.x
       - name: Prepare Rust toolchain
         run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
-      - name: Build, verify and create dotask installer
+      - name: Build, verify and create dotask installer (Windows)
         # The explicit local workflow prepares doinstall and verifies both projects.
-        shell: ${{ matrix.shell }}
+        if: runner.os == 'Windows'
+        shell: cmd
         env:
           DOINSTALL_SOURCE: ${{ github.workspace }}/doinstall-source
-        run: ${{ matrix.launcher }} create-dotask-installer
+        run: build.cmd create-dotask-installer
+      - name: Build, verify and create dotask installer (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          DOINSTALL_SOURCE: ${{ github.workspace }}/doinstall-source
+        run: ./build.sh create-dotask-installer
