@@ -1,0 +1,13 @@
+description: Format Cargo sources; --check refuses changes, --format-tasks also formats these task sources.
+options:
+  - {name: manifest, type: path, default: Cargo.toml}
+  - {name: check, type: bool, default: false}
+  - {name: format-tasks, type: bool, default: false}
+requires: [{kind: task, value: rust/cargo.rs}]
+steps:
+  - run: _/rust/cargo.rs
+    with:
+      operation: fmt
+      manifest: {parameter: manifest}
+      check: {parameter: check}
+      format-tasks: {parameter: format-tasks}

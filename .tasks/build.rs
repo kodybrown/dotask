@@ -22,7 +22,13 @@ fn task(project: &BuildContext) -> Result<()> {
     let mut format = project.command("rustfmt");
     format.args(["--check", "--edition", "2024"]);
     let tasks = project.path(".tasks");
-    for directory in [&tasks, &tasks.join("_support")] {
+    // Catalog Rust entry points are not Cargo targets. Check them here too;
+    // rustfmt follows their relative support modules before catalog hashing.
+    for directory in [
+      &tasks,
+      &tasks.join("_support"),
+      &project.path("shared-tasks/rust"),
+    ] {
       for entry in std::fs::read_dir(directory)? {
         let path = entry?.path();
         if path.extension().is_some_and(|e| e == "rs") {

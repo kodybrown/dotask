@@ -349,7 +349,30 @@ those edits and reports the retained backup directory for manual inspection.
 Preserve those backups. `--dry-run` reports pending recovery without performing it.
 Deleting state to bypass a recovery error can discard the only original copies.
 
-## Official catalog and unpublished preview
+## Reusable Rust console-tool tasks
+
+```sh
+dotask --save rust
+dotask --add rust
+dotask --sync --dry-run
+```
+
+The [Rust group](../shared-tasks/rust/README.md) supplies build, run, test,
+format, Clippy and explicit version preparation behind thin project wrappers.
+Select the group without `--lang rust`: its public operations are YAML tasks
+with Rust helpers. Installation includes the README and support source, with
+normal SHA-256 verification and lockfile ownership. Commit the managed copies
+and tracking; do not edit or format `.tasks/_/rust/` in consuming projects.
+
+Build/run/test preserve package versions, enforce external Cargo outputs, and
+scan built executables for private paths/content. Explicit update-version
+increments patch by default, with minor/major selectors and dry-run support.
+Project wrappers own extra checks, installer payloads and release policy.
+Rust 1.95+, Cargo, rustfmt, Clippy and a native linker are required; this group
+needs no .NET SDK or Python. Execution uses committed copies without catalog
+access (ordinary Cargo/toolchain dependency availability still applies).
+
+## Official catalog and local preview
 
 The client uses:
 
@@ -357,9 +380,9 @@ The client uses:
 https://raw.githubusercontent.com/kodybrown/dotask/main/shared-tasks/catalog.json
 ```
 
-This implementation prepares the catalog locally; it does **not** publish the
-repository. Until the catalog is published, online commands report that it is
-unavailable. Private tasks work immediately. To test the official catalog from a
+The published catalog and files come from `main`. Editing a local source or
+generating a catalog does not publish it: review, verify, commit and push the
+matching sources/catalog to `main` before consumers sync. To preview from a
 source checkout, set `DOTASK_ONLINE_TASKS` to its absolute `shared-tasks` directory.
 Replace `/path/to/dotask` below with your checkout location:
 
@@ -383,7 +406,7 @@ tasks being indexed:
 ```
 
 On Windows use `.\build.cmd catalog` and `.\build.cmd catalog --verify`.
-The launcher bootstraps dotask from this checkout; the generator is a C# task
+The launcher bootstraps dotask from this checkout; the generator is a Rust task
 under `.tasks`. No installed dotask or Python is required. `--verify` fails for
 a stale catalog without rewriting it.
 
@@ -400,7 +423,7 @@ Catalog generation lives in `.tasks/catalog.rs`. It requests batch metadata
 through the native CLI's toolchain-free YAML header parser;
 it never compiles or executes the tasks being indexed.
 The generated `catalog.json` remains the downloadable index, not a file authors
-maintain per task. It contains portable IDs, `runtime: csharp`, entry points,
+maintain per task. It contains portable IDs, `runtime: csharp|rust|yaml`, entry points,
 file paths, hashes, and requirements. Unsupported runtimes are rejected. Only
 selected task files and required companions are downloaded; DoTask never clones
 the entire repository. Downloads are verified before installation; mismatched

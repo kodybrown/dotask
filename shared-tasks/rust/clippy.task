@@ -1,0 +1,11 @@
+description: Check all Rust targets with Clippy and treat warnings as failures.
+options:
+  - {name: manifest, type: path, default: Cargo.toml}
+  - {name: package, default: ''}
+requires: [{kind: task, value: rust/cargo.rs}]
+steps:
+  - run: _/rust/cargo.rs
+    with:
+      operation: clippy
+      manifest: {parameter: manifest}
+      package: {parameter: package}

@@ -1002,3 +1002,28 @@ acceptance, installation, and publication.
   319 .NET Release and 81 Rust/native tests, formatting, clippy, documentation,
   catalog freshness, and whitespace checks. Native Linux/macOS/ARM64 acceptance
   remains unverified. No active installation, publication, or push occurred.
+
+### 2026-10-20 Publish reusable Rust console-tool tasks
+
+- Promote the product-independent build/run/test/format/Clippy/version tasks to
+  shared-tasks/rust, with source-relative dependencies, explicit helper/README
+  ownership and a regenerated mixed YAML/Rust catalog. Keep thin consumer wrappers
+  and product-specific packaging/release policy separate; routine tasks preserve
+  package versions and explicit version preparation defaults to patch.
+- Document installation and updates through ordinary add/save/sync commands,
+  offline execution, managed-copy preservation and canonical source maintenance.
+  Verify canonical Rust entry points as part of the repository formatting gate.
+- Move generic task acceptance into native dotask tests using the checkout CLI
+  and SDK. Install actual catalog dependencies in disposable projects, exercise
+  offline build/run/test and explicit version increments, preserve argument
+  boundaries/exit codes, refuse overwriting edits during upstream updates, and
+  stop on Clippy/private-content failures. Four source-helper regressions now
+  run in Cargo tests instead of remaining uncompiled task-only tests.
+- Verification: build.cmd verify with the checksum-verified doinstall v0.1.1
+  portable tools passed on Windows x64: 319 .NET Release and 86 Rust/native
+  tests, formatting, strict Clippy, documentation, catalog freshness and Git
+  whitespace checks. Native test fixtures covered source-byte/version
+  preservation and UTF-8/UTF-16 private scans. Cargo target/build and evaluated
+  .NET output/intermediate/publish directories remain external. No active
+  installation, persistent PATH or package version was changed. Native
+  Linux/macOS/ARM64 task acceptance remains unverified locally.

@@ -50,6 +50,15 @@ checks to its declared `git/check` dependency with `Whitespace = true`.
 Ordinary `git/check` remains a tool-availability check; `--whitespace` checks
 both tracked diffs without changing files or requiring a clean working tree.
 
+For Rust console tools, install the canonical group with `dotask --save rust`
+then `dotask --add rust` (without a language filter: public tasks are YAML with
+Rust helpers). Keep project entry points thin and leave `format-tasks` false.
+Build/run/test preserve versions; explicit update-version increments patch by
+default or minor/major on request. Edit canonical sources in `shared-tasks/rust/`,
+regenerate and publish the catalog, then sync consumers; never edit their managed
+copies. Extra product checks, packaging and release triggers remain project policy.
+See the [Rust group contract](../shared-tasks/rust/README.md).
+
 For basic external commands, prefer declarative `.task` process steps rather than
 requiring an unrelated language toolchain. Use `exec: {executable: ..., arguments:
 [...] , cwd: ...}` with literal argument-list entries or exact parameter/setting

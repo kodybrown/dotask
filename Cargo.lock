@@ -174,6 +174,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ctrlc",
+ "dotask-sdk",
  "encoding_rs",
  "libc",
  "pulldown-cmark",

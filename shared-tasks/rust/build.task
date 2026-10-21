@@ -1,0 +1,25 @@
+description: Format, lint, build with private-path remapping, and scan executables without changing the version.
+options:
+  - {name: manifest, type: path, default: Cargo.toml}
+  - {name: package, default: ''}
+  - {name: profile, default: release}
+  - {name: format-tasks, type: bool, default: false}
+requires:
+  - {kind: task, value: rust/format}
+  - {kind: task, value: rust/clippy}
+  - {kind: task, value: rust/cargo.rs}
+steps:
+  - run: _/rust/format
+    with:
+      manifest: {parameter: manifest}
+      format-tasks: {parameter: format-tasks}
+  - run: _/rust/clippy
+    with:
+      manifest: {parameter: manifest}
+      package: {parameter: package}
+  - run: _/rust/cargo.rs
+    with:
+      operation: build
+      manifest: {parameter: manifest}
+      package: {parameter: package}
+      profile: {parameter: profile}

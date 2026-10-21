@@ -3,6 +3,28 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Reusable Rust task catalog (2026-10-20)
+
+`build.cmd verify --doinstall-tools <verified-v0.1.1-portable-tools-directory>`
+passed on Windows x64: 319 .NET Release and 86 Rust/native tests, formatting,
+strict Clippy, documentation, catalog freshness and Git whitespace checks.
+The supplied Windows tools archive came from doinstall's v0.1.1 release and
+matched its published SHA256SUMS. Cargo target/build directories remain under
+C:/tmp/_rust/dotask/target; evaluated .NET output/intermediate/publish paths
+remain under C:/tmp/_dotnet.
+
+Five Rust catalog tests use this checkout's CLI/SDK, normal add/sync management,
+and disposable projects. They cover dependency closure, shared support/README
+ownership, unchanged no-op tracking, refusal to overwrite edits on upstream
+updates, execution without catalog/cache availability, build/run/test version
+preservation, explicit patch/minor/major preparation, literal application
+arguments/exit codes, and stopping after Clippy/private-content failures.
+Source-helper unit cases cover strict versions, source bytes, UTC dates and
+UTF-8/UTF-16 privacy markers. Managed copies remain byte-identical after builds.
+
+No active installation, persistent PATH or application package version changed.
+Native Linux/macOS/ARM64 acceptance of this task group is not claimed here.
+
 ## Downloaded text and blank Markdown bodies (2026-10-18)
 
 `build.cmd verify --doinstall-tools
