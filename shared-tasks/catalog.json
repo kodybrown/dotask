@@ -279,11 +279,11 @@
       "files": [
         {
           "path": "rust/README.md",
-          "sha256": "2ded36b3f7b56ec379999216b5f3a2b1016dafa7a41066264ac2d58aa2dbfa57"
+          "sha256": "a6985e46a65405ad6ebf95ddf5156f675886d19eac41f55dfad85cf0cd59c32a"
         },
         {
           "path": "rust/_support/Rust.rs",
-          "sha256": "4ea0aa0f0929ae43c523fdfa5e081826e377d7fa5e42f800f0dd419b592bfd7d"
+          "sha256": "b90c5305fa13944ca42e1680f82167ab23c5a32f4c49698b33183b7c73fcbd57"
         },
         {
           "path": "rust/cargo.rs",
@@ -341,12 +341,12 @@
     {
       "id": "rust/test",
       "entryPoint": "rust/test.task",
-      "description": "Build once, then run locked release-profile tests for the workspace or selected package.",
+      "description": "Build once, run locked release-profile tests, then run the project's verify task if present.",
       "runtime": "yaml",
       "files": [
         {
           "path": "rust/test.task",
-          "sha256": "c429e6553b3ae980c513724b30cee2adde36f7eda51ea160f9a00ab8676e91a3"
+          "sha256": "ee45826a8dd13a38c4a1e15eba0381dd8f7970d94e837f3410f8e6d9e2b90ddc"
         }
       ],
       "requires": [
@@ -362,11 +362,11 @@
       "files": [
         {
           "path": "rust/README.md",
-          "sha256": "2ded36b3f7b56ec379999216b5f3a2b1016dafa7a41066264ac2d58aa2dbfa57"
+          "sha256": "a6985e46a65405ad6ebf95ddf5156f675886d19eac41f55dfad85cf0cd59c32a"
         },
         {
           "path": "rust/_support/Rust.rs",
-          "sha256": "4ea0aa0f0929ae43c523fdfa5e081826e377d7fa5e42f800f0dd419b592bfd7d"
+          "sha256": "b90c5305fa13944ca42e1680f82167ab23c5a32f4c49698b33183b7c73fcbd57"
         },
         {
           "path": "rust/update-version.rs",

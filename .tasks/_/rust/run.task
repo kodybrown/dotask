@@ -1,0 +1,24 @@
+description: Build once, then execute the scanned binary with literal application arguments.
+options:
+  - {name: manifest, type: path, default: Cargo.toml}
+  - {name: package, default: ''}
+  - {name: profile, default: release}
+  - {name: bin, default: ''}
+  - {name: args, default: '[]', description: JSON array of literal application arguments.}
+  - {name: format-tasks, type: bool, default: false}
+requires: [{kind: task, value: rust/build}, {kind: task, value: rust/cargo.rs}]
+steps:
+  - run: _/rust/build
+    with:
+      manifest: {parameter: manifest}
+      package: {parameter: package}
+      profile: {parameter: profile}
+      format-tasks: {parameter: format-tasks}
+  - run: _/rust/cargo.rs
+    with:
+      operation: run
+      manifest: {parameter: manifest}
+      package: {parameter: package}
+      profile: {parameter: profile}
+      bin: {parameter: bin}
+      args: {parameter: args}

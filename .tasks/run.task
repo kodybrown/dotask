@@ -1,0 +1,13 @@
+description: Build dotask and its SDKs once, then execute the inspected native binary.
+options:
+  - {name: args, default: '[]', description: JSON array of literal application arguments.}
+requires: [{kind: task, value: build}, {kind: task, value: _/rust/cargo.rs}]
+steps:
+  # The generic run task builds Rust only. Dotask also needs its adjacent SDKs.
+  - run: build
+  - run: _/rust/cargo.rs
+    with:
+      operation: run
+      package: dotask-cli
+      bin: dotask
+      args: {parameter: args}

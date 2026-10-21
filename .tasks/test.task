@@ -1,0 +1,16 @@
+description: Build and test native dotask, then run every additional repository verification check.
+options:
+  - {name: configuration, alias: c, choices: [Debug, Release], default: Release}
+  - {name: doinstall-tools, default: '', completion: directory, description: Prebuilt tools directory; otherwise DOINSTALL_TOOL_DIR.}
+requires: [{kind: task, value: _/rust/test}, {kind: task, value: verify}]
+steps:
+  - run: _/rust/test
+    with:
+      package: dotask-cli
+      verify: false
+  # Invoke our required hook explicitly to forward the .NET configuration and
+  # external tools. Generic consumers use the shared task's optional hook.
+  - run: verify
+    with:
+      configuration: {parameter: configuration}
+      doinstall-tools: {parameter: doinstall-tools}

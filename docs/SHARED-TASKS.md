@@ -367,7 +367,11 @@ and tracking; do not edit or format `.tasks/_/rust/` in consuming projects.
 Build/run/test preserve package versions, enforce external Cargo outputs, and
 scan built executables for private paths/content. Explicit update-version
 increments patch by default, with minor/major selectors and dry-run support.
-Project wrappers own extra checks, installer payloads and release policy.
+After successful Rust tests, `rust/test` calls a project `verify` task if present.
+Only absence is optional: ambiguity, invalid metadata and hook failures stop the
+task. Keep verification for extra checks; never call `test` recursively. A wrapper
+can disable the shared hook with `verify: false` and call its own required hook
+with explicit parameters. Project wrappers own installer payloads and release policy.
 Rust 1.95+, Cargo, rustfmt, Clippy and a native linker are required; this group
 needs no .NET SDK or Python. Execution uses committed copies without catalog
 access (ordinary Cargo/toolchain dependency availability still applies).

@@ -153,44 +153,62 @@ public sealed class RepositoryTaskTests
   }
 
   [Fact]
-  public async Task RepositoryVerifyRequiresEveryStageForwardsOptionsAndStopsOnFailure()
+  public async Task RepositoryTestRequiresExtraVerificationForwardsOptionsAndStopsOnFailure()
   {
     using var project = new TestProject();
     Copy(project, "verify.rs");
-    project.Target("check", "File.AppendAllText(\"order\", \"check;\");");
-    project.Target("test-sdks", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<string>(\"configuration\") + \";\");",
-      "// dotask: 1\n// options:\n//   - {\"name\": \"configuration\", \"choices\": [\"Debug\", \"Release\"]}\n// end-dotask\n");
-    project.Target("_/dotnet/format", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
-      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    // Exact project-local names must not intercept calls to official tasks.
-    project.Target("dotnet/test", "Environment.Exit(91);");
-    project.Target("dotnet/format", "Environment.Exit(92);");
-    project.Target("verify-docs", "File.AppendAllText(\"order\", \"docs;\");");
-    project.Target("catalog", "File.AppendAllText(\"order\", BuildContext.Current.Parameters.Get<bool>(\"verify\").ToString());",
-      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    project.Target("build", "File.AppendAllText(\"order\", \"cli:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\") + \";\");",
-      "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    var result = await RustArtifacts.Run(project.Root, ["verify", "-c", "Debug"]);
+    Copy(project, "test.task");
+    void Stub( string name, string expression, string options = "[]" ) => project.Target(name,
+      "File.AppendAllText(\"order\", " + expression + " + \";\");",
+      "// dotask: 1\n// options: " + options + "\n// end-dotask\n");
+    const string configOptions = "[{name: configuration, choices: [Debug, Release]}]";
+    Stub("_/rust/test", "\"native:\" + BuildContext.Current.Parameters.Get<string>(\"package\") + \":\" + BuildContext.Current.Parameters.Get<bool>(\"verify\")",
+      "[{name: package}, {name: verify, type: bool}]");
+    Stub("check", "\"check\"");
+    Stub("stage-build", "\"stage:\" + BuildContext.Current.Parameters.Get<string>(\"configuration\")", configOptions);
+    project.Write(".tasks/_/rust/cargo.rs", """
+      // dotask: 1
+      // options: [{name: operation}, {name: package}]
+      // end-dotask
+      use std::io::Write;
+      fn main() { dotask_sdk::run(|p| {
+        let mut file = std::fs::OpenOptions::new().create(true).append(true).open(p.path("order"))?;
+        write!(file, "{}:{};", p.string("operation")?, p.string("package")?)?;
+        Ok(())
+      }); }
+      """);
+    Stub("_/rust/clippy", "\"lint:\" + BuildContext.Current.Parameters.Get<string>(\"package\")", "[{name: package}]");
+    Stub("test-sdks", "BuildContext.Current.Parameters.Get<string>(\"configuration\") + \":\" + BuildContext.Current.Parameters.Get<string>(\"doinstall-tools\")",
+      "[{name: configuration, choices: [Debug, Release]}, {name: doinstall-tools}]");
+    Stub("format-tasks", "\"format:\" + BuildContext.Current.Parameters.Get<bool>(\"check\")", "[{name: check, type: bool}]");
+    Stub("verify-docs", "\"docs\"");
+    Stub("catalog", "\"catalog:\" + BuildContext.Current.Parameters.Get<bool>(\"verify\")", "[{name: verify, type: bool}]");
+    // Verification must not rebuild or recurse. Local suffixes must not intercept
+    // the official source-qualified Rust helpers either.
+    project.Target("build", "Environment.Exit(91);");
+    project.Target("rust/cargo", "Environment.Exit(92);");
+    project.Target("rust/clippy", "Environment.Exit(93);");
+    var result = await RustArtifacts.Run(project.Root, ["test", "-c", "Debug", "--doinstall-tools", "tools with spaces"]);
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
-    Assert.Equal("check;cli:True;Debug;docs;True", File.ReadAllText(order));
+    Assert.Equal("native:dotask-cli:False;check;stage:Debug;test:dotask-sdk;lint:dotask-sdk;Debug:tools with spaces;format:True;docs;catalog:True;", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify-docs.cs"));
-    result = await RustArtifacts.Run(project.Root, ["verify"]);
+    result = await RustArtifacts.Run(project.Root, ["test", "--doinstall-tools", "tools"]);
     Assert.Equal(1, result.ExitCode);
-    Assert.Equal("check;cli:True;Release;", File.ReadAllText(order));
+    Assert.Equal("native:dotask-cli:False;check;stage:Release;test:dotask-sdk;lint:dotask-sdk;Release:tools;format:True;", File.ReadAllText(order));
     File.Delete(order);
-    project.Target("build", "Environment.Exit(23);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
-    Assert.Equal("check;", File.ReadAllText(order));
+    project.Target("stage-build", "Environment.Exit(23);", "// dotask: 1\n// options: " + configOptions + "\n// end-dotask\n");
+    Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["test"])).ExitCode);
+    Assert.Equal("native:dotask-cli:False;check;", File.ReadAllText(order));
     File.Delete(order);
-    project.Target("build", "Environment.Exit(24);", "// dotask: 1\n// options:\n//   - {\"name\": \"verify\", \"type\": \"bool\"}\n// end-dotask\n");
-    Assert.Equal(24, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
-    Assert.Equal("check;", File.ReadAllText(order));
+    File.Delete(Path.Combine(project.Tasks, "stage-build.cs"));
+    Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["test"])).ExitCode);
+    Assert.Equal("native:dotask-cli:False;check;", File.ReadAllText(order));
     File.Delete(order);
-    File.Delete(Path.Combine(project.Tasks, "build.cs"));
-    Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["verify"])).ExitCode);
-    Assert.Equal("check;", File.ReadAllText(order));
+    File.Delete(Path.Combine(project.Tasks, "verify.rs"));
+    Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["test"])).ExitCode);
+    Assert.Equal("native:dotask-cli:False;", File.ReadAllText(order));
   }
 
   [Fact]

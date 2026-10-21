@@ -37,12 +37,20 @@ public sealed class BootstrapTests
   public async Task LauncherDoesNotRunStaleOutputsAfterCompilationFails()
   {
     using var fixture = new Fixture();
+    // Bootstrap must leave a previously inspected release artifact untouched,
+    // including when compilation fails before a runner can be staged.
+    var release = Path.Combine(Path.GetTempPath(), "_rust", "dotask-bootstrap-tests", fixture.Identity,
+      "release", OperatingSystem.IsWindows() ? "dotask.exe" : "dotask");
+    Directory.CreateDirectory(Path.GetDirectoryName(release)!);
+    File.WriteAllText(release, "previous inspected distribution");
     Assert.Equal(0, (await fixture.Run("inspect")).ExitCode);
+    Assert.Equal("previous inspected distribution", File.ReadAllText(release));
     fixture.Project.Write("src/main.rs", "this is not valid Rust;");
     var failed = await fixture.Run("inspect");
     Assert.NotEqual(0, failed.ExitCode);
     Assert.DoesNotContain("REPORT:", failed.StandardOutput);
     Assert.Empty(Directory.EnumerateDirectories(fixture.Temporary, "dotask-bootstrap*"));
+    Assert.Equal("previous inspected distribution", File.ReadAllText(release));
   }
 
   private sealed class Fixture : IDisposable
@@ -78,6 +86,8 @@ public sealed class BootstrapTests
         version = "0.0.0"
         edition = "2024"
         [workspace]
+        [profile.bootstrap]
+        inherits = "release"
         [dependencies]
         serde_json = "=1.0.151"
         [[bin]]

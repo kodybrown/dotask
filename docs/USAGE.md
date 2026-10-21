@@ -175,15 +175,14 @@ no built-in `validate` or JSON help output. Management
 `--dry-run` applies to add/sync/remove; it does not preview arbitrary task execution. Run one target per invocation; use a C# orchestration
 target for a sequence of tasks.
 
-This repository's top-level `check` requires its Git and .NET checks.
-Its `dotnet/check` task checks the configured solution's presence and the
-.NET SDK and bundled MSBuild/formatter tools, reporting their versions.
-It takes no target options and does not run
-tests or check source formatting. Use `dotask test` and `dotask format --verify`
-for those operations. Its top-level `verify` requires prerequisites, solution
-build/tests, formatting, docs, and catalog validation; use `./build.sh` or
-`.\build.cmd` to bootstrap that gate from a source checkout without an installed
-dotask. See the [development commands](../README.md#development).
+This repository's `check` checks Git availability. `build` formats/lints Rust,
+compiles and privacy-checks the native CLI, then stages both SDKs. `run` executes
+that inspected build. `test` runs the shared native gate and requires the local
+`verify` task for additional SDK/integration, task-formatting, docs and catalog
+checks. `verify` never calls `test`; standalone use requires a prior inspected
+build. Use `./build.sh test` or `.\build.cmd test` to bootstrap the full gate
+without installed dotask. `format --check` checks formatting without edits.
+See the [development commands](../README.md#development).
 
 The separate reusable `dotnet/verify` task runs available `dotnet-check`,
 `dotnet-test`, and `dotnet-format` tasks, with formatting in verification mode.

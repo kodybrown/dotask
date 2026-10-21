@@ -1,16 +1,11 @@
+#[path = "src/build_identity.rs"]
+mod build_identity;
 #[path = "../../.tasks/_support/BuildInfo.rs"]
 mod build_info;
 use std::{env, path::PathBuf, process::Command};
 fn main() {
   let root = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join("../..");
-  for name in [
-    "DOTASK_BUILD_STAMP",
-    "DOTASK_BUILD_COMMIT",
-    "DOTASK_BUILD_DIRTY",
-    "DOTASK_APP_VERSION",
-  ] {
-    println!("cargo:rerun-if-env-changed={name}");
-  }
+  println!("cargo:rerun-if-env-changed=RUST_BUILD_TIMESTAMP");
   for path in ["src", "Cargo.toml", "../../.tasks/_support/BuildInfo.rs"] {
     println!("cargo:rerun-if-changed={path}");
   }
@@ -50,30 +45,24 @@ fn main() {
       );
     }
   }
-  let stamp = env::var("DOTASK_BUILD_STAMP")
-    .ok()
-    .map(|v| build_info::Stamp::parse(&v).expect("Invalid DOTASK_BUILD_STAMP"))
-    .unwrap_or_else(build_info::Stamp::now);
-  let (git_commit, git_dirty) = build_info::git(&root);
-  let commit = env::var("DOTASK_BUILD_COMMIT").unwrap_or(git_commit);
+  let seconds = env::var("RUST_BUILD_TIMESTAMP")
+    .map(|value| value.parse::<u64>().expect("RUST_BUILD_TIMESTAMP must be Unix seconds"))
+    .unwrap_or_else(|_| build_identity::now());
+  let stamp = build_info::Stamp::from_minutes(seconds / 60);
+  let (commit, dirty) = build_info::git(&root);
   assert!(
     commit.is_empty() || commit.len() >= 7 && commit.len() <= 64 && commit.chars().all(|c| c.is_ascii_hexdigit()),
     "Invalid build commit"
   );
-  let dirty = !commit.is_empty()
-    && env::var("DOTASK_BUILD_DIRTY")
-      .ok()
-      .map(|v| v.parse::<bool>().expect("Invalid build dirty flag"))
-      .unwrap_or(git_dirty);
   let package = env::var("CARGO_PKG_VERSION").unwrap();
-  let prefix = package.split('.').take(2).collect::<Vec<_>>().join(".");
-  let version = env::var("DOTASK_APP_VERSION").unwrap_or_else(|_| stamp.version(&prefix));
-  assert!(
-    !version.trim().is_empty() && !version.contains(['\n', '\r']),
-    "Invalid app version"
-  );
+  // Cargo owns version precedence. Human UTC build metadata never increments
+  // the package or changes the installer version.
+  let (metadata, utc) = build_identity::timestamp(seconds);
   for (name, value) in [
-    ("DOTASK_APP_VERSION", version),
+    ("DOTASK_DISPLAY_VERSION", format!("{package}+{metadata}")),
+    ("DOTASK_BUILD_UTC", utc),
+    ("DOTASK_BUILD_UNIX_SECONDS", seconds.to_string()),
+    ("DOTASK_APP_VERSION", package),
     ("DOTASK_BUILD_STAMP", stamp.text()),
     ("DOTASK_BUILD_COMMIT", commit),
     ("DOTASK_BUILD_DIRTY", dirty.to_string()),

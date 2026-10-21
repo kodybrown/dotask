@@ -421,21 +421,28 @@ cd C:\Users\kodyb\Projects\dotask
 .\build.cmd create-dotask-installer
 ```
 
-Unix uses `./build.sh create-dotask-installer`. This local Rust task builds and
-stages the configured doinstall checkout, runs its full verification gate, runs
-dotask's full gate against the staged tools, then calls `_/doinstall/create-installer` with
-those exact builder, runtime, and launcher-template binaries. Any failure stops
-later steps. Tools are temporary and stay
-outside source and deliverables; the task records and returns an `InstallerArtifact` and
-does not launch it. No environment or project settings are rewritten. Select a
-different checkout with `--source`; otherwise the build helper uses
-`DOINSTALL_SOURCE` or `settings.doinstall.source` (`../doinstall` here).
-`--app-version` and `--build-stamp` forward to packaging. This task is local to
-dotask and is not distributed through the shared catalog.
+Unix uses `./build.sh create-dotask-installer`. Supply a matching native prebuilt
+bundle with `--doinstall-tools PATH` or `DOINSTALL_TOOL_DIR`. Otherwise the task
+asks `doinstall-builder` on PATH for its real adjacent tools. Nothing downloads
+or builds doinstall implicitly. To develop against source explicitly, use
+`--source ../doinstall`; that mode builds/stages the checkout and runs its
+independent verification before dotask's gate, ignoring ambient prebuilt tools.
+Do not combine `--source` and `--doinstall-tools`. This task is local to dotask,
+not a shared consumer task.
+
+The task runs `test`, including dotask's additional required `verify` checks,
+then packages the successful inspected native executable, both SDKs and license.
+Any failure stops later steps. It records and returns the actual
+`InstallerArtifact` without launching it or rewriting environment/settings.
+Version comes from `src/dotask-cli/Cargo.toml`; build time is display metadata.
+Only explicit `update-version` changes the package version, patch by default.
+`--increment-minor`, `--increment-major`, and `--dry-run` are available there.
+SDK package versions are independent of the executable's release version.
 
 This is the single local installer-creation entry point; there is no local
 `create-installer` wrapper. The shared creator's `.tasks/installer.yaml` build steps
-run `build` to prepare the native app and SDKs, gather the declared files, and call
+run `stage-build` to copy the inspected app and prepare SDKs without recompiling
+the CLI, gather the declared files, and call
 `_/doinstall/assemble-self-extracting`. The delivery directory contains only
 `dotask-setup-v<version>-se.exe` on Windows (without `.exe` on Unix); distribute
 that single file. The launcher extracts and retains the inner installer, YAML,
@@ -445,13 +452,15 @@ steps wrap this delivery directory. There is no local
 Tool selection comes from `--builder`, `--installer`, and `--launcher-template`,
 or `settings.doinstall`
 as described above when invoking the shared creator directly with prebuilt tools.
-The complete local workflow explicitly builds doinstall; consumer projects can
-use the independent prebuilt tools without its source checkout.
+The normal local workflow uses those independent prebuilt tools without a
+doinstall source checkout. Source development requires explicit `--source`.
 
 `build-sdks` publishes the maintained C# helper using evaluated MSBuild
 `PublishDir`, then copies the Rust SDK selections from `.tasks/sdks.yaml`.
-Compiler output stays external. Only the final independent installer directory
-is created beneath `settings.installer.output`. Destination machines need
+Compiler output stays external. Local installers default to a fresh directory
+under Cargo's evaluated `target_directory/installers`; optional `--output PATH`
+selects a fresh package parent. Repeating packaging does not increment the
+version or overwrite previous output. Destination machines need
 Rust/Cargo to execute Rust tasks and the .NET SDK to execute C# tasks; neither is
 needed for metadata, help, initialization, completion, or installer execution.
 No language runtime, SDK, Roslyn, or managed support host is bundled.
@@ -459,7 +468,8 @@ No language runtime, SDK, Roslyn, or managed support host is bundled.
 ```powershell
 .\build.cmd                         # Bootstrap and list available tasks.
 $env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt runtime, builder, and launcher template.
-.\build.cmd verify                  # Includes external adapter integration.
+.\build.cmd test                    # Complete gate, including external adapters.
+.\build.cmd verify                  # Extra checks; requires a prior inspected build.
 .\build.cmd create-dotask-installer # Complete build, verification and packaging.
 # Or invoke the optional shared adapter directly with a prebuilt pair:
 .\build.cmd _/doinstall/create-installer --builder "$env:DOINSTALL_TOOL_DIR/doinstall-builder.exe" --installer "$env:DOINSTALL_TOOL_DIR/doinstall.exe"
@@ -468,16 +478,16 @@ $env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt runtime, builder, and 
 # --install-dir C:/Temp/dotask-acceptance/apps/dotask --bin-dir C:/Temp/dotask-acceptance/bin
 ```
 
-After creation, `build.cmd install` finds the existing self-extracting launcher
-using the checked-in `installer_file` template ending in `-se${exe-extension}`.
+After creation, `build.cmd install` finds the self-extracting launcher through
+the SDK's separate successful-build record, including its external FilePath.
 It does not need doinstall build tools or source.
 Unix uses actual tool paths without `.exe`.
-`verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
-over `DOINSTALL_TOOL_DIR`. Both require prebuilt runtime, builder, and launcher
+`test`, `verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
+over `DOINSTALL_TOOL_DIR`. They require prebuilt runtime, builder, and launcher
 template tools and fail when one is
 absent. If developing against source, explicitly run
 `build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. CI performs
-the complete `create-dotask-installer` workflow on each host OS.
+the complete `create-dotask-installer --source PATH` workflow on each host OS.
 
 Unix uses `./build.sh`. Both launchers forward arbitrary arguments to a temporary
 native runner; no task whitelist is maintained. The Rust source SDK is available

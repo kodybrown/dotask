@@ -171,6 +171,50 @@ fn catalog_tasks_install_with_dependencies_and_run_offline_without_project_polic
   assert_eq!(invoke("_/rust/run", &["--args", r#"["fail"]"#]).status.code(), Some(17));
   assert!(!invoke("_/rust/run", &["--args", r#"[1]"#]).status.success());
   success(invoke("_/rust/test", &[]));
+  // Only an absent hook is skipped. A real hook runs after Rust tests and its
+  // failures, invalid metadata, ambiguity and recursion remain visible.
+  let hook = fixture.join(".tasks/verify.task");
+  let fixture_binary = temporary.path().join("target/release").join(if cfg!(windows) {
+    "task-fixture.exe"
+  } else {
+    "task-fixture"
+  });
+  let executable = serde_json::to_string(&fixture_binary.to_string_lossy().replace('\\', "/")).unwrap();
+  fs::write(
+    &hook,
+    format!("steps:\n  - exec:\n      executable: {executable}\n      arguments: [verified]\n"),
+  )
+  .unwrap();
+  let output = success(invoke("_/rust/test", &[]));
+  let stdout = String::from_utf8_lossy(&output.stdout);
+  assert!(stdout.find("test result:").unwrap() < stdout.rfind("verified").unwrap());
+  fs::write(
+    &hook,
+    format!("steps:\n  - exec:\n      executable: {executable}\n      arguments: [fail]\n"),
+  )
+  .unwrap();
+  assert_eq!(invoke("_/rust/test", &[]).status.code(), Some(17));
+  success(invoke("_/rust/test", &["--verify", "false"]));
+  fs::write(fixture.join(".tasks/verify.rs"), "fn main() {}\n").unwrap();
+  assert!(!invoke("_/rust/test", &[]).status.success(), "Ambiguous verification must fail");
+  fs::remove_file(fixture.join(".tasks/verify.rs")).unwrap();
+  fs::write(&hook, "unknown: true\nsteps: []\n").unwrap();
+  assert!(!invoke("_/rust/test", &[]).status.success(), "Invalid verification must fail");
+  fs::write(&hook, "steps: [{run: _/rust/test}]\n").unwrap();
+  let output = invoke("_/rust/test", &[]);
+  assert!(!output.status.success());
+  assert!(String::from_utf8_lossy(&output.stderr).contains("Target cycle:"));
+  fs::remove_file(&hook).unwrap();
+  // A later build must not allow run/staging to consume different bytes from
+  // the successful scan. Exercise the low-level operation without rebuilding.
+  let inspected = fs::read(&fixture_binary).unwrap();
+  let mut changed = inspected.clone();
+  changed.extend_from_slice(b"changed after inspection");
+  fs::write(&fixture_binary, changed).unwrap();
+  let output = invoke("_/rust/cargo", &["--operation", "run"]);
+  assert!(!output.status.success());
+  assert!(String::from_utf8_lossy(&output.stderr).contains("Executable changed since"));
+  fs::write(&fixture_binary, inspected).unwrap();
   assert_eq!(fs::read(&manifest).unwrap(), original);
   assert_eq!(fs::read(&lock).unwrap(), locked);
   // Explicit versioning changes only version files. No selector means patch;

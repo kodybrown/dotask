@@ -1036,3 +1036,30 @@ acceptance, installation, and publication.
 - Verification: checksum-verified Actionlint 1.7.11 and git diff --check passed.
   The preceding full Windows gate passed 319 .NET and 86 Rust/native tests;
   canonical task sources, SDKs and catalog are unchanged by this workflow fix.
+
+### 2026-10-21 Align local tasks and build identity with the shared Rust flow
+
+- Adopt the managed Rust group behind local build/run/test/format/Clippy/version
+  entry points. Test runs the shared native gate followed by required dotask
+  verification for SDKs, integration, task formatting, docs and catalog. Add an
+  optional project verify hook to shared Rust test; absence alone is skipped,
+  failures propagate, and wrappers can disable it to forward their own options.
+- Make the CLI's committed Cargo version authoritative. Display SemVer plus
+  human UTC build metadata and full UTC time, retaining source identity in the
+  internal build-info response. Explicit update-version prepares patch/minor/major
+  versions; ordinary builds, tests and packaging preserve version files.
+- Keep bootstrap in its own external Cargo profile. Record inspected executable
+  hashes, retain build flags/time during tests, inspect final test-built binaries,
+  and reject changed bytes before run/staging. Preserve both SDKs and the license.
+- Package the inspected snapshot using explicit prebuilt doinstall tools or
+  builder discovery; preserve deliberate --source development and existing CI
+  coverage. Create fresh local installer outputs under evaluated external Cargo
+  output, record their actual FilePath and let local install use that record.
+- Verification on Windows x64: create-dotask-installer with checksum-verified
+  doinstall v0.1.1 tools passed 87 Rust and 319 .NET Release tests, strict Clippy,
+  formatting, docs, catalog freshness and whitespace checks. Native acceptance
+  covered temporary install, packaged Rust/C# SDK execution, license, uninstall,
+  unchanged persistent PATH, run output, explicit version preview, tool-source
+  conflicts and source-local output refusal. Actionlint 1.7.11 passed. Evaluated
+  Cargo target/build and .NET output/intermediate/publish paths remain external.
+  Keep package version 0.1.0; native Linux/macOS/ARM64 acceptance is not claimed.

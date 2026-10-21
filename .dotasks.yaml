@@ -6,13 +6,9 @@ settings:
   sdks:
     config: .tasks/sdks.yaml
   app:
-    version: '0.1.yyDDD.HHmm'
     git-hash: short
     dirty-suffix: true
   installer:
     config: .tasks/installer.yaml
-    output: artifacts/installers
-    installer_file: './artifacts/installers/${os}-${arch}/dotask-*/dotask-setup-v${version}-se${exe-extension}'
-    select: highest-version
   doinstall:
     source: ../doinstall

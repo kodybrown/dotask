@@ -3,6 +3,42 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Shared local task flow and stable CLI version (2026-10-21)
+
+`build.cmd create-dotask-installer --doinstall-tools <verified-v0.1.1-tools>`
+passed on Windows x64: 87 Rust tests and 319 .NET Release tests, strict Clippy,
+task formatting, required docs, shared catalog freshness and Git whitespace.
+The Windows tools archive SHA256 was
+`1f80fcf8289e071a48654e58755cc6d5a15753ebf8e06b4990df07610021455d`.
+
+Shared Rust acceptance covers absent/successful/failing verify hooks, disabling
+the hook, ambiguity, invalid metadata and recursion, plus literal arguments,
+unchanged package versions and refusal of modified inspected executables.
+Repository orchestration checks require each extra verification stage, forward
+configuration/tool paths, preserve exit codes and prevent rebuilding/recursion.
+Bootstrap tests prove successful and failed bootstrap compilation preserve an
+existing release artifact. Test-built executables are inspected after Cargo's
+dev-dependency feature unification before their hashes can be used for staging.
+
+The self-extracting installer was created outside source from the inspected
+binary, full Rust/.NET SDK layout and matching license. The local install task
+selected its successful-build record, installed into temporary app/bin roots,
+and ran both Rust and C# tasks with a fresh cache and no source SDK overrides.
+Installed version/build time matched the packaged binary. Temporary uninstall
+passed, and persistent user/machine PATH stayed unchanged. Doinstall correctly
+refused a junction-containing extraction destination; successful acceptance used
+the actual system temporary directory. No active installation was changed.
+
+`build.cmd run --args '[\"--version\"]'` built/scanned/staged once and printed
+the SemVer/build-time identity. `update-version --dry-run` previewed 0.1.0 to
+0.1.1 without changing either version file. Conflicting source/prebuilt tool
+options and a source-local staging path failed without creating output or
+altering the prior installer record. Actionlint 1.7.11 passed the retained
+Windows/Linux/macOS verification workflow. Native Linux/macOS/ARM64 execution
+was not performed locally. Cargo target/build directories evaluate under
+C:/tmp/_rust/dotask/target; .NET output/intermediate/publish stay under
+C:/tmp/_dotnet. The package version remains 0.1.0.
+
 ## Reusable Rust task catalog (2026-10-20)
 
 `build.cmd verify --doinstall-tools <verified-v0.1.1-portable-tools-directory>`

@@ -10,7 +10,7 @@ trap 'exit 143' TERM
 
 # Cargo locates its output. The runner stages itself and exits before tasks can
 # rebuild it, so neither a JSON parser nor a .NET toolchain is needed here.
-cargo run --manifest-path Cargo.toml --package dotask-cli --locked --release -- __stage-runner "$dotask_bootstrap_dir"
+cargo run --manifest-path Cargo.toml --package dotask-cli --locked --profile bootstrap -- __stage-runner "$dotask_bootstrap_dir"
 export DOTASK_SOURCE_RUST_SDK="$PWD/src/dotask-sdk"
 export DOTASK_SOURCE_ROOT="$PWD"
 export DOTASK_SOURCE_SDK_STAGE="$dotask_bootstrap_dir/sdk"

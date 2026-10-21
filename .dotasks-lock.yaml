@@ -57,3 +57,58 @@ tasks:
     requires: []
     files:
       _/installer/install.rs: f60e5bcc35beba51c44f3311dfcb3066f3e15549cdee435f6c7db87e64194891
+  _/rust/build:
+    source: _
+    revision: 49fc553c4df5216d03be481bb803cb4dfa369eccddb2159fe546cefc2cb062b5
+    requires:
+    - _/rust/format
+    - _/rust/clippy
+    - _/rust/cargo
+    files:
+      _/rust/build.task: 1a3a486238fd5342ccb0e3ebf0d8fec5b1db30922fd0c0fe7142a06fa1875cda
+  _/rust/cargo:
+    source: _
+    revision: 05e48a16e5d77b46567d0b03994839d9ef5ac07450abd5f2fc16432b1f7913cf
+    requires: []
+    files:
+      _/rust/README.md: a6985e46a65405ad6ebf95ddf5156f675886d19eac41f55dfad85cf0cd59c32a
+      _/rust/_support/Rust.rs: b90c5305fa13944ca42e1680f82167ab23c5a32f4c49698b33183b7c73fcbd57
+      _/rust/cargo.rs: 195563f00ddac4438c44129fa2a51a57c858d01fd412ca92001946c447c57551
+  _/rust/clippy:
+    source: _
+    revision: 4c4fc26dadfe24a14cd053bfc75b1e3d1e58f4bca3bbe2e36359a133652c503c
+    requires:
+    - _/rust/cargo
+    files:
+      _/rust/clippy.task: 1246420a0c7b4dd6d53fc5e39421c057a4dc9670843669423d34a900b941097e
+  _/rust/format:
+    source: _
+    revision: 9cc383c58821aca80d468e33f78e9b57424eac423d42ac4468fc11bf98e7b099
+    requires:
+    - _/rust/cargo
+    files:
+      _/rust/format.task: 95236806b675d4939f5b2fd0c76b5e0da0aa70c13ce58ae80f84e483e8282bee
+  _/rust/run:
+    source: _
+    revision: 5ee49733ae254f6aff97a516442046d5a5a03d4dd316d8734936cc91ffd1f01f
+    requires:
+    - _/rust/build
+    - _/rust/cargo
+    files:
+      _/rust/run.task: ccf46648731d7ed954b349c15c70ecceb84e54375adae97cf6399eca99743024
+  _/rust/test:
+    source: _
+    revision: e63dedd917f5d8eb7c747b5cc7aef7103b8a8716ee184c1b8a1193952b0fee44
+    requires:
+    - _/rust/build
+    - _/rust/cargo
+    files:
+      _/rust/test.task: ee45826a8dd13a38c4a1e15eba0381dd8f7970d94e837f3410f8e6d9e2b90ddc
+  _/rust/update-version:
+    source: _
+    revision: d5161a9686c1df595a49e2ebd8d83af3a6f512e899c5e53e4f0177d9eaabe7f8
+    requires: []
+    files:
+      _/rust/README.md: a6985e46a65405ad6ebf95ddf5156f675886d19eac41f55dfad85cf0cd59c32a
+      _/rust/_support/Rust.rs: b90c5305fa13944ca42e1680f82167ab23c5a32f4c49698b33183b7c73fcbd57
+      _/rust/update-version.rs: d95cf586feed9afd8ab446a3956fcb161d8ffc53ea5c7c7f7aede8c5cd2217a7

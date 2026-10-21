@@ -47,20 +47,22 @@ From the repository checkout, bootstrap and verify the project:
 
 ```sh
 # Linux or macOS
-./build.sh verify
+./build.sh test
 ```
 
 ```powershell
 # Windows (PowerShell or cmd.exe)
-.\build.cmd verify
+.\build.cmd test
 ```
 
 The .NET SDK, Git, and Rust 1.95+ with rustfmt, clippy, and the host linker are
 required; dotask does not need to be installed.
 The launchers compile this checkout, stage a temporary runner, and use it to run
-the requested tasks. Use `verify` explicitly for the repository gate, which builds
-and tests the Rust CLI, installer, and SDK, and checks formatting,
-documentation, and the shared catalog.
+the requested tasks. Use `test` for the complete repository gate: the shared Rust
+build/tests followed by dotask's required extra `verify` checks for SDKs,
+external installer adapters, task formatting, documentation and the catalog.
+Supply prebuilt doinstall tools through `--doinstall-tools PATH` or
+`DOINSTALL_TOOL_DIR`; source preparation is a separate explicit action.
 The temporary runner is removed when the launcher finishes normally or reports a failure.
 
 **After a successful build, install dotask using the next section.** Building
@@ -88,12 +90,13 @@ application payload. Then install that existing output:
 ./build.sh install
 ```
 
-The task selects the highest version using `settings.installer.installer_file`
-and runs its standalone installer. It never rebuilds. Missing configuration
+The task uses the last successful installer record created by packaging.
+Consumers can instead select the highest version using `settings.installer.installer_file`
+and run its standalone installer. Installation never rebuilds. Missing configuration
 provides an example and interactive setup using recorded builds or discovered
 files; see [installer selection and setup](docs/INSTALLATION.md#find-and-run-an-existing-installer).
 Dotask's payload contains only the native Release command,
-`sdk/dotnet/Dotask.dotnet.dll`, and the Rust helper source crate in `sdk/rust/`
+`sdk/dotnet/Dotask.dotnet.dll`, the Rust helper source crate in `sdk/rust/`, and license
 and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and
 `.shim` file; Linux/macOS get a symlink. No shim compiler is needed.
@@ -119,9 +122,9 @@ Pass installer options through `--installer-args` as a JSON array; see the
 
 For a custom command directory, substitute its path. The installer prints the
 selected installation location; it never edits shell profiles. Then run `dotask
---version`; the Rust application reports `dotask <configured-version> (build
-YYDDD-HHMM[, commit git7])` using its embedded UTC build information. Git builds
-with local changes include a `-dirty` marker.
+--version`; the application reports `dotask MAJOR.MINOR.PATCH+yyMM.ddhh (built
+YYYY-MM-DDTHH:mm:ssZ)`. The committed Cargo version controls precedence; build
+time is human metadata. Full Git commit and dirty status remain in `__build-info`.
 
 The installation is independent of this source checkout. To check which command
 your shell resolves, use `command -v dotask` on Bash/Zsh or `Get-Command dotask
@@ -179,22 +182,25 @@ The SDK also writes compilation/cache output. See the
 [example walkthrough](examples/basic/README.md) for all commands and expected results.
 
 The source checkout also contains
-`build`, `build-sdks`, `test-sdks`, `check`, `verify`, and `verify-docs` targets in its own
+`build`, `run`, `test`, `format`, `clippy`, `update-version`, `build-sdks`,
+`test-sdks`, `check`, `verify`, and `verify-docs` targets in its own
 [.tasks](.tasks/) directory.
 
-Here, `check` checks Git availability. `build` builds the native CLI and prepares
-its configured SDKs; `test-sdks` runs the maintained C# helper and native CLI
-integration suite. `verify` explicitly requires every verification stage,
-including native Rust tests, rustfmt, clippy, docs, catalog, and whitespace;
-failures stop the sequence. No arguments list available tasks. The independent
+Here, `check` checks Git availability. `build` formats, lints, builds and scans
+the native CLI, then stages both SDKs. `run` executes that inspected binary after
+staging. `test` builds/tests native dotask, then requires `verify` for the Rust SDK,
+C# helper/native integration, task formatting, docs, catalog and whitespace.
+Standalone `verify` performs only those extra checks and requires a prior inspected
+build; it never calls `test`. No arguments list available tasks. The independent
 doinstall tools are supplied separately for adapter verification using
 `--doinstall-tools` or `DOINSTALL_TOOL_DIR`; verification never builds them
 implicitly. Install the two products independently and opt into dotask's shared
 adapters when needed.
 For dotask's complete local installer workflow, run
 `./build.sh create-dotask-installer` (Windows: `.\build.cmd create-dotask-installer`).
-It explicitly builds/stages doinstall, verifies both projects, and creates the
-package without installing it; it is not a shared task.
+It consumes prebuilt doinstall tools, runs the complete dotask gate, and packages
+the inspected snapshot without installing it. Explicit `--source ../doinstall`
+selects source development and verifies that project too; it is not a shared task.
 Destination machines need Rust only to execute Rust tasks and a .NET SDK only
 to execute C# tasks. The standalone installer needs neither toolchain.
 See [installer tasks and schema](docs/INSTALLATION.md).
@@ -401,26 +407,40 @@ Tab: it should offer `Debug` and `Release`. See [completion details](docs/USAGE.
 
 ```sh
 ./build.sh                         # List available tasks
-./build.sh verify                  # Complete repository verification
+./build.sh test                    # Complete repository verification
+./build.sh verify                  # Extra checks after a successful inspected build
 ./build.sh test-sdks -c Release    # Run C# helper/native integration tests
 ./build.sh verify-docs             # Required docs and Git whitespace
 ./build.sh git/check --whitespace  # Git availability and staged/unstaged whitespace
 ./build.sh catalog --verify        # Check shared source hashes/metadata
 ./build.sh catalog                 # Regenerate the shared catalog
 ./build.sh build                   # Build the native CLI and prepare SDKs
-./build.sh build --verify          # Rust CLI tests, rustfmt, and clippy
-./build.sh create-dotask-installer # Build/verify both tools, then create dotask's installer
+./build.sh run --args '["--version"]' # Build/stage once and execute the scanned binary
+./build.sh format --check          # Check project and canonical task Rust formatting
+./build.sh clippy                  # Strict workspace lint
+./build.sh update-version --dry-run # Preview explicit patch preparation
+./build.sh create-dotask-installer # Test/package using prebuilt doinstall tools
 ./build.sh install                 # Run the latest existing installer for this user
 ./build.sh help                    # Project task help
 ```
 
 On Windows use `.\build.cmd` with the same arguments. With no arguments the
 launchers list available tasks. Every supplied argument is forwarded unchanged.
+For JSON through `build.cmd` in PowerShell, escape the inner quotes:
+`.\build.cmd run --args '[\"--version\"]'`.
+Build/run/test/installer creation preserve the package version. After testing,
+run `update-version` explicitly for a patch increment, or choose
+`--increment-minor` or `--increment-major`; `--dry-run` previews without writes.
+The task edits only `src/dotask-cli/Cargo.toml` and its local Cargo.lock entry,
+without building or running Git operations. Review and commit version changes
+with the intended source/changelog; the Rust SDK and .NET helper have independent
+package versions.
 `./build.sh help` displays project help, while `./build.sh --help` displays CLI help.
 Both launchers select the checkout containing the script even when called from
 another directory; relative task paths and `--use-dir` start at that checkout.
 
-The bootstrap builds the native runner in Release with Cargo and copies it into
+The bootstrap builds the native runner with Cargo's `bootstrap` profile
+(inheriting release settings) and copies it into
 a unique temporary directory, allowing tasks to rebuild the original outputs on
 Windows. Rust tasks use the source SDK. Executing a C# task prepares the maintained
 helper through `build-sdks`, using evaluated MSBuild `PublishDir`; `build` also
@@ -428,7 +448,7 @@ prepares SDKs for a distributable app. With `--use-dir`, SDK preparation still u
 the bootstrap checkout's tasks/configuration; the consumer retains its own root
 and settings. A task's `-c Debug` selects its C#
 configuration independently. First C# use can restore NuGet packages.
-The explicit `install` task creates and runs the application installer.
+The explicit `install` task runs the recorded existing installer; creation is separate.
 
 Windows staging lives in `.tasks/misc/prepare-bootstrap.ps1`; Bash stages the
 same layout. These launchers only build/stage the runner. Discovery accepts
@@ -437,7 +457,7 @@ same layout. These launchers only build/stage the runner. Discovery accepts
 After adding, editing, renaming, or removing a shared task or one of its declared
 support files, run `./build.sh catalog` **after your final edits/formatting and
 before committing**. Commit the regenerated `shared-tasks/catalog.json` with the
-sources. Run `./build.sh verify` afterward; its catalog verification fails if the index
+sources. Run `./build.sh test` afterward; its catalog verification fails if the index
 is stale and never rewrites it. `catalog.rs` uses the CLI's compiler-free metadata
 transport. All metadata is read natively from ordinary-comment YAML headers.
 
@@ -505,7 +525,7 @@ and recovery journals are preserved. Rust tasks use the bundled `sdk/rust/` sour
 see [Rust authoring](docs/TARGETS.md#rust-tasks). Shared Rust language variants and
 language selection remain pending. These build commands do not install or replace an active CLI.
 
-Use `build --verify` through the launcher for its tests, rustfmt, and clippy.
+Use `test` through the launcher for its tests, rustfmt, and clippy.
 The complete repository gate requires those checks too. `.cargo/config.toml`
 sets the target directory to `/tmp/_rust/dotask/target` (on Windows, under the
 current drive's `tmp` directory). Build tasks, support staging, packaging, and

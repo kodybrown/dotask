@@ -1,0 +1,23 @@
+description: Build once, run locked release-profile tests, then run the project's verify task if present.
+options:
+  - {name: manifest, type: path, default: Cargo.toml}
+  - {name: package, default: ''}
+  - {name: format-tasks, type: bool, default: false}
+  - {name: verify, type: bool, default: true, description: Run the optional project verify task after Rust tests.}
+requires: [{kind: task, value: rust/build}, {kind: task, value: rust/cargo.rs}]
+steps:
+  - run: _/rust/build
+    with:
+      manifest: {parameter: manifest}
+      package: {parameter: package}
+      format-tasks: {parameter: format-tasks}
+  - run: _/rust/cargo.rs
+    with:
+      operation: test
+      manifest: {parameter: manifest}
+      package: {parameter: package}
+  # Project verification must contain extra checks, not call test again. Only
+  # absence is optional; ambiguity, invalid metadata and failures still stop.
+  - run: verify
+    optional: true
+    when: {parameter: verify}

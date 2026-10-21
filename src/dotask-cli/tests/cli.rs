@@ -1,3 +1,5 @@
+#[path = "../src/build_identity.rs"]
+mod build_identity;
 use std::process::{Command, Output};
 
 fn run(arguments: &[&str]) -> Output {
@@ -37,24 +39,7 @@ fn version_matches_embedded_application_build_metadata() {
   assert!(output.status.success(), "{output:?}");
   assert_eq!(
     String::from_utf8(output.stdout).unwrap().trim(),
-    format!(
-      "dotask {} (build {}{})",
-      env!("DOTASK_APP_VERSION"),
-      env!("DOTASK_BUILD_STAMP"),
-      if env!("DOTASK_BUILD_COMMIT").is_empty() {
-        String::new()
-      } else {
-        format!(
-          ", commit {}{}",
-          &env!("DOTASK_BUILD_COMMIT")[..7],
-          if env!("DOTASK_BUILD_DIRTY") == "true" {
-            "-dirty"
-          } else {
-            ""
-          }
-        )
-      }
-    )
+    format!("dotask {} (built {})", env!("DOTASK_DISPLAY_VERSION"), env!("DOTASK_BUILD_UTC"))
   );
   assert!(output.stderr.is_empty());
   let metadata = run(&["__build-info"]);
@@ -62,6 +47,11 @@ fn version_matches_embedded_application_build_metadata() {
   let metadata: serde_json::Value = serde_json::from_slice(&metadata.stdout).unwrap();
   assert_eq!(metadata["version"], env!("DOTASK_APP_VERSION"));
   assert_eq!(metadata["stamp"], env!("DOTASK_BUILD_STAMP"));
+  assert_eq!(metadata["version"], env!("CARGO_PKG_VERSION"));
+  let seconds = metadata["unix_seconds"].as_u64().unwrap();
+  let (suffix, utc) = build_identity::timestamp(seconds);
+  assert_eq!(metadata["display_version"], format!("{}+{suffix}", env!("CARGO_PKG_VERSION")));
+  assert_eq!(metadata["built_utc"], utc);
 }
 
 #[test]

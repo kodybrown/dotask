@@ -1,0 +1,4 @@
+description: Run strict Clippy checks across the Rust workspace.
+requires: [{kind: task, value: _/rust/clippy}]
+steps:
+  - run: _/rust/clippy

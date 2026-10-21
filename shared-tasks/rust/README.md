@@ -34,7 +34,7 @@ development and CI remain available.
 | --- | --- |
 | `build` | Format, Clippy, locked Cargo build, remap private paths, scan executables |
 | `run` | Build once and execute the exact scanned binary with literal arguments |
-| `test` | Build once and run locked release-profile tests |
+| `test` | Build once, run locked release-profile tests, then optional project `verify` |
 | `format` | Cargo formatting; `--check` refuses changes |
 | `clippy` | All-target Clippy; warnings fail |
 | `update-version` | Explicit version increment, patch by default; no build or Git operations |
@@ -65,6 +65,15 @@ consume that contract to embed the date in their tools. The date does not change
 SemVer ordering or edit the package version. Successful executable paths are
 recorded from Cargo's compiler-artifact messages only after every scan passes.
 Keep evaluated Cargo target/build directories outside source.
+
+Test calls a project task named `verify` after Rust tests when it exists. Only
+absence is skipped; ambiguity, invalid metadata and a failing hook stop the task.
+Keep `verify` for extra product checks and never call `test` from it: that is a
+cycle. Do not declare the optional hook as a required shared dependency. Use
+`--verify false` when a project wrapper calls its required hook explicitly to
+forward project-specific parameters. Tests retain the build's compiler flags
+and timestamp and inspect final executables after successful tests (dev-dependencies
+can change Cargo feature unification). Run checks the recorded hash before execution.
 
 ## Explicit version preparation
 

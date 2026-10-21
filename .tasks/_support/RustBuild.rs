@@ -1,66 +1,65 @@
-// Each file-based task compiles its own copy and uses only its needed helpers.
+// Product staging consumes Cargo's evaluated paths and the shared build's
+// successful executable inventory. Never infer a binary from an old output.
 #![allow(dead_code)]
-#[path = "BuildInfo.rs"]
-pub mod build_info;
-use dotask_sdk::{serde_json, BuildContext, Context, Result, Value};
-use std::{
-  fs,
-  path::{Path, PathBuf},
+use dotask_sdk::{
+  serde_json,
+  sha2::{Digest, Sha256},
+  BuildContext, Context, Result, Value,
 };
-
+use std::{fs, path::PathBuf};
+pub fn metadata(project: &BuildContext) -> Result<Value> {
+  Ok(serde_json::from_str(&project.capture(project.command("cargo").args([
+    "metadata",
+    "--format-version",
+    "1",
+    "--no-deps",
+    "--locked",
+  ]))?)?)
+}
 pub fn target_directory(project: &BuildContext) -> Result<PathBuf> {
-  // Query Cargo rather than guessing or overriding the user's output policy.
-  let output = project.capture(
-    project
-      .command("cargo")
-      .args(["metadata", "--format-version", "1", "--no-deps", "--locked"])
-      .arg("--manifest-path")
-      .arg(project.path("Cargo.toml")),
-  )?;
-  let metadata: Value = serde_json::from_str(&output)?;
+  let data = metadata(project)?;
   Ok(PathBuf::from(
-    metadata["target_directory"]
-      .as_str()
-      .context("Cargo returned no target_directory")?,
+    data["target_directory"].as_str().context("Missing Cargo target_directory")?,
   ))
 }
-pub fn cargo(project: &BuildContext, arguments: &[&str], manifest: &str) -> Result<()> {
-  cargo_build(project, arguments, manifest, None)
-}
-pub fn cargo_build(project: &BuildContext, arguments: &[&str], manifest: &str, build: Option<&Value>) -> Result<()> {
-  let mut command = project.command("cargo");
-  let split = arguments.iter().position(|a| *a == "--").unwrap_or(arguments.len());
-  command
-    .args(&arguments[..split])
-    .arg("--manifest-path")
-    .arg(project.path(manifest))
-    .args(&arguments[split..]);
-  if cfg!(windows) {
-    command.env("RUSTFLAGS", "-C target-feature=+crt-static");
+pub fn external_directory(project: &BuildContext, path: &std::path::Path) -> Result<()> {
+  let root = fs::canonicalize(project.root())?;
+  let directory = std::path::absolute(path)?;
+  // Resolve the nearest existing ancestor before creating anything, including
+  // Windows junctions and extended-length spellings of an otherwise new path.
+  let mut ancestor = directory.as_path();
+  while !ancestor.exists() {
+    ancestor = ancestor.parent().context("Output path has no existing ancestor")?;
   }
-  if let Some(build) = build {
-    command.env("DOTASK_BUILD_STAMP", build["stamp"].as_str().context("Missing build stamp")?);
-    command.env("DOTASK_BUILD_COMMIT", build["commit"].as_str().unwrap_or(""));
-    command.env("DOTASK_BUILD_DIRTY", build["dirty"].as_bool().unwrap_or(false).to_string());
-    if let Some(version) = build["version"].as_str() {
-      command.env("DOTASK_APP_VERSION", version);
-    }
+  let resolved = fs::canonicalize(ancestor)?.join(directory.strip_prefix(ancestor)?);
+  if resolved.starts_with(&root) || root.starts_with(&resolved) {
+    dotask_sdk::bail!("Generated output must stay outside source: {}", directory.display());
   }
-  project.execute(&mut command)
+  Ok(())
 }
-pub fn package_lock(platform: &Path) -> Result<fs::File> {
-  use dotask_sdk::sha2::{Digest, Sha256};
-  let directory = fs::canonicalize(std::env::temp_dir())?.join("dotask-package-locks");
-  fs::create_dir_all(&directory)?;
-  let key = format!("{:x}", Sha256::digest(platform.to_string_lossy().to_lowercase().as_bytes()));
-  let file = fs::OpenOptions::new()
-    .create(true)
-    .truncate(false)
-    .read(true)
-    .write(true)
-    .open(directory.join(key))?;
-  file
-    .try_lock()
-    .context("Another create-installer task is using this output directory")?;
-  Ok(file)
+pub fn inspected_binary(project: &BuildContext) -> Result<PathBuf> {
+  let data = metadata(project)?;
+  let package = data["packages"]
+    .as_array()
+    .context("Missing packages")?
+    .iter()
+    .find(|package| package["name"] == "dotask-cli")
+    .context("Missing dotask-cli package")?;
+  let report: Value = serde_json::from_slice(
+    &fs::read(target_directory(project)?.join("rust-build/dotask-cli-executables.json"))
+      .context("Run build or test before staging dotask")?,
+  )?;
+  if report["version"] != package["version"] || report["profile"] != "release" {
+    dotask_sdk::bail!("Build the current dotask package in release profile before staging");
+  }
+  let binary = PathBuf::from(
+    report["binaries"]["dotask"]
+      .as_str()
+      .context("Missing built dotask executable")?,
+  );
+  let expected = report["sha256"]["dotask"].as_str().context("Missing inspected dotask hash")?;
+  if format!("{:x}", Sha256::digest(fs::read(&binary)?)) != expected {
+    dotask_sdk::bail!("Dotask executable changed since inspection; run build or test again");
+  }
+  Ok(binary)
 }

@@ -7,13 +7,13 @@ application:
   copyright: Copyright (C) 2026 Kody Brown
   description: Portable project tasks, in the language of your choice, for any platform.
 build-steps:
-  - run: build
+  # Consume the successful inspected snapshot. Assembly must not rebuild it.
+  - run: stage-build
     with:
-      build-info: '${build-info}'
       stage-dir: '${staging}/app'
     gather:
       - from: '${staging}/app'
-        files: ['dotask${exe-extension}', 'sdk/**']
+        files: ['dotask${exe-extension}', 'sdk/**', LICENSE.md]
         to: .
   - run: _/doinstall/assemble-self-extracting
     with:

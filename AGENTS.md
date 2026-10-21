@@ -163,7 +163,7 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 
 ## Build And Verification
 
-- Source changes: `./build.sh verify` on Linux/macOS; `build.cmd verify` on Windows.
+- Source changes: `./build.sh test` on Linux/macOS; `build.cmd test` on Windows.
   Bare launchers bootstrap the checkout and list tasks; all arguments are forwarded.
 - Documentation-only changes: `./build.sh verify-docs` (Windows: `build.cmd verify-docs`); check relative links/anchors
   and run changed command or complete target examples where practical.
@@ -174,8 +174,12 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   Rust tasks use the source SDK; C# execution prepares the helper through the
   Rust `build-sdks` task using evaluated `PublishDir`. All build/test/format/docs/catalog/package operations
   belong in `.tasks`. Never run repository rebuilds from the live build output.
-- `verify` requires every stage. The reusable `dotnet/verify` task's optional
-  checks are not the repository verification gate.
+- `test` is the complete gate: shared Rust build/tests followed by the required
+  project `verify` task. `verify` owns extra SDK/integration, task formatting,
+  documentation and catalog checks; it must never call `test`. Standalone
+  `verify` requires a successful inspected native build. Shared `rust/test`
+  optionally calls a consumer's `verify`; dotask invokes it explicitly to
+  forward tools/configuration, with the shared hook disabled to avoid duplication.
 - Regenerate `shared-tasks/catalog.json` with `./build.sh catalog` after editing
   shared sources/support files, after final formatting and before committing the
   sources and index together. `./build.sh catalog --verify` checks without rewriting it.

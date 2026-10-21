@@ -118,6 +118,12 @@ snapshots and cycle detection. `create_installer` returns the existing JSON
 artifact contract; `installer_artifact` constructs an executable artifact for
 the current host, and `set_installer_result` returns it to the invocation's caller. `run_installer` launches a returned artifact with exact argument tokens.
 
+The reusable `_/rust/test` runs an optional project `verify` task after successful
+Rust build/tests. Missing verification is skipped; failures and ambiguity are
+errors. The hook must contain extra checks and must not call `test` recursively.
+A wrapper can pass `verify: false`, then invoke its own required verification
+with explicit project parameters. See the [Rust group](../shared-tasks/rust/README.md).
+
 ## Target names
 
 Tasks are discovered recursively under `.tasks`. Their project-relative paths

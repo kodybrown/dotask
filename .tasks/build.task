@@ -1,0 +1,12 @@
+description: Format, lint, build and scan dotask, then prepare its complete task SDK layout.
+options:
+  - {name: stage-dir, default: '', completion: directory, description: Optional complete application staging directory.}
+  - {name: configuration, alias: c, choices: [Debug, Release], default: Release}
+requires: [{kind: task, value: _/rust/build}, {kind: task, value: stage-build}]
+steps:
+  - run: _/rust/build
+    with: {package: dotask-cli}
+  - run: stage-build
+    with:
+      stage-dir: {parameter: stage-dir}
+      configuration: {parameter: configuration}

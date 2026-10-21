@@ -7,7 +7,7 @@
   <ItemGroup>
     <EmbeddedResource Include="NativeCliBaseline.json" LogicalName="NativeCliBaseline.json" />
     <AssemblyMetadata Include="RepositoryRoot" Value="$(MSBuildProjectDirectory)/../.." />
-    <EmbeddedResource Include="../../.tasks/verify.rs;../../.tasks/verify-docs.rs;../../.tasks/catalog.rs"
+    <EmbeddedResource Include="../../.tasks/verify.rs;../../.tasks/test.task;../../.tasks/verify-docs.rs;../../.tasks/catalog.rs"
                       LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../build.sh;../../build.cmd"
                       LogicalName="Bootstrap/%(Filename)%(Extension)" />

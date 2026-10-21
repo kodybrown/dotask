@@ -6,11 +6,11 @@ try {
   $dotaskOldRustFlags = $env:RUSTFLAGS
   $env:RUSTFLAGS = '-C target-feature=+crt-static'
   try {
-    & cargo build --manifest-path Cargo.toml --package dotask-cli --locked --release
+    & cargo build --manifest-path Cargo.toml --package dotask-cli --locked --profile bootstrap
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   } finally { $env:RUSTFLAGS = $dotaskOldRustFlags }
   $dotaskCargoJson = (& cargo metadata --manifest-path Cargo.toml --locked --format-version 1 --no-deps | Out-String)
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   $dotaskCargo = $dotaskCargoJson | ConvertFrom-Json
-  Copy-Item -LiteralPath (Join-Path $dotaskCargo.target_directory 'release/dotask.exe') -Destination $Destination
+  Copy-Item -LiteralPath (Join-Path $dotaskCargo.target_directory 'bootstrap/dotask.exe') -Destination $Destination
 } catch { Write-Error $_; exit 1 }

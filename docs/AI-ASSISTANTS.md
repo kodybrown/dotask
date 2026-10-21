@@ -24,24 +24,26 @@ Use explicit implementation names in dependencies, YAML steps and nested calls
 when ambiguity is possible. No-op sync must preserve existing tracking bytes.
 
 In the dotask source checkout, use `./build.sh` (Windows: `.\build.cmd`) to
-bootstrap the checkout and list tasks. Use `./build.sh verify` (Windows:
-`.\build.cmd verify`) for repository verification. These launchers accept
+bootstrap the checkout and list tasks. Use `./build.sh test` (Windows:
+`.\build.cmd test`) for repository verification. These launchers accept
 dotask arguments and need no installed dotask; `./build.sh help` lists tasks.
-The source repository's `verify` requires all stages, including documentation and
-catalog checks. The reusable `dotnet/verify` task's optional behavior described
-below applies to consuming projects, not that repository gate.
+The source repository's `test` requires shared Rust build/tests followed by its
+extra `verify` checks, including SDK/integration, documentation and catalog.
+Standalone `verify` requires a prior inspected native build and never calls
+`test`. The reusable `dotnet/verify` behavior below applies to consumers.
 
 For dotask's own complete source installer workflow, use
 `./build.sh create-dotask-installer` (Windows: `.\build.cmd create-dotask-installer`).
-This local task explicitly builds/stages the configured doinstall checkout,
-verifies both projects, and creates a single self-extracting installer without
-launching it. It forwards the staged launcher template along with the builder
-and runtime; the configured install task selects the resulting `-se` launcher.
+This local task consumes matching prebuilt doinstall tools, runs dotask's full
+gate, and packages the inspected application and SDKs without rebuilding the
+CLI or launching the installer. Use `--doinstall-tools PATH`, `DOINSTALL_TOOL_DIR`
+or builder discovery; `--source ../doinstall` explicitly selects source development
+and verifies that project too. The install task uses the successful-build record.
 It is not a shared consumer task; see
 [installation](INSTALLATION.md#build-and-install-dotask-itself).
 
 After final edits/formatting to any shared task or declared support file, run
-`./build.sh catalog`, then `./build.sh verify`; its catalog check detects stale output
+`./build.sh catalog`, then `./build.sh test`; its catalog check detects stale output
 without rewriting it. Commit the generated `shared-tasks/catalog.json` with
 those sources. The generator is `.tasks/catalog.rs`, using the native CLI's
 compiler-free metadata transport for C#, Rust and YAML catalog entries.
@@ -56,7 +58,10 @@ Rust helpers). Keep project entry points thin and leave `format-tasks` false.
 Build/run/test preserve versions; explicit update-version increments patch by
 default or minor/major on request. Edit canonical sources in `shared-tasks/rust/`,
 regenerate and publish the catalog, then sync consumers; never edit their managed
-copies. Extra product checks, packaging and release triggers remain project policy.
+copies. Shared `rust/test` optionally runs project `verify` after Rust tests;
+only missing hooks are skipped, and hooks must never call `test`. Use
+`verify: false` when a wrapper forwards extra parameters to its own required hook.
+Extra product checks, packaging and release triggers remain project policy.
 See the [Rust group contract](../shared-tasks/rust/README.md).
 
 For basic external commands, prefer declarative `.task` process steps rather than
@@ -276,19 +281,21 @@ Dotask's own stable source template is `.tasks/installer.yaml`. Its local
 then delegates build/gather/packaging and successful-output recording to the
 shared creator. There is no local `create-installer` wrapper. Other
 applications keep their own build wrapper and installer configuration.
-Application versions are not constrained to dotask's calendar convention.
+Application versions are owned by each application.
 Supply `application.build.stamp` and optional `commit` to align package and
 installed directory names with the app's own build information. Named package
 creation by `doinstall-builder` can use `--output-parent` and a structured `--result-file`; identical names
 with different contents are rejected. Git is optional, and the application's
 version is never inferred from the installer/tool version. Dotask's local creator
-preserves major/minor and adds calendar fields by default, with `--app-version`
-and `--build-stamp` overrides. Git naming policy is configured in `settings.app`.
+uses its inspected executable's committed Cargo version and build stamp. Only
+explicit `update-version` changes that version; build/run/test/packaging do not.
+Git naming policy is configured in `settings.app`.
 
 Doinstall's standalone Rust installer uses YAML receipts and the `installer/` plus
 `app/<build>/` layout. Older formats are unsupported; use fresh destinations or
 manually remove the old installation first. Its creator copies packages beneath the project-relative
-or absolute `settings.installer.output` directory (`artifacts/installers` here),
+or absolute `settings.installer.output` directory; dotask supplies a fresh external
+directory beneath Cargo's evaluated target directory,
 without redirecting MSBuild outputs. Use the bootstrap launcher when upgrading an older CLI/library,
 and pass explicit temporary absolute install/bin paths via `--installer-args`
 for tests. Never remove ownership/recovery records or overwrite an unrelated

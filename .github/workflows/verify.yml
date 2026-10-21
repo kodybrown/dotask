@@ -34,10 +34,10 @@ jobs:
         shell: cmd
         env:
           DOINSTALL_SOURCE: ${{ github.workspace }}/doinstall-source
-        run: build.cmd create-dotask-installer
+        run: build.cmd create-dotask-installer --source "%DOINSTALL_SOURCE%"
       - name: Build, verify and create dotask installer (Unix)
         if: runner.os != 'Windows'
         shell: bash
         env:
           DOINSTALL_SOURCE: ${{ github.workspace }}/doinstall-source
-        run: ./build.sh create-dotask-installer
+        run: ./build.sh create-dotask-installer --source "$DOINSTALL_SOURCE"

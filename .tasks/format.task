@@ -1,0 +1,9 @@
+description: Format project Rust sources and check or format dotask-owned Rust task sources.
+options:
+  - {name: check, type: bool, default: false}
+requires: [{kind: task, value: _/rust/format}, {kind: task, value: format-tasks}]
+steps:
+  - run: _/rust/format
+    with: {check: {parameter: check}}
+  - run: format-tasks
+    with: {check: {parameter: check}}
