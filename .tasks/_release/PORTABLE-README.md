@@ -1,9 +1,12 @@
 # dotask portable distribution
 
-Keep `dotask` (`dotask.exe` on Windows), `sdk/`, and the notices together.
+Keep dotask[.exe], dotask-doinstall-create-installer[.exe], sdk/,
+and the notices together.
 Run the executable directly; no installation or source checkout is needed.
 Rust tasks require Rust/Cargo 1.95+; C# tasks require .NET SDK 10.0.300+.
-YAML tasks and metadata/help do not need either language toolchain.
+YAML tasks, native installer creation, and metadata/help need neither toolchain.
+Installer creation consumes separately installed precompiled doinstall tools;
+application build steps still require their selected toolchains.
 
 Linux x64 baseline: Ubuntu 22.04 with glibc 2.35. Preserve executable modes
 when extracting tar.gz. Windows x64 builds are tested on Windows Server 2022.

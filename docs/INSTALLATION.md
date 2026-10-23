@@ -281,9 +281,9 @@ installing the application. Use the returned `FilePath` rather than guessing it.
 
 Replace old tracked `assemble.rs` copies explicitly with `--remove` followed by
 `--add`; shared sync does not silently change their implementation. Review local
-edits first. The build/gather creator, source-build helper, retained-uninstaller
-adapter and technology-neutral install launcher remain Rust tasks and require
-Rust/Cargo when executed. Converting those dynamic workflows is separate work.
+edits first. The build/gather creator is a native helper with a declarative
+adapter. The source-build helper, retained-uninstaller adapter and generic install
+launcher remain Rust tasks and require Rust/Cargo when executed.
 
 The shared creator accepts `installer.config` (`--config`) and
 `installer.output` (`--output`), with optional `--app-version` and `--build-stamp`
@@ -326,10 +326,10 @@ builds remain project-owned. Native acceptance is recorded separately in
 
 An AI creating a project installer should first read the project's tasks and
 settings, select separately supplied prebuilt tools, then choose resolved-YAML
-assembly above or the Rust build/gather creator below. Do not put build steps
+assembly above or the precompiled build/gather creator below. Do not put build steps
 in native doinstall YAML or add SDK/runtime requirements to the launcher.
 
-Add `_/doinstall/create-installer.rs` and
+Add `_/doinstall/create-installer.task` and
 `_/doinstall/assemble-self-extracting.task` with `dotask --add`, then configure:
 
 ```yaml
@@ -375,8 +375,10 @@ runtime:
 
 Run `dotask _/doinstall/create-installer` to create and record the artifact without
 installing it. Then use `dotask install` after adding `_/installer/install` when
-installation is intended. The creator requires Rust/Cargo for its build/gather
-logic; the standalone builder and declarative assembly task do not.
+installation is intended. The creator is a declarative adapter to the native
+dotask-doinstall-create-installer executable shipped beside dotask. With a
+prebuilt payload and declarative build steps, creation requires neither Rust/Cargo
+nor .NET. Application build steps still require their own selected toolchains.
 Replace the gather step with application build/publish steps as needed.
 The output directory contains `example-setup-v1.2.0-se.exe` on Windows.
 Omit `packaging` to use doinstall's defaults. Custom names are literal after
@@ -391,6 +393,36 @@ Windows waits and returns the installer status; Unix replaces the launcher
 process. Sign the completed launcher after packaging; macOS targets assembled
 elsewhere require final signing on macOS. See doinstall's
 [authoritative self-extracting contract](https://github.com/kodybrown/doinstall/blob/develop/docs/INSTALLATION.md#self-extracting-launchers).
+
+### Native creator distribution and task replacement
+
+Keep dotask-doinstall-create-installer[.exe] beside the actual dotask executable.
+Portable archives and installers ship the matching helper on every release
+platform (Windows x64 and Linux x64). Source builds also stage the helper on the
+current host. Resolution uses the running executable's directory, independently
+of CWD, PATH, command shims, and SDK overrides. A missing helper fails with repair
+guidance; there is no download or source-compilation fallback.
+
+The adapter uses the same immutable task context as a code task: project root,
+invocation directory, target settings/defaults, parameters, call chain and session.
+Nested build steps resolve their own target settings and preserve failure codes
+and cancellation. The helper returns InstallerArtifact through the existing
+invocation-local result channel and records the actual builder FilePath only
+after every build/gather/packaging step succeeds. The separately installed
+doinstall builder/runtime/launcher remain independent inputs; the helper neither
+builds nor downloads them.
+
+For a previously tracked Rust creator, review local edits, then explicitly
+replace the managed implementation:
+
+    dotask --remove _/doinstall/create-installer
+    dotask --add _/doinstall/create-installer.task
+
+Remove refuses edited managed copies; preserve and reconcile those edits before
+replacement. Do not keep both implementations or add a compilation fallback.
+Sync preserves implementation ownership and does not silently migrate a tracked
+Rust entry to YAML. Extensionless target calls and existing settings remain valid;
+explicit .rs calls must change to the extensionless name or .task.
 
 ## Installer runtime configuration
 

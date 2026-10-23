@@ -97,6 +97,7 @@ and run its standalone installer. Installation never rebuilds. Missing configura
 provides an example and interactive setup using recorded builds or discovered
 files; see [installer selection and setup](docs/INSTALLATION.md#find-and-run-an-existing-installer).
 Dotask's payload contains only the native Release command,
+the adjacent dotask-doinstall-create-installer native helper,
 `sdk/dotnet/Dotask.dotnet.dll`, the Rust helper source crate in `sdk/rust/`, license, notices and provenance,
 and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and

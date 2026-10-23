@@ -24,6 +24,11 @@ fn task(project: &BuildContext) -> Result<()> {
   if destination != binary {
     std::fs::copy(&binary, &destination)?;
   }
+  let helper = rust_build::inspected_executable(project, "dotask-doinstall-create-installer")?;
+  let destination = directory.join(helper.file_name().unwrap());
+  if destination != helper {
+    std::fs::copy(helper, destination)?;
+  }
   project.exec_target(
     "build-sdks",
     json!({

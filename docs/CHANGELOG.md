@@ -1099,3 +1099,26 @@ acceptance, installation, and publication.
   passed, along with Actionlint 1.7.11 and fake-publisher failure/idempotence tests.
   Version remains 0.1.2; hosted Actions/macOS acceptance is not claimed. No
   promotion, push, remote tag or release publication was performed.
+
+### 2026-10-23 Precompiled installer creator
+
+- Replace the source-executed doinstall/create-installer Rust task with a thin
+  declarative adapter to dotask-doinstall-create-installer, built and inspected
+  with dotask. Stage it through bootstrap, SDK test snapshots, source installers,
+  and Windows/Linux x64 release archives/installers.
+- Resolve the helper beside the actual running CLI, preserving context, nested
+  calls, settings/defaults, failure codes, artifact returns and successful-build
+  recording. Keep build/gather/version/collision behavior and independently
+  supplied doinstall tools. Missing helpers fail without compilation/downloads.
+- Document native distribution and explicit protected replacement of tracked
+  Rust task copies; remove the old shared source/support files.
+- Verification: Windows build.cmd test passed 98 Rust/323 .NET Release tests,
+  strict Clippy, formatting, docs/catalog/whitespace; all four compiler-free
+  creator cases passed again with an explicit post-assembly failure check.
+  Complete Windows portable/self-extracting acceptance verified creator execution
+  through an installed shim, artifact recording, temporary install/uninstall and
+  unchanged persistent PATH. Debian 13 x64 passed 82 native tests, strict Clippy,
+  compiler-free sample packaging/validation/install/uninstall, artifact-result
+  transport and unchanged profiles; its .NET-dependent test was excluded.
+  Ubuntu release/macOS acceptance was not repeated. No active installation,
+  package version, remote branch, tag or published release was changed.

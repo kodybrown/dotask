@@ -266,3 +266,45 @@ fn posix_modes_remain_metadata_only_in_help_on_every_host() {
     assert!(!root.path().join("never-created").exists());
   }
 }
+
+#[test]
+fn native_helpers_reject_unknown_or_mixed_actions_and_never_fall_back_to_source() {
+  let root = tempfile::tempdir().unwrap();
+  for source in [
+    "native-helper: unknown\n",
+    "native-helper: ../doinstall-create-installer\n",
+    "native-helper: doinstall-create-installer\nsteps: []\n",
+    "native-helper: doinstall-create-installer\nrequire_at_least_1_step: false\n",
+    "native-helper: 3\n",
+  ] {
+    task(root.path(), source);
+    let output = run(root.path());
+    assert!(!output.status.success(), "{source}: {output:?}");
+  }
+  task(root.path(), "native-helper: doinstall-create-installer\n");
+  let distribution = root.path().join("distribution");
+  fs::create_dir(&distribution).unwrap();
+  let cli = distribution.join(format!("dotask{}", std::env::consts::EXE_SUFFIX));
+  fs::copy(env!("CARGO_BIN_EXE_dotask"), &cli).unwrap();
+  // A decoy next to the project or on PATH must never supply a missing helper.
+  let helper = format!("dotask-doinstall-create-installer{}", std::env::consts::EXE_SUFFIX);
+  fs::copy(
+    env!("CARGO_BIN_EXE_dotask-doinstall-create-installer"),
+    root.path().join(helper),
+  )
+  .unwrap();
+  let command = |args: &[&str]| {
+    Command::new(&cli)
+      .args(args)
+      .current_dir(root.path())
+      .env("PATH", root.path())
+      .output()
+      .unwrap()
+  };
+  let help = command(&["help", "install"]);
+  assert!(help.status.success(), "{help:?}");
+  assert!(String::from_utf8_lossy(&help.stdout).contains("Native helper:"));
+  let execution = command(&["install"]);
+  assert!(!execution.status.success(), "{execution:?}");
+  assert!(String::from_utf8_lossy(&execution.stderr).contains("Native task helper is missing"));
+}

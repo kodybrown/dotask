@@ -174,8 +174,7 @@ fn consumer(binary: &Path, tools: &Path, work: &Path) -> Result<()> {
   fs::create_dir(work)?;
   let tasks = work.join(".tasks");
   fs::create_dir(&tasks)?;
-  // Filekeep's installer task uses the shipped Rust installer adapter. Exercise
-  // that API as well as the C# helper and compiler-free YAML composition.
+  // Language tasks still use the shipped SDKs; installer creation below must not.
   fs::write(tasks.join("rust.rs"), "// dotask: 1\n// description: Released Rust SDK acceptance.\n// end-dotask\nuse dotask_sdk::{BuildContext, Result};\nfn main(){dotask_sdk::run(|_: &BuildContext| -> Result<()> { let _ = dotask_sdk::json!({\"sdk\":\"rust\"}); println!(\"released-rust-sdk\"); Ok(()) });}\n")?;
   fs::write(tasks.join("csharp.cs"), "// dotask: 1\n// description: Released CSharp SDK acceptance.\n// end-dotask\nusing DoTask;\nConsole.WriteLine(\"released-csharp-sdk\");\n")?;
   fs::write(
@@ -187,57 +186,65 @@ fn consumer(binary: &Path, tools: &Path, work: &Path) -> Result<()> {
     output.contains("released-rust-sdk") && output.contains("released-csharp-sdk"),
     "Delivered SDK task execution failed"
   );
-  // Invoke the real declarative adapter using the released CLI, then follow
-  // FilePath rather than inferring the builder's generated delivery name.
+  // Exercise the shipped creator from both a portable binary and an installed
+  // command shim. Only prebuilt doinstall tools remain on PATH: no SDK/compiler.
+  fs::create_dir_all(tasks.join("_/doinstall"))?;
   fs::write(
-    tasks.join("package.task"),
+    tasks.join("_/doinstall/create-installer.task"),
+    include_bytes!("../../_/doinstall/create-installer.task"),
+  )?;
+  fs::write(
+    tasks.join("_/doinstall/assemble-self-extracting.task"),
     include_bytes!("../../_/doinstall/assemble-self-extracting.task"),
   )?;
+  fs::write(tasks.join("package.task"), "steps:\n  - run: _/doinstall/create-installer\n")?;
+  fs::write(tasks.join("prepare.task"), "options: [{name: app-version, required: true}]\nsteps:\n  - file: {operation: write, path: prepared-version.txt, content: {parameter: app-version}}\n")?;
   let payload = work.join("payload");
   fs::create_dir(&payload)?;
   fs::write(payload.join("README.txt"), "Downstream packaging acceptance\n")?;
   let example = super::executable("example");
   fs::copy(tools.join(super::executable("doinstall")), payload.join(&example))?;
   write_json(
-    &work.join("resolved.yaml"),
-    &json!({"schema":1,"application":{"id":"dotask-release-smoke","name":"Smoke","version":"1.0.0"},"platform":platform()?,"architecture":"x64","payload":payload,"runtime":{"interactive":false,"commands":[{"name":"release-smoke","executable":example}]}}),
+    &work.join(".dotasks.yaml"),
+    &json!({"version":1,"settings":{"installer":{"config":"source.yaml","output":"package"},"app":{"git-hash":"none","dirty-suffix":false}}}),
+  )?;
+  write_json(
+    &work.join("source.yaml"),
+    &json!({
+      "schema":1,"application":{"id":"dotask-release-smoke","name":"Smoke","version":"1.0.0"},
+      "build-steps":[
+        {"run":"prepare","with":{"app-version":"${version}"}},
+        {"gather":[{"from":payload,"files":["README.txt", example]}]},
+        {"run":"_/doinstall/assemble-self-extracting","with":{"builder":"${builder}","installer":"${installer}","launcher-template":"${launcher-template}","config":"${config}","output":"${package}","result-file":"${result-file}"}}
+      ],
+      "runtime":{"interactive":false,"commands":[{"name":"release-smoke","executable":example}]}
+    }),
   )?;
   run(
-    clean_command(binary, work, &work.join("cache"))
-      .arg("package")
-      .arg("--builder")
-      .arg(tools.join(super::executable("doinstall-builder")))
-      .arg("--installer")
-      .arg(tools.join(super::executable("doinstall")))
-      .arg("--launcher-template")
-      .arg(tools.join(super::executable("doinstall-launcher")))
-      .arg("--config")
-      .arg(work.join("resolved.yaml"))
-      .arg("--output")
-      .arg(work.join("package"))
-      .arg("--result-file")
-      .arg(work.join("package-result.json")),
+    clean_command(binary, work, &work.join("compiler-free-cache"))
+      .env("PATH", tools)
+      .env("DOTNET_HOST_PATH", "missing-dotnet")
+      .env("DOTASK_RUST_SDK", "missing-rust-sdk")
+      .env("DOTASK_SDK_PATH", "missing-dotnet-sdk")
+      .arg("package"),
   )?;
-  let result: Value = serde_json::from_slice(&fs::read(work.join("package-result.json"))?)?;
-  fs::write(
-    tasks.join("record.rs"),
-    r#"// dotask: 1
-// description: Exercise the delivered installer artifact adapter.
-// options: [{name: file, required: true}]
-// end-dotask
-use dotask_sdk::{BuildContext, Result};
-fn main(){dotask_sdk::run(|p: &BuildContext| -> Result<()> {
-  let artifact = p.installer_artifact(&p.path(p.string("file")?))?;
-  p.record_installer(&artifact)?;
-  p.set_installer_result(&artifact)
-});}
-"#,
-  )?;
+  ensure!(
+    fs::read_to_string(work.join("prepared-version.txt"))? == "1.0.0",
+    "Nested declarative task did not receive the creator context"
+  );
+  ensure!(
+    !work.join("compiler-free-cache/rust").exists(),
+    "Creator compiled a source task"
+  );
+  let record: Value = serde_json::from_slice(&fs::read(
+    work.join(format!("artifacts/.dotask/installers/{}-x64.json", platform()?)),
+  )?)?;
+  let result = &record["Installer"];
   run(
-    clean_command(binary, work, &work.join("cache"))
-      .arg("record")
-      .arg("--file")
-      .arg(result["FilePath"].as_str().context("Missing downstream FilePath")?),
+    Command::new(result["FilePath"].as_str().context("Missing downstream FilePath")?)
+      .arg("--extract-to")
+      .arg(work.join("validated"))
+      .args(["--", "--validate"]),
   )?;
   let install = work.join("installed");
   run(
@@ -374,6 +381,7 @@ pub fn build(output: &Path, source: &Path, tools: &Path, result_file: Option<&Pa
   let stage = work.join("payload");
   let names = [
     super::executable("dotask"),
+    super::executable("dotask-doinstall-create-installer"),
     "sdk/rust/Cargo.toml".into(),
     "sdk/rust/src/lib.rs".into(),
     "sdk/rust/src/installers.rs".into(),
@@ -427,16 +435,22 @@ pub fn build(output: &Path, source: &Path, tools: &Path, result_file: Option<&Pa
       fs::metadata(stage.join("dotask"))?.permissions().mode() & 0o111 != 0,
       "Missing executable permission"
     );
-    let bytes = fs::read(stage.join("dotask"))?;
-    let text = String::from_utf8_lossy(&bytes);
-    let versions: Vec<(u32, u32)> = Regex::new(r"GLIBC_(\d+)\.(\d+)")?
-      .captures_iter(&text)
-      .map(|c| (c[1].parse().unwrap(), c[2].parse().unwrap()))
-      .collect();
-    ensure!(
-      !versions.is_empty() && versions.iter().all(|v| *v <= (2, 35)),
-      "Executable exceeds glibc 2.35 baseline"
-    );
+    for executable in ["dotask", "dotask-doinstall-create-installer"] {
+      ensure!(
+        fs::metadata(stage.join(executable))?.permissions().mode() & 0o111 != 0,
+        "Missing helper executable permission"
+      );
+      let bytes = fs::read(stage.join(executable))?;
+      let text = String::from_utf8_lossy(&bytes);
+      let versions: Vec<(u32, u32)> = Regex::new(r"GLIBC_(\d+)\.(\d+)")?
+        .captures_iter(&text)
+        .map(|c| (c[1].parse().unwrap(), c[2].parse().unwrap()))
+        .collect();
+      ensure!(
+        !versions.is_empty() && versions.iter().all(|v| *v <= (2, 35)),
+        "Executable exceeds glibc 2.35 baseline"
+      );
+    }
   }
   let expected = inventory(&stage)?;
   let artifact = assemble(&stage, tools, &work, &value)?;

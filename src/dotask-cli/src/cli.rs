@@ -41,7 +41,10 @@ fn run_inner(arguments: Vec<OsString>) -> Result<i32> {
     if destination.exists() {
       bail!("Bootstrap runner already exists: {}", destination.display());
     }
-    std::fs::copy(std::env::current_exe()?, destination)?;
+    let executable = std::env::current_exe()?;
+    let helper = format!("dotask-doinstall-create-installer{}", std::env::consts::EXE_SUFFIX);
+    std::fs::copy(executable.parent().unwrap().join(&helper), Path::new(&args[1]).join(helper))?;
+    std::fs::copy(executable, destination)?;
     return Ok(0);
   }
   if args.first().is_some_and(|s| s == "__metadata") {

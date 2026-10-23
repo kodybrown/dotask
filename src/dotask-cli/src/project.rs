@@ -89,6 +89,8 @@ pub(crate) struct Target {
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub(crate) struct Group {
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub native_helper: Option<String>,
   pub require_at_least_one_step: bool,
   pub steps: Vec<Step>,
 }

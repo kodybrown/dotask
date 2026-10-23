@@ -68,17 +68,13 @@
     },
     {
       "id": "doinstall/create-installer",
-      "entryPoint": "doinstall/create-installer.rs",
+      "entryPoint": "doinstall/create-installer.task",
       "description": "Run configured build steps and gather files to create an application installer.",
-      "runtime": "rust",
+      "runtime": "yaml",
       "files": [
         {
-          "path": "doinstall/_support/BuildInfo.rs",
-          "sha256": "ded06f91dc24d7237c3fde290ed12f5ce20eecf9263b87244f35eb8e2149ba53"
-        },
-        {
-          "path": "doinstall/create-installer.rs",
-          "sha256": "3b11b22e62c755f1caa50d4b4c8af6fe091e6b25ad4d26ceb4afa9f295f992a6"
+          "path": "doinstall/create-installer.task",
+          "sha256": "2fb5df6e10690bae77212efc620c36e1237a62f352c8b0d3586190bf1a826cc6"
         }
       ],
       "requires": []

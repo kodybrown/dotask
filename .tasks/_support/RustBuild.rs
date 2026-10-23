@@ -38,6 +38,9 @@ pub fn external_directory(project: &BuildContext, path: &std::path::Path) -> Res
   Ok(())
 }
 pub fn inspected_binary(project: &BuildContext) -> Result<PathBuf> {
+  inspected_executable(project, "dotask")
+}
+pub fn inspected_executable(project: &BuildContext, name: &str) -> Result<PathBuf> {
   let data = metadata(project)?;
   let package = data["packages"]
     .as_array()
@@ -52,12 +55,8 @@ pub fn inspected_binary(project: &BuildContext) -> Result<PathBuf> {
   if report["version"] != package["version"] || report["profile"] != "release" {
     dotask_sdk::bail!("Build the current dotask package in release profile before staging");
   }
-  let binary = PathBuf::from(
-    report["binaries"]["dotask"]
-      .as_str()
-      .context("Missing built dotask executable")?,
-  );
-  let expected = report["sha256"]["dotask"].as_str().context("Missing inspected dotask hash")?;
+  let binary = PathBuf::from(report["binaries"][name].as_str().context("Missing built dotask executable")?);
+  let expected = report["sha256"][name].as_str().context("Missing inspected dotask hash")?;
   if format!("{:x}", Sha256::digest(fs::read(&binary)?)) != expected {
     dotask_sdk::bail!("Dotask executable changed since inspection; run build or test again");
   }

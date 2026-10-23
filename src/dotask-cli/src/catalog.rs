@@ -159,10 +159,12 @@ pub(crate) fn group(file: &Path, root: &Path) -> Target {
         "requires",
         "require_at_least_1_step",
         "steps",
+        "native-helper",
       ],
     )?;
     let mut metadata = value.as_object().unwrap().clone();
     metadata.remove("steps");
+    metadata.remove("native-helper");
     metadata.remove("require_at_least_1_step");
     crate::task_metadata::apply_value(&mut target, Value::Object(metadata), root)?;
     target.description = match value.get("description") {
@@ -170,8 +172,21 @@ pub(crate) fn group(file: &Path, root: &Path) -> Target {
       Some(v) => text(v, "description")?.into(),
     };
     let required = flag(&value, "require_at_least_1_step")?;
-    let steps = crate::declarative::steps(&value["steps"], &target)?;
+    let native_helper = value.get("native-helper").map(|v| text(v, "native-helper")).transpose()?;
+    let steps = if let Some(helper) = native_helper {
+      // Helpers are a fixed distribution inventory, never arbitrary PATH commands.
+      if helper != "doinstall-create-installer" {
+        bail!("Unknown native-helper '{helper}'.");
+      }
+      if value.get("steps").is_some() || value.get("require_at_least_1_step").is_some() {
+        bail!("native-helper cannot be combined with steps or require_at_least_1_step.");
+      }
+      vec![]
+    } else {
+      crate::declarative::steps(&value["steps"], &target)?
+    };
     target.group = Some(Group {
+      native_helper: native_helper.map(str::to_owned),
       require_at_least_one_step: required,
       steps,
     });

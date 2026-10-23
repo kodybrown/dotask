@@ -88,6 +88,9 @@ public sealed class BootstrapTests
         [workspace]
         [profile.bootstrap]
         inherits = "release"
+        [[bin]]
+        name = "dotask-doinstall-create-installer"
+        path = "src/helper.rs"
         [dependencies]
         serde_json = "=1.0.151"
         [[bin]]
@@ -96,12 +99,16 @@ public sealed class BootstrapTests
         """);
       var cargoOutput = Path.Combine(Path.GetTempPath(), "_rust", "dotask-bootstrap-tests", Identity).Replace('\\', '/');
       Project.Write(".cargo/config.toml", "[build]\ntarget-dir = \"" + cargoOutput + "\"\n");
+      Project.Write("src/helper.rs", "fn main() { }");
       Project.Write("src/main.rs", """
         fn main() {
           let args: Vec<_> = std::env::args().skip(1).collect();
           if args.first().is_some_and(|arg| arg == "__stage-runner") {
             let destination = std::path::Path::new(&args[1]).join(if cfg!(windows) { "dotask.exe" } else { "dotask" });
-            std::fs::copy(std::env::current_exe().unwrap(), destination).unwrap();
+            let exe = std::env::current_exe().unwrap();
+            let helper = format!("dotask-doinstall-create-installer{}", std::env::consts::EXE_SUFFIX);
+            std::fs::copy(exe.parent().unwrap().join(&helper), std::path::Path::new(&args[1]).join(helper)).unwrap();
+            std::fs::copy(exe, destination).unwrap();
             return;
           }
           println!("REPORT:{}", serde_json::json!({

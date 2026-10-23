@@ -104,8 +104,11 @@ Use `_/doinstall/assemble-self-extracting.task` plus an explicit
 `--launcher-template FILE` for one self-extracting launcher. Use the returned
 JSON `FilePath`, never a guessed `installer.exe` or launcher name. It takes resolved
 YAML/payload, does not return an installer artifact, and never builds/downloads
-doinstall. Dotask's build/gather creator and generic install launcher remain Rust
-tasks. See [installation](INSTALLATION.md) for tool configuration and replacement
+doinstall. Dotask's build/gather creator is create-installer.task, backed by the
+precompiled dotask-doinstall-create-installer executable beside dotask. It preserves
+nested task context and InstallerArtifact results without a task compiler. Prebuilt
+payloads with declarative build steps need neither Rust/Cargo nor .NET. The generic
+install launcher remains a Rust task. See [installation](INSTALLATION.md) for tool configuration and replacement
 of tracked `assemble.rs` copies. The two products are installed independently.
 For the build/gather creator, allow source-only `packaging` filename templates,
 pass `${result-file}` through the assembly step, and supply `${launcher-template}`

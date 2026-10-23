@@ -197,6 +197,9 @@ pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) 
     out.row("  ", remarks);
   }
   if let Some(group) = &target.group {
+    if let Some(helper) = &group.native_helper {
+      out.row("  Native helper: ", helper);
+    }
     out.section("Steps");
     out.line(&format!("  Require at least one step: {}", group.require_at_least_one_step), 0);
     for step in &group.steps {

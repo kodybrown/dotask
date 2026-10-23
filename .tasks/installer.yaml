@@ -13,7 +13,7 @@ build-steps:
       stage-dir: '${staging}/app'
     gather:
       - from: '${staging}/app'
-        files: ['dotask${exe-extension}', 'sdk/**', LICENSE.md]
+        files: ['dotask-doinstall-create-installer${exe-extension}', 'dotask${exe-extension}', 'sdk/**', LICENSE.md]
         to: .
   - run: _/doinstall/assemble-self-extracting
     with:

@@ -3,6 +3,65 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Precompiled installer creator (2026-10-23)
+
+Windows x64 passed build.cmd test: 98 Rust tests and 323 .NET Release tests,
+strict Clippy, task formatting, documentation, catalog freshness and whitespace.
+The four new compiler-free creator cases also passed a focused rerun after
+strengthening the post-assembly failure assertion:
+
+    dotnet test dotask.slnx -c Release --nologo -m:1 -nr:false --filter FullyQualifiedName~NativeCreatorBuildsGathersRecordsAndInstallsWithoutLanguageSdks
+
+Those cases use a standalone physical CLI/helper distribution with no SDK files.
+PATH contains only prebuilt doinstall tools and SDK overrides point to missing
+locations. They cover ordinary/self-extracting assembly, explicit tools/discovery,
+a nested working directory, Unicode paths, target settings/defaults, immutable
+nested context, deterministic build metadata, disabled steps, recursive gathering,
+custom filenames, validation, temporary install/uninstall, collision refusal,
+and preservation of the successful-build record after a final packaging failure.
+Existing SDK integration cases still verify nested InstallerArtifact returns.
+
+build.cmd create-dotask-installer --reuse-build --output NEW_EXTERNAL_DIRECTORY
+passed with the existing checksum-pinned doinstall v0.1.1 tools. Portable ZIP
+and self-extracting payload inventories/hashes match and include the native
+dotask-doinstall-create-installer helper. Both the portable CLI and a temporarily
+installed dotask command shim created a downstream installer with Cargo/Rust and
+.NET unavailable on PATH. Nested declarative preparation, actual artifact
+recording, installer validation, install/uninstall, binary privacy scans,
+checksums, and unchanged persistent user/machine PATH checks passed.
+
+Debian 13 x64 passed 82 native CLI/helper tests and strict all-target Clippy:
+
+    cargo test --package dotask-cli --locked -- --skip published_csharp_tasks_compile_with_native_host_without_execution
+    cargo clippy --package dotask-cli --all-targets --locked -- -D warnings
+
+The changed Unix bootstrap also passed ./build.sh help _/doinstall/create-installer,
+building and staging both native executables without .NET.
+
+The one filtered test requires .NET, which is absent from this Linux environment;
+a complete Linux SDK/release gate is not claimed. A separate native acceptance
+copied the prebuilt CLI/helper and an existing matching doinstall v0.1.0 tools
+archive into temporary directories. With PATH restricted to those native tools
+and invalid SDK overrides, declarative preparation/gather/self-extracting assembly,
+deterministic version/stamp, validation, payload comparison, temporary
+install/uninstall, and unchanged shell-profile hashes passed. Direct __exec
+operation 3 and a separate symlink entry point both returned a valid invocation-local
+InstallerArtifact after nested tasks, without a source compiler. No doinstall source builds or downloads were
+performed.
+
+Evaluated Windows Cargo target_directory/build_directory remain
+C:/tmp/_rust/dotask/target; Linux uses /tmp/_rust/dotask/target.
+Evaluated .NET BaseOutputPath, BaseIntermediateOutputPath and PublishDir remain
+under C:/tmp/_dotnet. Canonical/installed declarative adapters match byte for byte;
+the catalog and tracking now reference only the .task entry, with no old Rust
+creator or source support file. Windows/Linux release assembly enforces helper
+inventory, and Linux checks executable mode and the glibc 2.35 baseline for both
+native executables.
+
+This run did not repeat Ubuntu 22.04 release packaging or macOS acceptance.
+Hosted Actions, pushing and publication remain unperformed. The package version
+remains 0.1.2; active installations were unchanged.
+
 ## Main-push native release automation (2026-10-21)
 
 Windows x64 `build.cmd test` passed 96 Rust tests (CLI, SDK and release driver)

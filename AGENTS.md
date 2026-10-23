@@ -208,7 +208,8 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   Rust tasks, C# tasks and YAML groups. C# compilation invokes the installed
   .NET SDK directly with isolated MSBuild hooks and the maintained helper DLL.
   Rust tasks use `src/dotask-sdk` through external source snapshots. Ship only
-  the native command, `sdk/dotnet/Dotask.dotnet.dll` and the Rust helper source
+  the native command and dotask-doinstall-create-installer helper,
+  `sdk/dotnet/Dotask.dotnet.dll` and the Rust helper source
   crate under `sdk/rust/`;
   never bundle language runtimes, SDKs, Roslyn or a managed support host.
   Maintain native CLI regression coverage and C# task support. See `docs/DESIGN.md`.

@@ -8,9 +8,12 @@ trap 'rm -rf -- "$dotask_bootstrap_dir"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Build both native executables before staging; consumers never compile helpers.
+cargo build --manifest-path Cargo.toml --package dotask-cli --locked --profile bootstrap
+
 # Cargo locates its output. The runner stages itself and exits before tasks can
 # rebuild it, so neither a JSON parser nor a .NET toolchain is needed here.
-cargo run --manifest-path Cargo.toml --package dotask-cli --locked --profile bootstrap -- __stage-runner "$dotask_bootstrap_dir"
+cargo run --manifest-path Cargo.toml --package dotask-cli --bin dotask --locked --profile bootstrap -- __stage-runner "$dotask_bootstrap_dir"
 export DOTASK_SOURCE_RUST_SDK="$PWD/src/dotask-sdk"
 export DOTASK_SOURCE_ROOT="$PWD"
 export DOTASK_SOURCE_SDK_STAGE="$dotask_bootstrap_dir/sdk"

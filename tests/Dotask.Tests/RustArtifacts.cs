@@ -54,7 +54,7 @@ internal static class RustArtifacts
     var source = Path.Combine(TargetDirectory.Value, "release");
     var destination = Path.Combine(Path.GetTempPath(), "dotask-native-tests", Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(destination);
-    foreach (var name in new[] { "dotask" }) {
+    foreach (var name in new[] { "dotask", "dotask-doinstall-create-installer" }) {
       var file = name + (OperatingSystem.IsWindows() ? ".exe" : "");
       var input = Path.Combine(source, file);
       if (File.Exists(input)) {

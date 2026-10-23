@@ -91,7 +91,9 @@ impl Executor {
     self.trace(&format!("Target: {}; source: {}", target.name, target.file_path.display()));
     let parameters = self.bind(target, args, session, false)?;
     let settings = crate::configuration::settings(&self.configuration, target);
-    if let Some(group) = &target.group {
+    if let Some(group) = &target.group
+      && group.native_helper.is_none()
+    {
       let (code, executed) = workflow::Workflow {
         executor: self,
         parameters: &parameters,
@@ -114,9 +116,10 @@ impl Executor {
     }
 
     let snapshot = tempfile::Builder::new().prefix("execution-").tempdir_in(session)?;
-    self.trace(&format!("Compiling: {}", target.name));
+    let native = target.group.as_ref().and_then(|group| group.native_helper.as_deref());
     let rust = target.file_path.extension().is_some_and(|e| e.eq_ignore_ascii_case("rs"));
-    if !rust
+    if native.is_none()
+      && !rust
       && let Some(stage) = source_sdk_stage()?
       && !stage.join("dotnet/Dotask.dotnet.dll").is_file()
     {
@@ -150,8 +153,30 @@ impl Executor {
         return Ok(code);
       }
     }
-    let host = if rust { None } else { Some(Host::locate()?) };
-    let mut command = if rust {
+    if native.is_none() {
+      self.trace(&format!("Compiling: {}", target.name));
+    }
+    let host = if rust || native.is_some() {
+      None
+    } else {
+      Some(Host::locate()?)
+    };
+    let mut command = if let Some(helper) = native {
+      // current_exe identifies the real installation even when a command shim
+      // launched dotask. Never consult CWD, PATH, or a consumer-provided override.
+      let executable = std::env::current_exe()?;
+      let helper = executable
+        .parent()
+        .unwrap()
+        .join(format!("dotask-{helper}{}", std::env::consts::EXE_SUFFIX));
+      if !helper.is_file() {
+        bail!(
+          "Native task helper is missing: {}. Restore the complete dotask distribution.",
+          helper.display()
+        );
+      }
+      Command::new(helper)
+    } else if rust {
       Command::new(crate::rust_tasks::compile(
         target,
         &self.directory.task_directory,

@@ -7,7 +7,7 @@ context, typed values, safe argument passing, portable paths, filesystem helpers
 and target-call transport.
 It has no third-party runtime dependencies or DI container.
 
-`src/dotask-cli` is the sole executable implementation. Discovery, comment-header
+`src/dotask-cli` contains the native CLI and precompiled task helper. Discovery, comment-header
 metadata, YAML loading, binding, help, completion, SDK compilation, and execution
 are separate native components. `main.rs` invokes the application.
 The retired C# executable remains available in Git history; it is not built or
@@ -30,7 +30,7 @@ bootstrap runner and packaged application; `src/dotask-sdk` is its maintained Ru
 helper crate. See the
 [preview commands](../README.md#rust-cli-development-preview).
 
-The installed application contains the native executable,
+The installed application contains the native CLI and installer-creator executables,
 `sdk/dotnet/Dotask.dotnet.dll`, and the Rust helper source crate under `sdk/rust/`.
 Language-specific helper directories leave room for future supported languages.
 No language runtime, compiler,
@@ -350,7 +350,10 @@ its native executable and task SDK helpers, not doinstall or its builder. The
 optional adapters belong to dotask's shared-task catalog; doinstall never
 discovers projects, writes task files or manages their tracking. The CLI needs
 no special tool-discovery/download service. `assemble.task` is an ordinary direct
-process call; dynamic build/gather and artifact launching retain their Rust tasks.
+process call. Dynamic build/gather runs in the precompiled
+dotask-doinstall-create-installer task helper using the same immutable context,
+nested-call protocol, and invocation-local artifact results as source tasks.
+Artifact launching retains its Rust task.
 The builder can use PATH, but the packaged runtime uses an explicit actual
 executable path to avoid distributing a command shim. Source builds are explicit
 development/CI preparation; packaging and verification consume prebuilt tools.

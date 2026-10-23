@@ -157,6 +157,27 @@ excluded from discovery, except for the task-root `_` directory for official tas
 with source-relative `#:include` directives. See [shared task distribution](SHARED-TASKS.md)
 for installing copies, support-file declarations, and protected synchronization.
 
+## Precompiled task adapters
+
+A .task file may select a shipped task helper instead of steps:
+
+    description: Run configured installer build steps and gather the payload.
+    native-helper: doinstall-create-installer
+
+Only doinstall-create-installer is supported. It maps to the adjacent native
+dotask-doinstall-create-installer[.exe] in the actual dotask installation.
+The adapter may declare the ordinary options, requirements, remarks and examples;
+it cannot declare steps or require_at_least_1_step. Unknown helper identifiers
+and path/command substitutions are metadata errors.
+
+Execution binds options and target settings exactly as for a code task, then
+supplies DOTASK_EXECUTION_CONTEXT to the precompiled helper. The CLI preserves
+session-local InstallerArtifact results, nested calls, cycle checks, cancellation,
+and child failure codes. It never invokes Cargo or .NET for this adapter.
+Help and completion read metadata without requiring the helper to be present.
+A missing helper fails execution with guidance to restore the complete dotask
+distribution. See the [installer workflow](INSTALLATION.md#self-extracting-build-and-gather-workflow).
+
 ## YAML task groups
 
 Groups may call Rust tasks as well as C# tasks. A `.cs`, `.rs`, or `.task` file

@@ -14,8 +14,11 @@ metadata and managing private C# catalogs needs no toolchain. Executing C# tasks
 requires the .NET 10 SDK and `sdk/dotnet/Dotask.dotnet.dll`. Rust execution requires
 Cargo/Rust 1.95+ and the bundled `sdk/rust/` source directory.
 
-The native CLI is the sole executable, repository bootstrap, and installer
-payload; see [verification](VERIFICATION.md). C# and Rust implementations may
+The native CLI owns repository bootstrap. Distributions also ship the adjacent
+dotask-doinstall-create-installer helper; the declarative
+_/doinstall/create-installer adapter uses it without Rust/Cargo or .NET.
+Its application build steps still require their selected toolchains.
+See [verification](VERIFICATION.md). C# and Rust implementations may
 coexist: use `tools/check.cs` or `tools/check.rs` when `tools/check` is ambiguous. Shared
 management accepts `--lang csharp|rust`. The same selector resolves an individual
 task or help request: `dotask tools/check --lang rust`. Place it

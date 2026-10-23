@@ -433,3 +433,10 @@ selected task files and required companions are downloaded; DoTask never clones
 the entire repository. Downloads are verified before installation; mismatched
 files preserve the last installed project version. HTTPS transport tests exercise
 catalog/file requests without depending on a live published repository.
+
+The doinstall/create-installer entry now distributes a declarative .task adapter
+with runtime: yaml and no source support files. Its native helper is part of the
+dotask installation rather than a shared-task download. Replace an existing
+tracked Rust implementation explicitly; sync retains the tracked implementation.
+See [native creator replacement](INSTALLATION.md#native-creator-distribution-and-task-replacement)
+for the protected remove/add sequence.

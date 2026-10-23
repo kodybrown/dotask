@@ -1,0 +1,10 @@
+description: Run configured build steps and gather files to create an application installer.
+options:
+  - { name: config, type: path, description: Source installer YAML; otherwise installer.config. }
+  - { name: output, type: path, description: Package parent directory; otherwise installer.output. }
+  - { name: app-version, description: Override the application version pattern. }
+  - { name: build-stamp, description: Reproducible UTC YYDDD-HHMM build stamp. }
+  - { name: builder, description: "Builder command/path for the optional '${builder}' build value; otherwise doinstall.builder or doinstall-builder." }
+  - { name: installer, type: path, description: "Actual runtime for '${installer}'; otherwise doinstall.installer or the builder's tool-path query." }
+  - { name: launcher-template, type: path, description: "Target launcher for '${launcher-template}'; otherwise doinstall.launcher-template or the builder's tool-path query." }
+native-helper: doinstall-create-installer

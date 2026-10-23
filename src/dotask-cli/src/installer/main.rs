@@ -1,15 +1,4 @@
-// dotask: 1
-// description: Run configured build steps and gather files to create an application installer.
-// options:
-//   - { name: config, type: path, description: Source installer YAML; otherwise installer.config. }
-//   - { name: output, type: path, description: Package parent directory; otherwise installer.output. }
-//   - { name: app-version, description: Override the application version pattern. }
-//   - { name: build-stamp, description: Reproducible UTC YYDDD-HHMM build stamp. }
-//   - { name: builder, description: "Builder command/path for the optional '${builder}' build value; otherwise doinstall.builder or doinstall-builder." }
-//   - { name: installer, type: path, description: "Actual runtime for '${installer}'; otherwise doinstall.installer or the builder's tool-path query." }
-//   - { name: launcher-template, type: path, description: "Target launcher for '${launcher-template}'; otherwise doinstall.launcher-template or the builder's tool-path query." }
-// requires: [{ kind: file, value: doinstall/_support/BuildInfo.rs }]
-// end-dotask
+//! Precompiled installer orchestration, invoked through the dotask task context.
 #[path = "_support/BuildInfo.rs"]
 mod build_info;
 use dotask_sdk::{json, serde_json, serde_saphyr, tempfile, BuildContext, Context, Result, Value};
@@ -312,10 +301,12 @@ fn settings(prefix: &str, value: &Value, variables: &mut BTreeMap<String, Value>
 fn expand(value: &Value, variables: &BTreeMap<String, Value>) -> Result<Value> {
   Ok(match value {
     Value::String(text) => {
-      if text.starts_with("${") && text.ends_with('}') && text.matches("${").count() == 1 {
-        if let Some(value) = variables.get(&text[2..text.len() - 1]) {
-          return Ok(value.clone());
-        }
+      if text.starts_with("${")
+        && text.ends_with('}')
+        && text.matches("${").count() == 1
+        && let Some(value) = variables.get(&text[2..text.len() - 1])
+      {
+        return Ok(value.clone());
       }
       let mut text = text.clone();
       for (key, value) in variables {
@@ -381,12 +372,12 @@ fn no_links(path: &Path) -> Result<()> {
       Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
       Err(error) => return Err(error.into()),
     };
-    let mut linked = metadata.file_type().is_symlink();
+    let linked = metadata.file_type().is_symlink();
     #[cfg(windows)]
-    {
+    let linked = {
       use std::os::windows::fs::MetadataExt;
-      linked |= metadata.file_attributes() & 0x400 != 0;
-    }
+      linked || metadata.file_attributes() & 0x400 != 0
+    };
     if linked {
       dotask_sdk::bail!("Installer file paths cannot contain links: {}", parent.display());
     }

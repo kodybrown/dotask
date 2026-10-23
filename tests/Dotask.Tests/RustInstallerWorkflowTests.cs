@@ -9,6 +9,132 @@ public sealed class RustInstallerWorkflowTests
   [InlineData(true, false)]
   [InlineData(false, true)]
   [InlineData(true, true)]
+  public async Task NativeCreatorBuildsGathersRecordsAndInstallsWithoutLanguageSdks( bool selfExtracting, bool discoverTools )
+  {
+    using var project = new TestProject();
+    var extension = OperatingSystem.IsWindows() ? ".exe" : "";
+    var distribution = Path.Combine(project.Root, "native distribution 日本語");
+    Directory.CreateDirectory(distribution);
+    foreach (var name in new[] { "dotask", "dotask-doinstall-create-installer" }) {
+      File.Copy(RustArtifacts.Binary(name), Path.Combine(distribution, name + extension));
+    }
+    foreach (var name in new[] { "create-installer.task", selfExtracting ? "assemble-self-extracting.task" : "assemble.task" }) {
+      using var stream = typeof(RustInstallerWorkflowTests).Assembly.GetManifestResourceStream("Shared/doinstall/" + name)!;
+      using var reader = new StreamReader(stream);
+      project.Write(".tasks/_/doinstall/" + name, await reader.ReadToEndAsync());
+    }
+    project.Write(".tasks/package.task", "steps:\n  - run: _/doinstall/create-installer\n");
+    project.Write(".tasks/prepare.task", """
+      options: [{name: info, required: true}]
+      steps:
+        - id: previous
+          file: {operation: read, path: prepared.json, optional: true}
+        - file: {operation: write, path: prepared.json, content: {parameter: info}, expected-sha256: {result: previous.sha256}}
+        - file: {operation: write, path: nested-context.txt, content: {setting: marker}}
+      """);
+    project.Write("published/data/note.txt", "Prebuilt payload 日本語");
+    File.Copy(RustArtifacts.Binary("dotask"), project.Write("published/probe" + extension, ""), overwrite: true);
+    var config = JsonSerializer.SerializeToNode(new {
+      schema = 1,
+      application = new { id = "native-creator", name = "Native Creator", version = "1.0.0" },
+      runtime = new { interactive = false, commands = new[] { new { name = "native-creator", executable = "probe" + extension } } }
+    })!;
+    config["packaging"] = JsonSerializer.SerializeToNode(new Dictionary<string, string> {
+      ["installer-name"] = "custom-${version}${exe-extension}",
+      ["launcher-name"] = "custom-${version}-se${exe-extension}"
+    });
+    var assembly = new Dictionary<string, object> {
+      ["run"] = selfExtracting ? "_/doinstall/assemble-self-extracting" : "_/doinstall/assemble",
+      ["with"] = new Dictionary<string, string> {
+        ["builder"] = "${builder}", ["installer"] = "${installer}", ["config"] = "${config}",
+        ["output"] = "${package}", ["result-file"] = "${result-file}"
+      }
+    };
+    if (selfExtracting) {
+      ((Dictionary<string, string>)assembly["with"])["launcher-template"] = "${launcher-template}";
+    }
+    config["build-steps"] = JsonSerializer.SerializeToNode(new object[] {
+      new { run = "prepare", with = new Dictionary<string, string> { ["info"] = "${build-info}" } },
+      new { enabled = false, run = "must-not-execute" },
+      new { gather = new[] { new { from = "published", files = new[] { "probe" + extension, "data/**" } } } },
+      assembly
+    });
+    var configPath = project.Write("installer.yaml", config.ToJsonString());
+    var builder = RustArtifacts.Binary("doinstall-builder");
+    project.Write(".dotasks.yaml", JsonSerializer.Serialize(new {
+      version = 1,
+      settings = new {
+        marker = "shared context",
+        app = new Dictionary<string, object> { ["version"] = "1.2.3", ["git-hash"] = "none", ["dirty-suffix"] = false },
+        installer = new { config = "installer.yaml", output = "packages" },
+        doinstall = discoverTools ? new Dictionary<string, object>() : new Dictionary<string, object> {
+          ["builder"] = builder, ["installer"] = RustArtifacts.Binary("doinstall"), ["launcher-template"] = RustArtifacts.Binary("doinstall-launcher")
+        }
+      },
+      targets = new Dictionary<string, object> {
+        ["_/doinstall/create-installer"] = new {
+          defaults = new Dictionary<string, string> { ["build-stamp"] = "26296-1200" },
+          settings = new { marker = "creator override must not leak" }
+        }
+      }
+    }));
+    var nested = Path.Combine(project.Root, "nested working directory");
+    Directory.CreateDirectory(nested);
+    async Task<ProcessResult> Run( string executable, params string[] arguments ) => await ProcessRunner.RunAsync(new ProcessDefinition {
+      Executable = executable, Arguments = arguments, WorkingDirectory = nested, CaptureOutput = true, ThrowOnError = false,
+      Environment = new Dictionary<string, string?> {
+        ["PATH"] = Path.GetDirectoryName(builder) + (OperatingSystem.IsMacOS() ? ":/usr/bin:/bin" : ""),
+        ["DOTASK_CACHE_HOME"] = Path.Combine(project.Root, "cache"),
+        ["DOTASK_SOURCE_RUST_SDK"] = "missing-rust-sdk", ["DOTASK_RUST_SDK"] = "missing-rust-sdk",
+        ["DOTNET_HOST_PATH"] = "missing-dotnet", ["DOTASK_SDK_PATH"] = "missing-dotnet-sdk"
+      }
+    }, CancellationToken.None);
+    var native = Path.Combine(distribution, "dotask" + extension);
+    var packaged = await Run(native, "package");
+    Assert.True(packaged.ExitCode == 0, packaged.StandardOutput + packaged.StandardError);
+    Assert.Equal("shared context", File.ReadAllText(Path.Combine(project.Root, "nested-context.txt")));
+    using var info = JsonDocument.Parse(File.ReadAllText(Path.Combine(project.Root, "prepared.json")));
+    Assert.Equal("1.2.3", info.RootElement.GetProperty("version").GetString());
+    Assert.Equal("26296-1200", info.RootElement.GetProperty("stamp").GetString());
+    var record = Assert.Single(Directory.GetFiles(Path.Combine(project.Root, "artifacts/.dotask/installers"), "*.json"));
+    var recorded = File.ReadAllBytes(record);
+    var setup = Assert.Single(Directory.GetFiles(Path.Combine(project.Root, "packages"), "custom-1.2.3" + (selfExtracting ? "-se" : "") + extension, SearchOption.AllDirectories));
+    var sources = Path.Combine(project.Root, "retained");
+    var validate = await Run(setup, selfExtracting ? ["--extract-to", sources, "--", "--validate"] : ["--validate"]);
+    Assert.True(validate.ExitCode == 0, validate.StandardOutput + validate.StandardError);
+    if (!selfExtracting) {
+      sources = Path.GetDirectoryName(setup)!;
+    }
+    Assert.Equal("Prebuilt payload 日本語", File.ReadAllText(Path.Combine(sources, "payload/data/note.txt")));
+    var install = Path.Combine(project.Root, "temporary install");
+    var bin = Path.Combine(project.Root, "temporary commands");
+    var installed = await Run(Path.Combine(sources, "custom-1.2.3" + extension), "--non-interactive", "--install-dir", install, "--bin-dir", bin, "--set", "add-to-path=false");
+    Assert.True(installed.ExitCode == 0, installed.StandardOutput + installed.StandardError);
+    Assert.Equal(0, (await Run(Path.Combine(bin, "native-creator" + extension), "--version")).ExitCode);
+    var removed = await Run(Path.Combine(install, "installer/installer" + extension), "uninstall", "--non-interactive");
+    Assert.True(removed.ExitCode == 0, removed.StandardOutput + removed.StandardError);
+    Assert.False(Directory.Exists(install));
+    Assert.NotEqual(0, (await Run(native, "package")).ExitCode);
+    Assert.Equal(recorded, File.ReadAllBytes(record));
+    // A final task failure after assembly must never replace the prior record.
+    project.Write(".dotasks.yaml", File.ReadAllText(Path.Combine(project.Root, ".dotasks.yaml")).Replace("1.2.3", "2.0.0"));
+    config["build-steps"]!.AsArray().Add(JsonSerializer.SerializeToNode(new { run = "reject" }));
+    project.Write(".tasks/reject.task", "steps:\n  - exec: {executable: absent-final-packaging-tool}\n");
+    File.WriteAllText(configPath, config.ToJsonString());
+    var rejected = await Run(native, "package");
+    Assert.NotEqual(0, rejected.ExitCode);
+    Assert.Contains("absent-final-packaging-tool", rejected.StandardError);
+    Assert.Single(Directory.GetFiles(Path.Combine(project.Root, "packages"), "custom-2.0.0" + (selfExtracting ? "-se" : "") + extension, SearchOption.AllDirectories));
+    Assert.Equal(recorded, File.ReadAllBytes(record));
+    Assert.False(Directory.Exists(Path.Combine(distribution, "sdk")));
+    Assert.False(Directory.Exists(Path.Combine(project.Root, "cache/rust")));
+  }
+
+  [Theory]
+  [InlineData(false, false)]
+  [InlineData(true, false)]
+  [InlineData(false, true)]
+  [InlineData(true, true)]
   public async Task DeclarativeAssemblyUsesSeparateToolsWithoutLanguageSdks( bool explicitBuilder, bool selfExtracting )
   {
     using var project = new TestProject();

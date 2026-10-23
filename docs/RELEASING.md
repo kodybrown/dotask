@@ -19,7 +19,7 @@ For version `0.1.2`, the stable public names are:
 Each release also contains `SHA256SUMS`, `RELEASE-METADATA.json`, and
 `dotask-vVERSION-PLATFORM-x64-metadata.json` for each platform. The archives have
 no enclosing directory: extract into a dedicated directory and retain the whole
-layout. Payloads contain the native executable, `sdk/dotnet/Dotask.dotnet.dll`,
+layout. Payloads contain dotask[.exe], dotask-doinstall-create-installer[.exe], `sdk/dotnet/Dotask.dotnet.dll`,
 `sdk/rust/Cargo.toml`, `sdk/rust/src/{lib,installers}.rs`, MIT license, readme,
 dependency notices, and `RELEASE.json`. Portable and installer payload hashes
 must match. Dotask's app payload contains no doinstall binaries, language runtimes,
@@ -74,7 +74,7 @@ Linux uses the same Cargo commands with `./build.sh test` and
 declared Ubuntu baseline. Bare `create-dotask-installer` builds/lints/stages first;
 `--reuse-build` requires the existing inspected executable hash and reuses it.
 Both modes assemble and test temporary installations, SDK discovery, Rust/C#
-and YAML task execution, downstream packaging, and uninstall. They never alter
+and YAML task execution, native creator packaging with Rust/Cargo and .NET absent from PATH, and uninstall. They never alter
 persistent PATH or active installations. `--source ../doinstall` preserves the
 explicit local source-development workflow; unpacked tools without their pinned
 archive can also produce development packages. Such packages cannot publish.
