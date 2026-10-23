@@ -9,12 +9,12 @@ tested commit. Never manually tag to start a release.
 
 ## Deliveries and pins
 
-For version `0.1.2`, the stable public names are:
+For version `0.1.3`, the stable public names are:
 
 | Platform | Portable CI bundle | Interactive installer |
 | --- | --- | --- |
-| Windows x64 | `dotask-v0.1.2-windows-x64-portable.zip` | `dotask-v0.1.2-windows-x64-setup.exe` |
-| Linux x64 | `dotask-v0.1.2-linux-x64-portable.tar.gz` | `dotask-v0.1.2-linux-x64-setup` |
+| Windows x64 | `dotask-v0.1.3-windows-x64-portable.zip` | `dotask-v0.1.3-windows-x64-setup.exe` |
+| Linux x64 | `dotask-v0.1.3-linux-x64-portable.tar.gz` | `dotask-v0.1.3-linux-x64-setup` |
 
 Each release also contains `SHA256SUMS`, `RELEASE-METADATA.json`, and
 `dotask-vVERSION-PLATFORM-x64-metadata.json` for each platform. The archives have
@@ -127,7 +127,7 @@ C# tasks.
 
 ```bash
 set -euo pipefail
-dotask_version=0.1.2
+dotask_version=0.1.3
 dotask_sha256=REPLACE_WITH_REVIEWED_64_HEX_HASH
 [[ "$dotask_sha256" =~ ^[0-9a-f]{64}$ ]] || { echo 'Pin the published dotask hash first' >&2; exit 1; }
 tools=$(mktemp -d)

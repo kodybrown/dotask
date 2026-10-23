@@ -1128,3 +1128,14 @@ acceptance, installation, and publication.
   remain visible. Both cases passed 20 consecutive focused runs (40 cases).
   Full Windows build.cmd test passed 98 Rust/324 .NET Release tests plus
   strict Clippy, formatting, docs, catalog and whitespace checks.
+
+### 2026-10-23 Prepare dotask 0.1.3
+
+- Explicitly update the native CLI package and matching lockfile entry from
+  0.1.2 to 0.1.3, retaining independent SDK versions. Update current release
+  asset names and the pinned-consumer example to the prepared version.
+- Verification: Windows build.cmd test passed 98 Rust and 324 .NET Release
+  tests with no skips, plus strict Clippy, formatting, documentation, catalog
+  freshness and whitespace checks, using the existing checksum-pinned
+  doinstall v0.1.1 prebuilt tools. No push, publication or active installation
+  change was performed.
