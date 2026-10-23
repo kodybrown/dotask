@@ -1122,3 +1122,9 @@ acceptance, installation, and publication.
   transport and unchanged profiles; its .NET-dependent test was excluded.
   Ubuntu release/macOS acceptance was not repeated. No active installation,
   package version, remote branch, tag or published release was changed.
+- Harden the cancellation fixture's readiness protocol: publish complete PID
+  markers atomically and always cancel/await the child before disposal, including
+  an incomplete-marker parse failure. Preserve strict fixture deletion so leaks
+  remain visible. Both cases passed 20 consecutive focused runs (40 cases).
+  Full Windows build.cmd test passed 98 Rust/324 .NET Release tests plus
+  strict Clippy, formatting, docs, catalog and whitespace checks.

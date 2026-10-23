@@ -31,27 +31,71 @@ public sealed class ProcessAndFilesTests
     Assert.Equal(19, (await project.Context().RunAsync(definition with { ThrowOnError = false })).ExitCode);
   }
 
-  [Fact]
-  public async Task CancellationKillsTheStartedProcess()
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task CancellationKillsTheStartedProcess( bool failBeforeReady )
   {
     using var project = new TestProject();
+    // Publish complete markers by rename: File.WriteAllText creates its
+    // destination before writing, so existence alone is not a readiness signal.
     var assembly = await project.BuildProcessProbeAsync("""
-      File.WriteAllText(Path.Combine(Environment.CurrentDirectory, "pid.txt"), Environment.ProcessId.ToString());
+      var root = Environment.CurrentDirectory;
+      var pending = Path.Combine(root, "pid.pending");
+      if (args.Length != 0) {
+        // Deliberately reproduce the old write-in-place marker's incomplete state.
+        File.WriteAllText(Path.Combine(root, "pid.txt"), "");
+      }
+      File.WriteAllText(pending, Environment.ProcessId.ToString());
+      File.Move(pending, Path.Combine(root, "started.txt"));
+      while (!File.Exists(Path.Combine(root, "continue.txt"))) {
+        await Task.Delay(25);
+      }
+      File.WriteAllText(pending, Environment.ProcessId.ToString());
+      File.Move(pending, Path.Combine(root, "pid.txt"));
       await Task.Delay(Timeout.Infinite);
       """);
     using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(15));
     var running = project.Context().RunAsync(new ProcessDefinition {
       Executable = DotnetHost.Find(),
-      Arguments = [assembly],
+      Arguments = failBeforeReady ? [assembly, "--incomplete-pid"] : [assembly],
       CaptureOutput = true
     }, cancellation.Token);
-    var pidFile = Path.Combine(project.Root, "pid.txt");
-    while (!File.Exists(pidFile)) {
-      await Task.Delay(25, cancellation.Token);
+    var pid = 0;
+    async Task ObserveThenCancelAsync()
+    {
+      try {
+        var started = Path.Combine(project.Root, "started.txt");
+        while (!File.Exists(started)) {
+          await Task.Delay(25, cancellation.Token);
+        }
+        pid = int.Parse(await File.ReadAllTextAsync(started));
+        var ready = Path.Combine(project.Root, "pid.txt");
+        if (failBeforeReady) {
+          Assert.Empty(await File.ReadAllTextAsync(ready));
+          // Reading a newly created marker could previously fail here before
+          // cancellation, leaving the child alive until fixture deletion.
+          _ = int.Parse(await File.ReadAllTextAsync(ready));
+          Assert.Fail("An incomplete PID must fail parsing.");
+        }
+        project.Write("continue.txt", "");
+        while (!File.Exists(ready)) {
+          await Task.Delay(25, cancellation.Token);
+        }
+        Assert.Equal(pid, int.Parse(await File.ReadAllTextAsync(ready)));
+      } finally {
+        // A readiness timeout/read/assertion failure must not leave the child
+        // holding the fixture's working directory or mask the original failure.
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+      }
     }
-    var pid = int.Parse(await File.ReadAllTextAsync(pidFile));
-    cancellation.Cancel();
-    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+    if (failBeforeReady) {
+      await Assert.ThrowsAsync<FormatException>(ObserveThenCancelAsync);
+    } else {
+      await ObserveThenCancelAsync();
+    }
+    Assert.NotEqual(0, pid);
     Assert.Throws<ArgumentException>(() => Process.GetProcessById(pid));
   }
 

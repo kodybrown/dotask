@@ -3,6 +3,32 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Cancellation probe readiness and cleanup (2026-10-23)
+
+A Windows CancellationKillsTheStartedProcess run failed in TestProject.Dispose.
+A surviving Probe.dll process matching the reported failed fixture, with its test
+host already exited, confirmed that the test left a child holding its temporary
+working directory. The fixture's deletion error masked the earlier test failure.
+The original test polled File.Exists before reading/parsing a PID written directly
+to that path; an incomplete read or another readiness failure could skip
+cancellation. The existing process runner already kills and awaits the child
+when cancellation is requested.
+
+The test now publishes complete markers by rename and always cancels/awaits the
+runner in finally before fixture disposal. Its added early-failure case deliberately
+exposes an empty PID marker while the child is alive, verifies the original
+FormatException survives, and verifies the child has exited before directory
+cleanup. Fixture deletion remains strict: no retry or suppressed IOException
+hides a leaked child.
+
+Both normal and incomplete-marker cases passed 20 consecutive focused runs
+(40 cases), using:
+
+    dotnet test dotask.slnx -c Release --no-build --no-restore --nologo -m:1 -nr:false --filter FullyQualifiedName~CancellationKillsTheStartedProcess
+
+The full Windows build.cmd test gate then passed 98 Rust tests and 324 .NET
+Release tests, strict Clippy, task formatting, docs, catalog freshness and whitespace.
+
 ## Precompiled installer creator (2026-10-23)
 
 Windows x64 passed build.cmd test: 98 Rust tests and 323 .NET Release tests,
