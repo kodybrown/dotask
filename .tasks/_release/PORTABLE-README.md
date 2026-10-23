@@ -4,7 +4,9 @@ Keep dotask[.exe], dotask-doinstall-create-installer[.exe], sdk/,
 and the notices together.
 Run the executable directly; no installation or source checkout is needed.
 Rust tasks require Rust/Cargo 1.95+; C# tasks require .NET SDK 10.0.300+.
-YAML tasks, native installer creation, and metadata/help need neither toolchain.
+Go tasks require an installed stable Go 1.22+ compiler and bundled sdk/go.
+Go execution never installs/downloads a toolchain or requires Rust/.NET.
+YAML tasks, native installer creation, and metadata/help need no language toolchain.
 Installer creation consumes separately installed precompiled doinstall tools;
 application build steps still require their selected toolchains.
 

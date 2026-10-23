@@ -3,9 +3,9 @@
 This is the authoring contract for the current preview. See [usage](USAGE.md) for
 CLI behavior and [AI assistant guidance](AI-ASSISTANTS.md) for a task-writing
 workflow. A target is a C# file-based application, a Rust `.rs` entry file using
-the bundled `dotask-sdk`, or a declarative YAML `.task` group. The native CLI
-supports calls in both directions between C# and Rust. Explicit `.cs`, `.rs`,
-and `.task` names identify implementations; extensionless names require an
+the bundled `dotask-sdk`, a Go `.go` entry file using `sdk/go`, or a declarative YAML `.task` group. The native CLI
+supports nested calls between C#, Rust, Go and YAML tasks. Explicit `.cs`, `.rs`,
+`.go`, and `.task` names identify implementations; extensionless names require an
 unambiguous target. The native CLI reads
 metadata directly; C# compilation uses the installed SDK and maintained authoring
 library. See [Rust tasks](#rust-tasks) for the Rust source and SDK contract.
@@ -27,10 +27,10 @@ A single implementation retains its existing canonical `TargetName`; when
 implementations coexist, the canonical names include their extensions. Cycle
 detection distinguishes implementations and rejects a return to an already
 active one. Case-only or space-grouped collisions within one language remain
-errors. Requirements naming an ambiguous shared task must use `.cs` or `.rs`.
+errors. Requirements naming an ambiguous shared task must use `.cs`, `.rs`, `.go` or `.task`.
 
-Project defaults under `targets.tools/check.defaults` apply to both variants.
-Defaults under `targets.tools/check.cs.defaults` or `.rs` override the base values
+Project defaults under `targets.tools/check.defaults` apply to all variants.
+Defaults under `targets.tools/check.cs.defaults`, `.rs`, `.go` or `.task` override the base values
 case-insensitively. These are literal mapping keys, not nested settings paths.
 CLI arguments override both layers. Help and the wizard use the same effective
 values. There is no project-wide language preference.
@@ -40,9 +40,11 @@ values. There is no project-wide language preference.
 reserved CLI option, not a task parameter, and accepts equals syntax too. A
 conflicting explicit extension is rejected. The filter applies only to the
 requested target; nested calls resolve normally and can cross languages. YAML
-groups have no C#/Rust implementation language, so select them without this
+groups have no C#/Rust/Go implementation language, so select them without this
 filter and name their child implementations explicitly. Directory execution is
 not implied by the selector.
+
+See [Go tasks](#go-tasks) for the Go compiler, bundled SDK, support packages, and cache contract.
 
 ## Rust tasks
 
@@ -64,7 +66,7 @@ fn task(project: &BuildContext) -> Result<()> {
 }
 ```
 
-The same optional YAML header is used by C# and Rust tasks. It starts with
+The same optional YAML header is used by C#, Rust and Go tasks. It starts with
 `// dotask: 1` at the first nonblank line (a BOM or executable shebang is allowed)
 and ends with `// end-dotask`. Every intervening line is an ordinary `//` comment.
 Leading header indentation is preserved after stripping the comment prefix.
@@ -124,10 +126,105 @@ errors. The hook must contain extra checks and must not call `test` recursively.
 A wrapper can pass `verify: false`, then invoke its own required verification
 with explicit project parameters. See the [Rust group](../shared-tasks/rust/README.md).
 
+## Go tasks
+
+Go entry files use `.go`, `package main`, and the same ordinary-comment YAML
+header as Rust/C#. Run a task with `dotask hello.go` or `dotask hello --lang go`.
+The selector applies only to this invocation; nested calls resolve normally.
+Coexisting `.cs`, `.rs`, `.go`, and `.task` entries require an explicit extension
+when their base name is ambiguous. Help, completion, requirements, and effective
+defaults use the same catalog without invoking Go.
+
+```go
+// dotask: 1
+// description: Print a greeting from Go.
+// options: [{name: name, default: Developer}]
+// end-dotask
+package main
+
+import (
+    "fmt"
+    dotask "dotask.local/sdk"
+)
+
+func main() { dotask.Run(task) }
+func task(c *dotask.BuildContext) error {
+    name, err := c.String("name")
+    if err != nil { return err }
+    fmt.Println("Hello,", name)
+    return nil
+}
+```
+
+Execution requires a stable, locally installed Go 1.22+ compiler. Dotask forces
+`GOTOOLCHAIN=local`, disables module-network access, and never downloads a Go
+toolchain or invokes Rust/Cargo/.NET to execute a Go task. Missing/unsupported
+compilers fail clearly on execution. Help works without Go; it only checks tool
+availability, not compiler compatibility or task syntax.
+
+The bundled `sdk/go` module uses only the standard library. Initial task imports
+are limited to the standard library, `dotask.local/sdk`, and declared local task
+support packages. Import local packages as `dotask.local/task/_support/message`
+and declare **every** required source/data file through `requires: [{kind: file,
+value: _support/message/message.go}]`. Requirement paths start at the task root;
+shared catalog declarations are group-relative, as with Rust. Imports are rooted
+at the entry file directory, so an adjacent `_support/message` package keeps the
+same import when a shared task is installed beneath any source/group prefix.
+Declared support outside the entry directory retains its task-root-relative path
+in the snapshot; conflicting destination paths are rejected. The
+[Go example](../examples/go/README.md) demonstrates this convention. Only the
+selected entry file is built, so neighboring tasks can each declare `main`.
+Support packages must use ordinary Go package directories; arbitrary consumer
+modules/dependencies and Cgo are not supported. Consumer module/workspace files
+cannot be supplied as support files.
+
+Compilation uses private content-addressed task/SDK snapshots and generated
+modules under the external temporary `_go/dotask/tasks/<user>` cache. Consumer
+`go.mod`, `go.sum`, `go.work`, environment defaults, external cache helpers, and build flags do not
+participate and are never rewritten. Cgo is disabled, host OS/architecture are
+selected explicitly, and builds use readonly modules, trimpath and no VCS stamps.
+Cache identity includes source identity/bytes, support files, the complete SDK,
+compiler version/location/target metadata, generated manifests, and controlled
+build settings. Per-snapshot locks serialize concurrent builds; binaries are
+published only after success. Failed/cancelled compilations can be retried.
+
+`BuildContext` provides `Root`, `TaskDirectory`, `Invocation`, `TaskFile`,
+`TaskName`, `OS`, `Architecture`, and a cancellation `Context`. `Path` resolves
+explicitly portable paths; it rejects NUL and foreign Windows roots on Unix.
+`String`, `Bool`, `Int` (int64), `Number`, `Parameter`, and `Setting` read typed
+values. `ParameterAs[T]`/`SettingAs[T]` decode additional typed values without
+losing integer precision. Names/settings use case-insensitive dotted lookup.
+The CLI's existing `int` option remains a signed 32-bit integer; typed settings
+can carry larger integers. `SettingPath` combines setting lookup and paths.
+
+Use `c.Command("tool", "argument with spaces", "")`, then `Execute` or `Capture`.
+Arguments remain separate tokens, streams behave like the Rust SDK, and capture
+requires UTF-8. Wrapped `ProcessFailure` errors retain their exit code through
+`Run`. The native CLI owns cancellation and descendant cleanup; cooperative Go
+code can also observe `c.Context().Done()`.
+
+Nested APIs are `ExecTarget`, `TargetExists`, `ExecIfExists`, and
+`CreateInstaller`. Pass a named mapping or a Go struct with explicit JSON field
+names. `ExecIfExists` returns `OptionalResult`: only absence has `Exists=false`;
+ambiguity/errors remain failures. Settings snapshots and implementation-aware
+cycle detection are shared with the other languages.
+
+Installer APIs are `InstallerArtifact`, `ValidateInstaller`, `SetInstallerResult`,
+`RecordInstaller`, `FindInstaller`, and `RunInstaller`. They use the existing
+artifact wire format. Recording, discovery and launching delegate to the native
+CLI to preserve locking, atomic state replacement, hash checks, unknown-state
+protection and Windows activation. Record only after all packaging succeeds;
+returning an invocation result is a separate operation. Use
+`CreateInstaller("_/doinstall/create-installer.task", parameters)` with the
+precompiled creator shipped beside dotask. Native helper and declarative assembly
+steps require no Rust/Cargo/.NET; the recipe's own tasks determine other tool
+requirements. No doinstall tools are bundled in dotask. See
+[installation](INSTALLATION.md#self-extracting-build-and-gather-workflow).
+
 ## Target names
 
 Tasks are discovered recursively under `.tasks`. Their project-relative paths
-without `.cs`, `.rs`, or `.task` are their full names. Directory/file identifiers start with an ASCII
+without `.cs`, `.rs`, `.go`, or `.task` are their full names. Directory/file identifiers start with an ASCII
 letter and then use letters, digits, `_`, or `-`; matching is case-insensitive.
 The reserved official source directory `_` is allowed at the task root.
 
@@ -180,7 +277,7 @@ distribution. See the [installer workflow](INSTALLATION.md#self-extracting-build
 
 ## YAML task groups
 
-Groups may call Rust tasks as well as C# tasks. A `.cs`, `.rs`, or `.task` file
+Groups may call Rust, C# and Go tasks. A `.cs`, `.rs`, `.go`, or `.task` file
 may share a base name with another implementation; use the extension-qualified
 name when calling it from a group. Extensionless ambiguity remains an error.
 
@@ -211,7 +308,7 @@ are errors. `description` is an optional string; `steps` is a required sequence
 and may be empty (`steps: []`). Each step requires exactly one `run`, `exec`, `file`,
 `http`, `json`, `text`, or `foreach` action. A `foreach` also declares nested `steps`.
 Top-level `options`, `requires`, `remarks`, `examples`, and `capabilities`
-use the same metadata contract as C# and Rust headers.
+use the same metadata contract as C#, Rust and Go headers.
 
 - Steps execute sequentially in listed order, including repeated calls.
 - `optional` defaults to `false`. A missing required target fails; a missing
@@ -343,7 +440,7 @@ contents and validation of its file. Filesystems must support hard links.
 
 `git/check.task` is the only reusable Git check. Its default runs `git --version`;
 `--whitespace` also checks unstaged and staged diffs. Invoke it without `--lang`
-because YAML has no C#/Rust implementation language.
+because YAML has no C#/Rust/Go implementation language.
 
 The reusable `archive/create-zip.task` and `archive/create-7z.task` use these
 features to call a configurable `7z` executable with no language toolchain.
@@ -429,7 +526,7 @@ Native SDK directives such as `#:package`, `#:project`, and `#:include` are supp
 Included files remain relative to the original target. Put shared `.cs` files
 under an underscore-prefixed subdirectory such as `_support` so they are not discovered as targets.
 
-Discovery accepts `.cs` and `.rs` executable targets and `.task` YAML groups. Files such as `.txt`, `.md`, `.target`, `.targets`, `.yaml`, `.yml`, and
+Discovery accepts `.cs`, `.rs` and `.go` executable targets and `.task` YAML groups. Files such as `.txt`, `.md`, `.target`, `.targets`, `.yaml`, `.yml`, and
 `.json` are never targets, even when stored alongside tasks. Future `.py` or `.go`
 support would require explicit language handlers, not execute arbitrary files.
 For example, this repository stores Windows native bootstrap staging in
@@ -504,7 +601,7 @@ throughout `project.TaskDirectory`, including other groups and custom `--use-dir
 locations. `--verify` adds `--verify-no-changes` to both steps and skips optional
 line-ending normalization. Normal formatting runs the optional
 `_/text/fixeol` target only if installed and propagates its failures.
-The reusable `text/fixeol.task` runs the `fixeol` app directly without C#/Rust
+The reusable `text/fixeol.task` runs the `fixeol` app directly without C#/Rust/Go
 tooling. It requires `fixeol` on PATH; a missing executable fails rather than
 warning and skipping. Its `--eol lf|crlf` option defaults to LF for ordinary text;
 `.cmd` and `.bat` always use UTF-8/CRLF. All three recursive passes retain the

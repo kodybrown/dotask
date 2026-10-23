@@ -3,6 +3,50 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Go tasks and bundled SDK (2026-10-23)
+
+Windows x64 passed the complete gate using installed Go 1.26.6 and the existing
+checksum-pinned doinstall v0.1.1 Windows tools, supplied through the command-line
+option rather than an inherited tools variable:
+
+```powershell
+.\build.cmd test --doinstall-tools C:\tmp\dotask-release-pinned-tools-20261021\tools
+```
+
+The gate passed 106 Rust cases, 328 .NET Release tests, the standard-library Go
+SDK tests, strict Clippy, Rust/Go formatting, required docs, catalog freshness and
+Git whitespace. The generic native phase excludes one fixture requiring explicit
+prebuilt tools; required `test-go` invokes that fixture separately and checks
+that Cargo did not replace the inspected native executables. The 106 total
+includes that successful explicit invocation. All 49 focused integration cases
+also passed, including Go/Rust/C#/Go nesting and direct/nested Go cancellation
+with uncooperative descendants and context cleanup. Actionlint 1.7.11 passed.
+
+Dedicated physical CLI/helper/Go-SDK fixtures used a PATH containing only the
+installed Go tools and native Rust/Cargo/.NET traps. They exercised Go orchestration
+calling the precompiled creator, which called a Go staging task before native
+self-extracting assembly. Artifact creation, return, recording, finding, launching
+and post-assembly failure protection passed without invoking a forbidden tool.
+The fixture had neither a Rust SDK nor a .NET helper. Hostile consumer Go module,
+workspace, flags, target and cache settings (including GOCACHEPROG=cargo) did not participate; task/support/SDK
+changes, concurrent compilation, missing/unsupported compiler diagnostics,
+Unicode/empty/quoted arguments, process exits and shared helper relocation were
+covered. No generated manifests or binaries appeared in consumer source.
+
+Local `create-dotask-installer --reuse-build` acceptance produced a portable ZIP
+and self-extracting setup. Both actual deliveries passed Go/Rust/C#/YAML task
+execution and native downstream packaging; temporary install/uninstall left
+persistent PATH and active installations unchanged. Inventory, privacy and
+checksum checks passed. The staged Go example printed `Hello, Go developer 日本語!`.
+Cargo target/build and evaluated .NET output/intermediate/publish paths remained
+external. Package version stayed 0.1.3; gostatic was not modified.
+
+Go 1.22 is the declared SDK/compiler minimum; local execution used Go 1.26.6.
+Native Linux/macOS acceptance was not performed in this run. The macOS fixture
+allows its built-in codesign utility while keeping forbidden language-tool traps
+first on PATH. CI provisions a pinned Go compiler explicitly; consumer execution
+never provisions one. No push or publication occurred.
+
 ## Cancellation probe readiness and cleanup (2026-10-23)
 
 A Windows CancellationKillsTheStartedProcess run failed in TestProject.Dispose.

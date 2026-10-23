@@ -20,18 +20,19 @@ Each release also contains `SHA256SUMS`, `RELEASE-METADATA.json`, and
 `dotask-vVERSION-PLATFORM-x64-metadata.json` for each platform. The archives have
 no enclosing directory: extract into a dedicated directory and retain the whole
 layout. Payloads contain dotask[.exe], dotask-doinstall-create-installer[.exe], `sdk/dotnet/Dotask.dotnet.dll`,
-`sdk/rust/Cargo.toml`, `sdk/rust/src/{lib,installers}.rs`, MIT license, readme,
+`sdk/rust/Cargo.toml`, `sdk/rust/src/{lib,installers}.rs`, `sdk/go/{go.mod,context.go,process.go,tasks.go,installers.go}`, MIT license, readme,
 dependency notices, and `RELEASE.json`. Portable and installer payload hashes
 must match. Dotask's app payload contains no doinstall binaries, language runtimes,
 or build tools.
 The installer also carries doinstall's published license/dependency notices.
 After downloading the Linux setup executable, use `chmod +x` before running it.
 
-Rust 1.95.0, .NET SDK 10.0.402, and action commit SHAs are pinned. Windows releases
+Rust 1.95.0, .NET SDK 10.0.402, Go 1.26.6, and action commit SHAs are pinned. Windows releases
 are built/tested on `windows-2022`; Linux on `ubuntu-22.04` x64, glibc 2.35. Linux
 assembly rejects another baseline or ELF requirements newer than glibc 2.35.
 The tar archive preserves executable modes, with normalized owner IDs/times.
-Consumers need Rust/Cargo 1.95+ for Rust tasks and .NET SDK 10.0.300+ for C# tasks;
+Consumers need Rust/Cargo 1.95+ for Rust tasks, .NET SDK 10.0.300+ for C# tasks,
+and an installed stable Go 1.22+ compiler for Go tasks;
 metadata and YAML-only tasks need neither. macOS retains a separate verification
 gate and does not publish a native bundle yet.
 Its existing explicit-source installer workflow remains available and creates a
@@ -73,7 +74,7 @@ Linux uses the same Cargo commands with `./build.sh test` and
 `./build.sh create-dotask-installer --reuse-build --output "$output"` on the
 declared Ubuntu baseline. Bare `create-dotask-installer` builds/lints/stages first;
 `--reuse-build` requires the existing inspected executable hash and reuses it.
-Both modes assemble and test temporary installations, SDK discovery, Rust/C#
+Both modes assemble and test temporary installations, SDK discovery, Rust/C#/Go
 and YAML task execution, native creator packaging with Rust/Cargo and .NET absent from PATH, and uninstall. They never alter
 persistent PATH or active installations. `--source ../doinstall` preserves the
 explicit local source-development workflow; unpacked tools without their pinned

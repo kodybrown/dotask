@@ -25,7 +25,7 @@ fn device(s: &str) -> bool {
     || (s.len() == 4 && (s.starts_with("COM") || s.starts_with("LPT")) && matches!(s.as_bytes()[3], b'1'..=b'9'))
 }
 pub(crate) fn stem(value: &str) -> &str {
-  for extension in [".cs", ".rs", ".task"] {
+  for extension in [".cs", ".rs", ".go", ".task"] {
     if value.to_ascii_lowercase().ends_with(extension) {
       return &value[..value.len() - extension.len()];
     }

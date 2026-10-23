@@ -124,7 +124,7 @@ public sealed class LanguageVariantTests
     using var project = new TestProject();
     var result = await RustArtifacts.Run(project.Root, ["--add", "git", "--lang=" + language], Options(project));
     Assert.Equal(1, result.ExitCode);
-    Assert.Contains("csharp or rust", result.StandardError);
+    Assert.Contains("csharp, rust or go", result.StandardError);
     Assert.Empty(Directory.GetFileSystemEntries(project.Tasks));
     Assert.Contains(NativeCompletion.Complete("dotask --add git --lang r", project.Root), c => c.Value == "rust");
   }

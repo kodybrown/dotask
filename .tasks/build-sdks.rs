@@ -1,5 +1,5 @@
 // dotask: 1
-// description: Build and prepare the configured C# and Rust task SDK files.
+// description: Build and prepare the configured C#, Rust and Go task SDK files.
 // options:
 //   - { name: configuration, alias: c, choices: [Debug, Release], default: Release }
 //   - { name: stage-dir, type: path, required: true, description: Fresh SDK staging directory. }
@@ -70,6 +70,14 @@ fn task(project: &BuildContext) -> Result<()> {
     copy(
       &source,
       &destination.join("rust"),
+      file.as_str().context("SDK file must be a string")?,
+    )?;
+  }
+  let source = project.path(config["go"]["directory"].as_str().context("Missing Go SDK directory")?);
+  for file in config["go"]["files"].as_array().context("Missing Go SDK files")? {
+    copy(
+      &source,
+      &destination.join("go"),
       file.as_str().context("SDK file must be a string")?,
     )?;
   }

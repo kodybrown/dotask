@@ -203,9 +203,9 @@ fn binding_preserves_precedence_aliases_types_and_literal_values() {
 }
 
 #[test]
-fn discovery_excludes_helpers_and_documents_but_accepts_both_languages_and_groups() {
+fn discovery_excludes_helpers_and_documents_but_accepts_code_languages_and_groups() {
   let (_root, directory) = fixture();
-  for name in ["_/dotnet/build.cs", "run.rs", "group.task"] {
+  for name in ["_/dotnet/build.cs", "run.rs", "go-task.go", "group.task"] {
     write(
       &directory.task_directory,
       name,
@@ -238,7 +238,7 @@ fn discovery_excludes_helpers_and_documents_but_accepts_both_languages_and_group
     );
   }
   let catalog = catalog::load(&directory.task_directory, directory.root_directory.as_path()).unwrap();
-  assert_eq!(catalog.targets.len(), 3);
+  assert_eq!(catalog.targets.len(), 4);
   assert_eq!(catalog.find("dotnet/build").unwrap().unwrap().name, "_/dotnet/build");
   assert_eq!(catalog.find("BUILD").unwrap().unwrap().name, "_/dotnet/build");
   assert_eq!(catalog::sources(&directory.task_directory, true, false).unwrap().len(), 1);

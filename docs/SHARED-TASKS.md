@@ -427,7 +427,7 @@ Catalog generation lives in `.tasks/catalog.rs`. It requests batch metadata
 through the native CLI's toolchain-free YAML header parser;
 it never compiles or executes the tasks being indexed.
 The generated `catalog.json` remains the downloadable index, not a file authors
-maintain per task. It contains portable IDs, `runtime: csharp|rust|yaml`, entry points,
+maintain per task. It contains portable IDs, `runtime: csharp|rust|go|yaml`, entry points,
 file paths, hashes, and requirements. Unsupported runtimes are rejected. Only
 selected task files and required companions are downloaded; DoTask never clones
 the entire repository. Downloads are verified before installation; mismatched

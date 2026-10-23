@@ -59,9 +59,9 @@ public sealed class ExecutionLanguageTests
   [InlineData("check.cs", "--lang=rust", "conflicts")]
   [InlineData("check.rs", "--lang=csharp", "conflicts")]
   [InlineData("only", "--lang=rust", "Unknown target")]
-  [InlineData("check", "--lang=python", "csharp or rust")]
-  [InlineData("check", "--lang=", "csharp or rust")]
-  [InlineData("check", "--lang", "csharp or rust")]
+  [InlineData("check", "--lang=python", "csharp, rust or go")]
+  [InlineData("check", "--lang=", "csharp, rust or go")]
+  [InlineData("check", "--lang", "csharp, rust or go")]
   public async Task InvalidMissingAndConflictingSelectionsFailBeforeTaskSideEffects( string name, string selector, string diagnostic )
   {
     using var project = Project();
@@ -89,6 +89,19 @@ public sealed class ExecutionLanguageTests
     Assert.False(File.Exists(Path.Combine(project.Root, "executed")));
   }
 
+  [Fact]
+  public async Task GoSelectionCanNestRustCSharpAndGoWithIndependentLanguageResolution()
+  {
+    using var project = Project();
+    project.Target("start", "throw new Exception(\"wrong language\");");
+    project.Write(".tasks/start.go", "package main\nimport dotask \"dotask.local/sdk\"\nfunc main(){dotask.Run(func(c *dotask.BuildContext)error{return c.ExecTarget(\"middle.rs\",nil)})}\n");
+    project.Write(".tasks/middle.rs", "fn main(){dotask_sdk::run(|c|c.exec_target(\"middle.cs\",dotask_sdk::json!({})));}\n");
+    project.Target("middle", "await BuildContext.Current.ExecTargetAsync(\"leaf.go\");", async: true);
+    project.Write(".tasks/leaf.go", "package main\nimport(\"fmt\";dotask \"dotask.local/sdk\")\nfunc main(){dotask.Run(func(c *dotask.BuildContext)error{fmt.Println(\"go-rust-csharp-go\");return nil})}\n");
+    var result = await project.RunAsync("start", "--lang=Go");
+    Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
+    Assert.Contains("go-rust-csharp-go", result.StandardOutput);
+  }
   private const string Metadata = "// dotask: 1\n// options: [{name: message, default: default}]\n// end-dotask\n";
   private static TestProject Project() => new();
 }

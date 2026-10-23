@@ -12,7 +12,9 @@ pub(crate) fn run(arguments: Vec<OsString>) -> i32 {
     Err(_) if completion => 0,
     Err(error) => {
       eprintln!("dotask: {error:#}");
-      if error.is::<process::Cancelled>() {
+      if let Some(failure) = error.downcast_ref::<dotask_sdk::ProcessFailure>() {
+        failure.0
+      } else if error.is::<process::Cancelled>() {
         130
       } else {
         1
@@ -53,6 +55,30 @@ fn run_inner(arguments: Vec<OsString>) -> Result<i32> {
     }
     process::initialize()?;
     crate::rust_tasks::batch(Path::new(&args[1]), Path::new(&args[2]))?;
+    return Ok(0);
+  }
+  if args.first().is_some_and(|s| s == "__installer") {
+    if args.len() != 2 {
+      bail!("__installer requires a request file.");
+    }
+    process::initialize()?;
+    let request: Value = serde_json::from_slice(&std::fs::read(&args[1])?)?;
+    let context = dotask_sdk::BuildContext::load()?;
+    match request["Operation"].as_str() {
+      Some("record") => context.record_installer(&request["Artifact"])?,
+      Some("run") => {
+        let arguments: Option<Vec<String>> = request
+          .get("Arguments")
+          .filter(|v| !v.is_null())
+          .map(|v| serde_json::from_value(v.clone()))
+          .transpose()?;
+        context.run_installer(&request["Artifact"], arguments.as_deref())?;
+      }
+      Some("find") => {
+        crate::host::write_json(&Path::new(&args[1]).with_extension("result"), &context.find_installer()?)?
+      }
+      _ => bail!("Unknown installer operation."),
+    }
     return Ok(0);
   }
   if args.first().is_some_and(|s| s == "__exec") {
@@ -188,11 +214,13 @@ impl Arguments {
           let value = if let Some((_, value)) = arg.split_once('=') {
             value.to_owned()
           } else {
-            args.next().ok_or_else(|| anyhow::anyhow!("--lang requires csharp or rust."))?
+            args
+              .next()
+              .ok_or_else(|| anyhow::anyhow!("--lang requires csharp, rust or go."))?
           };
           let value = value.to_ascii_lowercase();
-          if !["csharp", "rust"].contains(&value.as_str()) {
-            bail!("--lang requires csharp or rust.");
+          if !["csharp", "rust", "go"].contains(&value.as_str()) {
+            bail!("--lang requires csharp, rust or go.");
           }
           result.language = Some(value);
         }

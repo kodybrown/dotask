@@ -18,7 +18,7 @@ pub(crate) fn support(root: &Path, name: &str) -> Result<PathBuf> {
   for part in name.split('/') {
     path.push(part);
     if fs::symlink_metadata(&path).is_ok_and(|m| crate::initialization::is_link(&m)) {
-      bail!("Rust support files cannot be symbolic links: {}", path.display());
+      bail!("Task support files cannot be symbolic links: {}", path.display());
     }
   }
   Ok(path)
@@ -120,7 +120,7 @@ pub(crate) fn compile(target: &Target, root: &Path, snapshot: &Path) -> Result<P
   fs::copy(binary, &destination)?;
   Ok(destination)
 }
-fn support_name(target: &Target, root: &Path, name: &str) -> Result<PathBuf> {
+pub(crate) fn support_name(target: &Target, root: &Path, name: &str) -> Result<PathBuf> {
   // Catalog file requirements are group-relative (group/_support/file.rs).
   // Installed copies live under a source prefix, which must also be retained
   // in the immutable snapshot for Rust's relative module paths to resolve.
@@ -151,13 +151,13 @@ fn sdk_sources(root: &Path, directory: &Path, inputs: &mut Vec<(PathBuf, Vec<u8>
   }
   Ok(())
 }
-fn create_source(path: &Path, bytes: &[u8]) -> Result<()> {
+pub(crate) fn create_source(path: &Path, bytes: &[u8]) -> Result<()> {
   fs::create_dir_all(path.parent().unwrap())?;
   // Content-addressed snapshots are immutable; concurrent identical invocations
   // may share them. Cargo owns compilation locking and outputs stay external.
   if path.is_file() {
     if fs::read(path)? != bytes {
-      bail!("Rust task cache contents changed unexpectedly: {}", path.display());
+      bail!("Task cache contents changed unexpectedly: {}", path.display());
     }
   } else {
     use std::io::Write;
@@ -167,7 +167,7 @@ fn create_source(path: &Path, bytes: &[u8]) -> Result<()> {
       Ok(_) => {}
       Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => {
         if fs::read(path)? != bytes {
-          bail!("Rust task cache contents changed unexpectedly: {}", path.display());
+          bail!("Task cache contents changed unexpectedly: {}", path.display());
         }
       }
       Err(error) => return Err(error.error.into()),

@@ -177,13 +177,16 @@ fn consumer(binary: &Path, tools: &Path, work: &Path) -> Result<()> {
   // Language tasks still use the shipped SDKs; installer creation below must not.
   fs::write(tasks.join("rust.rs"), "// dotask: 1\n// description: Released Rust SDK acceptance.\n// end-dotask\nuse dotask_sdk::{BuildContext, Result};\nfn main(){dotask_sdk::run(|_: &BuildContext| -> Result<()> { let _ = dotask_sdk::json!({\"sdk\":\"rust\"}); println!(\"released-rust-sdk\"); Ok(()) });}\n")?;
   fs::write(tasks.join("csharp.cs"), "// dotask: 1\n// description: Released CSharp SDK acceptance.\n// end-dotask\nusing DoTask;\nConsole.WriteLine(\"released-csharp-sdk\");\n")?;
+  fs::write(tasks.join("go.go"), "package main\nimport(\"fmt\"; dotask \"dotask.local/sdk\")\nfunc main(){dotask.Run(func(c *dotask.BuildContext)error{fmt.Println(\"released-go-sdk\");return nil})}\n")?;
   fs::write(
     tasks.join("all.task"),
-    "description: Released task composition.\nsteps:\n  - run: rust\n  - run: csharp\n",
+    "description: Released task composition.\nsteps:\n  - run: rust\n  - run: csharp\n  - run: go\n",
   )?;
   let output = capture(clean_command(binary, work, &work.join("cache")).arg("all"))?;
   ensure!(
-    output.contains("released-rust-sdk") && output.contains("released-csharp-sdk"),
+    output.contains("released-rust-sdk")
+      && output.contains("released-csharp-sdk")
+      && output.contains("released-go-sdk"),
     "Delivered SDK task execution failed"
   );
   // Exercise the shipped creator from both a portable binary and an installed
@@ -385,6 +388,11 @@ pub fn build(output: &Path, source: &Path, tools: &Path, result_file: Option<&Pa
     "sdk/rust/Cargo.toml".into(),
     "sdk/rust/src/lib.rs".into(),
     "sdk/rust/src/installers.rs".into(),
+    "sdk/go/go.mod".into(),
+    "sdk/go/context.go".into(),
+    "sdk/go/process.go".into(),
+    "sdk/go/tasks.go".into(),
+    "sdk/go/installers.go".into(),
     "sdk/dotnet/Dotask.dotnet.dll".into(),
     "LICENSE.md".into(),
   ];

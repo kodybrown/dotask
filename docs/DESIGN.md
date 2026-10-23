@@ -21,7 +21,7 @@ maintained C# authoring library at
 release profile. Installer dependencies and verification live in doinstall's
 independent workspace.
 
-The Rust CLI now runs C# tasks, Rust tasks, and YAML groups. It owns command parsing,
+The Rust CLI now runs C#, Rust and Go tasks, and YAML groups. It owns command parsing,
 root discovery, exact/shortcut selection, sessions, group sequencing, process
 execution, nested-call dispatch, and exit/cancellation handling. It also owns
 YAML configuration/groups, binding, requirement validation, initialization, shared
@@ -32,9 +32,9 @@ helper crate. See the
 
 The installed application contains the native CLI and installer-creator executables,
 `sdk/dotnet/Dotask.dotnet.dll`, and the Rust helper source crate under `sdk/rust/`.
-Language-specific helper directories leave room for future supported languages.
+The standard-library Go SDK ships under `sdk/go/`; language toolchains are never bundled.
 No language runtime, compiler,
-Roslyn assembly, managed CLI or separate support host is shipped. Both task
+Roslyn assembly, managed CLI or separate support host is shipped. All code-task
 languages use an ordinary-comment YAML header beginning `// dotask: 1` and
 ending `// end-dotask`; native metadata discovery needs no language toolchain.
 The extension selects the handler and a file exposes one task. Unknown header
@@ -47,10 +47,17 @@ preserves SDK/package/include/project directives, locks its external cache,
 and copies compiled output into an invocation snapshot. Only implicit hooks of
 the task's synthetic project are isolated; explicit project references retain
 normal output policy. Rust compilation uses the installed Cargo/Rust toolchain.
+Go compilation uses stable installed Go 1.22+, with the bundled standard-library
+module at `src/dotask-go`. Its external content-addressed snapshots include all
+declared support files and SDK sources; compiler metadata, generated manifests,
+host target and controlled flags participate in cache identity. Go module/workspace
+isolation, readonly local dependencies, disabled Cgo and `GOTOOLCHAIN=local` prevent
+consumer configuration from rewriting source or downloading tools. Only successful
+builds publish cached binaries under a snapshot lock. See [Go tasks](TARGETS.md#go-tasks).
 Missing tools leave headers/help available and cause actionable execution errors.
 
 Nested context carries the native CLI executable with an empty argument prefix.
-C# and Rust tasks use the same `__exec` file transport and immutable configuration
+C#, Rust and Go tasks use the same `__exec` file transport and immutable configuration
 snapshot. The public C# task
 API and invocation-local installer results are unchanged. Context files are
 private and execution snapshots are cleaned up after completion/cancellation.
@@ -70,7 +77,7 @@ The following decisions describe the implemented transition:
    Each task has one `.rs` entry file. Generate Cargo build manifests in an
    external cache and reference the bundled helper crate's source. Use the
    developer's Rust toolchain; neither source-local build output nor nightly
-   single-file scripting is required. C# and Rust tasks call each other through
+   single-file scripting is required. C#, Rust and Go tasks call each other through
    dotask's common invocation protocol, with explicit context, parameters,
    cancellation, failures, and supported structured results.
 3. Keep task groups about functionality: `_/dotnet/build.cs` builds .NET
@@ -81,7 +88,7 @@ The following decisions describe the implemented transition:
 4. Generate catalog variants from the actual source files and record exact
    installed variants and original hashes in the lockfile. Allow `--add git` as
    shorthand for `--add _/git/*`, installing all available implementations;
-   `--lang csharp` or `--lang rust` filters implementations without changing the
+   `--lang csharp`, `--lang rust` or `--lang go` filters implementations without changing the
    task group. Explicit selection such as `--add tools/check.rs` chooses one.
    `--sync` updates tracked variants; adding the group again can add newly
    available variants. Preserve local-edit and ownership protections.
@@ -90,7 +97,7 @@ The following decisions describe the implemented transition:
    Extensionless calls require an unambiguous target. Apply the same rules to
    nested calls, and identify implementations distinctly for cycle detection.
    Mixed-language projects need only the toolchains required by executed tasks.
-   CLI `--lang csharp|rust` filters the requested target/help selection, not
+   CLI `--lang csharp|rust|go` filters the requested target/help selection, not
    nested calls or group children. Explicit conflicting suffixes fail. The flag
    is reserved, and directory names do not become implicit execution groups.
 
@@ -205,7 +212,7 @@ CLI-only `dotask --help`/`-h` returns usage before any project discovery or read
 Project summaries and selected-target help read the source metadata, load YAML,
 validate effective defaults, and render the project's details. Help does not instantiate a
 compiler, create a compilation cache, restore packages, or launch child processes.
-C# and Rust use the common header parser; groups use strict YAML parsing. Both run
+C#, Rust and Go use the common header parser; groups use strict YAML parsing. Both run
 on every invocation without a metadata cache. Metadata/default errors remain visible, but help does not determine whether
 a target compiles. Required arguments and execution requirements are not enforced
 during help. Target completion skips project configuration entirely.

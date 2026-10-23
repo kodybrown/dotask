@@ -280,12 +280,14 @@ public sealed class RustCliTests
   }
 
   [Theory]
-  [InlineData(false, false, false)]
-  [InlineData(true, false, false)]
-  [InlineData(false, true, false)]
-  [InlineData(true, true, false)]
-  [InlineData(false, false, true)]
-  public async Task NativeCancellationStopsUncooperativeDescendantsAndRemovesContext( bool nested, bool rust, bool declarative )
+  [InlineData(false, false, false, false)]
+  [InlineData(true, false, false, false)]
+  [InlineData(false, true, false, false)]
+  [InlineData(true, true, false, false)]
+  [InlineData(false, false, true, false)]
+  [InlineData(false, false, false, true)]
+  [InlineData(true, false, false, true)]
+  public async Task NativeCancellationStopsUncooperativeDescendantsAndRemovesContext( bool nested, bool rust, bool declarative, bool go )
   {
     using var project = new TestProject();
     project.Write(".tasks/wait.cs", """
@@ -346,7 +348,30 @@ public sealed class RustCliTests
         }
         """);
     }
-    project.Target("nested", "await BuildContext.Current.ExecTargetAsync(\"wait\");", async: true);
+    if (go) {
+      File.Delete(Path.Combine(project.Tasks, "wait.cs"));
+      project.Write(".tasks/wait.go", """
+        package main
+        import("fmt";"os";"os/signal";"time";dotask "dotask.local/sdk")
+        func main(){
+          signal.Ignore(os.Interrupt)
+          if len(os.Args)>1 {os.WriteFile("child-ready",[]byte(fmt.Sprint(os.Getpid())),0600);for{time.Sleep(time.Second)}}
+          dotask.Run(func(c *dotask.BuildContext)error{
+            signal.Ignore(os.Interrupt)
+            self,err:=os.Executable();if err!=nil{return err};child:=c.Command(self,"child");if err=child.Start();err!=nil{return err}
+            until:=time.Now().Add(20*time.Second)
+            for time.Now().Before(until){if _,err=os.Stat("child-ready");err==nil{break};time.Sleep(20*time.Millisecond)}
+            if _,err=os.Stat("child-ready");err!=nil{child.Process.Kill();return err}
+            os.WriteFile("context-path",[]byte(os.Getenv("DOTASK_EXECUTION_CONTEXT")),0600)
+            os.WriteFile("task-ready",[]byte(fmt.Sprint(os.Getpid())),0600)
+            for{time.Sleep(time.Second)}
+          })
+        }
+        """);
+      project.Write(".tasks/nested.go", "package main\nimport dotask \"dotask.local/sdk\"\nfunc main(){dotask.Run(func(c *dotask.BuildContext)error{return c.ExecTarget(\"wait.go\",nil)})}\n");
+    } else {
+      project.Target("nested", "await BuildContext.Current.ExecTargetAsync(\"wait\");", async: true);
+    }
     project.Write(".tasks/control-driver.cs", """
       // dotask: 1
       // options:

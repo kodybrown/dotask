@@ -25,7 +25,8 @@ This is a **0.1 preview**. Release automation targets Windows x64 and Linux x64
 [verification status](docs/VERIFICATION.md).
 
 Use **.NET SDK 10.0.300 or later in the .NET 10 family** for C# execution, and
-**Rust 1.95+/Cargo** for Rust execution. The .NET SDK compiles C# targets; a
+**Rust 1.95+/Cargo** for Rust execution. Go tasks use an installed stable
+**Go 1.22+** compiler with automatic toolchain downloads disabled. The .NET SDK compiles C# targets; a
 runtime-only installation is insufficient. Run `dotnet --version` from the
 project directory to check the selected SDK. The project's `global.json` can
 select an older SDK even if a suitable one is installed.
@@ -54,8 +55,8 @@ From the repository checkout, bootstrap and verify the project:
 .\build.cmd test
 ```
 
-The .NET SDK, Git, and Rust 1.95+ with rustfmt, clippy, and the host linker are
-required; dotask does not need to be installed. The release publisher simulation
+The .NET SDK, Git, Rust 1.95+ with rustfmt, clippy and the host linker, and
+stable Go 1.22+ with gofmt are required for the complete gate; dotask does not need to be installed. The release publisher simulation
 in the full gate also requires Bash and `jq` (Git Bash on Windows).
 The launchers compile this checkout, stage a temporary runner, and use it to run
 the requested tasks. Use `test` for the complete repository gate: the shared Rust
@@ -98,7 +99,7 @@ provides an example and interactive setup using recorded builds or discovered
 files; see [installer selection and setup](docs/INSTALLATION.md#find-and-run-an-existing-installer).
 Dotask's payload contains only the native Release command,
 the adjacent dotask-doinstall-create-installer native helper,
-`sdk/dotnet/Dotask.dotnet.dll`, the Rust helper source crate in `sdk/rust/`, license, notices and provenance,
+`sdk/dotnet/Dotask.dotnet.dll`, the Rust helper source crate in `sdk/rust/`, the Go SDK in `sdk/go/`, license, notices and provenance,
 and installs it without administrator access. Each version/build gets a separate
 directory; older builds are retained. Windows gets a small `.exe` launcher and
 `.shim` file; Linux/macOS get a symlink. No shim compiler is needed.
@@ -185,13 +186,15 @@ The SDK also writes compilation/cache output. See the
 
 The source checkout also contains
 `build`, `run`, `test`, `format`, `clippy`, `update-version`, `build-sdks`,
-`test-sdks`, `check`, `verify`, and `verify-docs` targets in its own
+`test-sdks`, `test-go`, `check`, `verify`, and `verify-docs` targets in its own
 [.tasks](.tasks/) directory.
 
 Here, `check` checks Git availability. `build` formats, lints, builds and scans
-the native CLI, then stages both SDKs. `run` executes that inspected binary after
+the native CLI, then stages all three SDKs. `run` executes that inspected binary after
 staging. `test` builds/tests native dotask, then requires `verify` for the Rust SDK,
-C# helper/native integration, task formatting, docs, catalog and whitespace.
+C#/Go SDK and native integration, task formatting, docs, catalog and whitespace.
+`test-go` also requires the prebuilt doinstall tools and explicitly runs the
+native Go installer fixture, which is excluded from generic Cargo-only tests.
 Standalone `verify` performs only those extra checks and requires a prior inspected
 build; it never calls `test`. No arguments list available tasks. The independent
 doinstall tools are supplied separately for adapter verification using
@@ -227,14 +230,14 @@ chosen application's `installer/` directory. Do not use `dotnet tool install`
 for the native payload. The maintained C# project is a task helper library.
 ## Select task implementations
 
-C# and Rust tasks can coexist as `tools/check.cs` and `tools/check.rs`. Choose an
+C#, Rust and Go tasks can coexist as `tools/check.cs` and `tools/check.rs`. Choose an
 implementation explicitly when the extensionless name is ambiguous:
 
 ```sh
 dotask tools/check --lang rust
 ```
 
-`--add GROUP` selects all available group implementations. `--lang csharp|rust`
+`--add GROUP` selects all available group implementations. `--lang csharp|rust|go`
 filters shared list/save/add/sync/remove selections; declared dependencies can
 use another language. Sync updates recorded variants and preserves ownership,
 local edits, and no-op tracking bytes. For execution/help, `--lang` filters only
@@ -454,7 +457,7 @@ The explicit `install` task runs the recorded existing installer; creation is se
 
 Windows staging lives in `.tasks/misc/prepare-bootstrap.ps1`; Bash stages the
 same layout. These launchers only build/stage the runner. Discovery accepts
-`.cs` and `.rs` targets and declarative `.task` YAML groups.
+`.cs`, `.rs`, and `.go` targets and declarative `.task` YAML groups.
 
 After adding, editing, renaming, or removing a shared task or one of its declared
 support files, run `./build.sh catalog` **after your final edits/formatting and
@@ -510,13 +513,16 @@ On Linux/macOS:
 /tmp/_rust/dotask/target/release/dotask --use-dir ./examples/basic/.tasks hello --name Rust
 ```
 
-The preview runs `.cs` and `.rs` tasks and `.task` groups, including parameters,
+The preview runs `.cs`, `.rs`, and `.go` tasks and `.task` groups, including parameters,
 YAML defaults, nested calls, structured installer results, exit codes, and Ctrl+C.
 Bare invocation and `help` list project tasks; `help TARGET` and `TARGET --help`
 read metadata without compilation. CLI-only `--help`/`-h` and `--version` need
-no language host. Keep `sdk/dotnet/Dotask.dotnet.dll` and `sdk/rust/` beneath the
+no language host. Keep `sdk/dotnet/Dotask.dotnet.dll`, `sdk/rust/`, and `sdk/go/` beneath the
 executable's directory.
-Metadata for both languages needs no toolchain; C# compilation delegates to
+Go tasks use an installed stable Go 1.22+ compiler and the bundled standard-library
+SDK under `sdk/go/`, with external isolated snapshots and no toolchain downloads.
+See the [Go example](examples/go/README.md) and [Go authoring contract](docs/TARGETS.md#go-tasks).
+Metadata for all code-task languages needs no toolchain; C# compilation delegates to
 the selected installed .NET SDK. No SDK, runtime, Roslyn or managed host is bundled.
 
 The native CLI also implements `--init`, shared-task listing/save/add/sync/remove,

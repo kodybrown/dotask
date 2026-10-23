@@ -464,6 +464,9 @@ fn relative(root: &Path, file: &Path) -> String {
 fn unavailable(target: &Target, directory: &Directory) -> Option<&'static str> {
   match target.file_path.extension().and_then(|e| e.to_str()) {
     Some("cs") => crate::csharp_tasks::Host::unavailable(&directory.root_directory),
+    Some("go") if !crate::configuration::tool_exists("go", &directory.root_directory) => {
+      Some("requires Go 1.22+ (installed locally)")
+    }
     Some("rs")
       if !crate::configuration::tool_exists("cargo", &directory.root_directory)
         || !crate::configuration::tool_exists("rustc", &directory.root_directory) =>

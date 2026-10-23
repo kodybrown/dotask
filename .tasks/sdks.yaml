@@ -6,3 +6,6 @@ dotnet:
 rust:
   directory: src/dotask-sdk
   files: [Cargo.toml, src/lib.rs, src/installers.rs]
+go:
+  directory: src/dotask-go
+  files: [go.mod, context.go, process.go, tasks.go, installers.go]

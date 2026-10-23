@@ -118,12 +118,14 @@ impl Executor {
     let snapshot = tempfile::Builder::new().prefix("execution-").tempdir_in(session)?;
     let native = target.group.as_ref().and_then(|group| group.native_helper.as_deref());
     let rust = target.file_path.extension().is_some_and(|e| e.eq_ignore_ascii_case("rs"));
+    let go = target.language() == Some("go");
     if native.is_none()
       && !rust
+      && !go
       && let Some(stage) = source_sdk_stage()?
       && !stage.join("dotnet/Dotask.dotnet.dll").is_file()
     {
-      // The source launcher needs no .NET work for help or Rust-only tasks.
+      // The source launcher needs no .NET work for help, Rust or Go tasks.
       // SDK preparation belongs to the bootstrap checkout, even when --use-dir
       // selects a consuming project. Keep its settings and call chain separate
       // so consumer tasks cannot replace preparation or create false cycles.
@@ -156,7 +158,7 @@ impl Executor {
     if native.is_none() {
       self.trace(&format!("Compiling: {}", target.name));
     }
-    let host = if rust || native.is_some() {
+    let host = if rust || go || native.is_some() {
       None
     } else {
       Some(Host::locate()?)
@@ -176,6 +178,13 @@ impl Executor {
         );
       }
       Command::new(helper)
+    } else if go {
+      Command::new(crate::go_tasks::compile(
+        target,
+        &self.directory.task_directory,
+        &self.directory.root_directory,
+        snapshot.path(),
+      )?)
     } else if rust {
       Command::new(crate::rust_tasks::compile(
         target,

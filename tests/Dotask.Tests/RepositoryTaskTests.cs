@@ -136,6 +136,19 @@ public sealed class RepositoryTaskTests
   }
 
   [Fact]
+  public async Task CatalogIncludesGoVariantsAndTheirDeclaredSupportWithoutCompilingThem()
+  {
+    using var project = CatalogProject();
+    project.Write("shared/tools/check.go", "// dotask: 1\n// description: Go variant.\n// requires: [{kind: file, value: tools/_support/check.go}]\n// end-dotask\ninvalid Go body\n");
+    project.Write("shared/tools/_support/check.go", "package helper\n");
+    project.Write("shared/tools/check.rs", "// Rust variant\n");
+    using var json = JsonDocument.Parse(await GenerateCatalogAsync(project));
+    var task = json.RootElement.GetProperty("tasks").EnumerateArray().Single(t => t.GetProperty("runtime").GetString() == "go");
+    Assert.Equal("tools/check.go", task.GetProperty("id").GetString());
+    Assert.Equal("tools/check.go", task.GetProperty("entryPoint").GetString());
+    Assert.Equal(2, task.GetProperty("files").GetArrayLength());
+  }
+  [Fact]
   public async Task CatalogVerifyDetectsDriftWithoutOverwritingIt()
   {
     using var project = CatalogProject();
@@ -178,6 +191,7 @@ public sealed class RepositoryTaskTests
       }); }
       """);
     Stub("_/rust/clippy", "\"lint:\" + BuildContext.Current.Parameters.Get<string>(\"package\")", "[{name: package}]");
+    Stub("test-go", "\"go\"", "[{name: doinstall-tools}]");
     Stub("test-sdks", "BuildContext.Current.Parameters.Get<string>(\"configuration\") + \":\" + BuildContext.Current.Parameters.Get<string>(\"doinstall-tools\")",
       "[{name: configuration, choices: [Debug, Release]}, {name: doinstall-tools}]");
     Stub("format-tasks", "\"format:\" + BuildContext.Current.Parameters.Get<bool>(\"check\")", "[{name: check, type: bool}]");
@@ -191,12 +205,12 @@ public sealed class RepositoryTaskTests
     var result = await RustArtifacts.Run(project.Root, ["test", "-c", "Debug", "--doinstall-tools", "tools with spaces"]);
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
-    Assert.Equal("native:dotask-cli:False;check;stage:Debug;test:dotask-sdk;lint:dotask-sdk;test:dotask-release;lint:dotask-release;Debug:tools with spaces;format:True;docs;catalog:True;", File.ReadAllText(order));
+    Assert.Equal("native:dotask-cli:False;check;stage:Debug;test:dotask-sdk;lint:dotask-sdk;test:dotask-release;lint:dotask-release;go;Debug:tools with spaces;format:True;docs;catalog:True;", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify-docs.cs"));
     result = await RustArtifacts.Run(project.Root, ["test", "--doinstall-tools", "tools"]);
     Assert.Equal(1, result.ExitCode);
-    Assert.Equal("native:dotask-cli:False;check;stage:Release;test:dotask-sdk;lint:dotask-sdk;test:dotask-release;lint:dotask-release;Release:tools;format:True;", File.ReadAllText(order));
+    Assert.Equal("native:dotask-cli:False;check;stage:Release;test:dotask-sdk;lint:dotask-sdk;test:dotask-release;lint:dotask-release;go;Release:tools;format:True;", File.ReadAllText(order));
     File.Delete(order);
     project.Target("stage-build", "Environment.Exit(23);", "// dotask: 1\n// options: " + configOptions + "\n// end-dotask\n");
     Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["test"])).ExitCode);

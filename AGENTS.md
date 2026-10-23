@@ -6,7 +6,7 @@ These instructions apply to every task in this repository.
 
 - Product and command: `dotask`
 - C# namespace: `DoTask` (including `DoTask.Runtime`)
-- Project type: Rust CLI and task SDK, .NET 10 C# task helper library
+- Project type: Rust CLI, Rust and Go task SDKs, .NET 10 C# task helper library
 - Integration checkout: the primary checkout on `develop`, located with `git worktree list --porcelain`
 - Integration branch: `develop`
 - Task worktree root: `../worktrees/ai` relative to the integration checkout
@@ -112,12 +112,12 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   legacy/invalid configuration, path-type conflicts, and symlink destinations.
   Custom task directories must stay beneath that root; the override is not saved.
 - One entry file per callable task; common ordinary-comment YAML headers own
-  C# and Rust task metadata.
+  C#, Rust and Go task metadata.
   Declarative `.task` YAML tasks compose targets or execute apps directly, with
   typed options, exact scalar/path references, staged process file output, and
   simple boolean conditions. No
   implicit shell, general expression language or task-code compilation is involved.
-- Discovery accepts `.cs` and `.rs` targets and `.task` YAML groups; ordinary documents,
+- Discovery accepts `.cs`, `.rs` and `.go` targets and `.task` YAML groups; ordinary documents,
   `.yaml` files, and MSBuild `.targets` files are not tasks. Windows native bootstrap
   staging lives in `.tasks/misc/prepare-bootstrap.ps1`.
 - Author reusable task changes in `shared-tasks/`. Keep installed copies under
@@ -127,12 +127,12 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   `_` directory is exempt from underscore-prefixed discovery exclusions.
   Exact names precede unique shortcuts; old space-grouped filenames remain supported.
   Use source-qualified paths for nested shared-task calls, YAML defaults, and identity.
-- Coexisting C#, Rust, and YAML implementations use extension-qualified names;
+- Coexisting C#, Rust, Go, and YAML implementations use extension-qualified names;
   extensionless calls must be unambiguous. Defaults for a qualified name override
   base-name defaults, and nested calls/cycle detection distinguish implementations.
-  CLI `--lang csharp|rust` selects the requested target/help implementation only;
+  CLI `--lang csharp|rust|go` selects the requested target/help implementation only;
   it is reserved and never inherited by nested calls or interpreted as directory execution.
-- Shared management supports group selections and `--lang csharp|rust` filters
+- Shared management supports group selections and `--lang csharp|rust|go` filters
   for selected roots. Declared dependencies retain their implementation; sync
   updates only tracked variants and preserves their existing ownership identities.
 - Shared management copies files into projects and tracks original SHA-256 hashes in
@@ -194,7 +194,9 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   separately supplied prebuilt tools; never bundle them in dotask's app payload.
   Dotask owns optional task adapters, not doinstall-specific native CLI behavior.
 - The gate tests dotask's Rust CLI/SDK with Rust 1.95+, rustfmt, and clippy, then
-  SDK and external-tool adapter integration. `test-sdks` requires prebuilt
+  SDK and external-tool adapter integration. Go verification requires an installed
+  stable Go 1.22+ compiler and gofmt. Required `test-go` runs the bundled SDK tests
+  and the explicit prebuilt-tool native Go installer acceptance. `test-sdks` requires prebuilt
   runtime, builder, and launcher-template tools
   through `--doinstall-tools` or `DOINSTALL_TOOL_DIR`; source preparation is an
   explicit development/CI step using the shared build wrapper. Independent doinstall
@@ -205,12 +207,12 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   the builder's result FilePath; never guess delivery names. Keep source-only
   packaging templates outside distributed runtime YAML.
 - The Rust CLI reads common YAML headers without language toolchains and runs
-  Rust tasks, C# tasks and YAML groups. C# compilation invokes the installed
+  Rust tasks, C# tasks, Go tasks and YAML groups. C# compilation invokes the installed
   .NET SDK directly with isolated MSBuild hooks and the maintained helper DLL.
   Rust tasks use `src/dotask-sdk` through external source snapshots. Ship only
   the native command and dotask-doinstall-create-installer helper,
   `sdk/dotnet/Dotask.dotnet.dll` and the Rust helper source
-  crate under `sdk/rust/`;
+  crate under `sdk/rust/` and the standard-library Go module under `sdk/go/`;
   never bundle language runtimes, SDKs, Roslyn or a managed support host.
   Maintain native CLI regression coverage and C# task support. See `docs/DESIGN.md`.
 - Cargo output is configured in `.cargo/config.toml`; build tasks, staging,

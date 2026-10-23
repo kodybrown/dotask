@@ -6,21 +6,23 @@ target. **Settings** are shared values from `.dotasks.yaml`.
 
 The native [Rust CLI](../README.md#rust-cli-development-preview)
 implements the commands below, including initialization, shared-task management,
-shell completion, help, the task-group wizard, C# and Rust task execution, and nested calls.
+shell completion, help, the task-group wizard, C#, Rust and Go task execution, and nested calls.
 Rust owns YAML configuration, groups, option binding, and requirement checks.
 CLI-only help/version, initialization, online shared-task management, and projects
 containing only YAML groups need no language host. Reading C# or Rust task
 metadata and managing private C# catalogs needs no toolchain. Executing C# tasks
 requires the .NET 10 SDK and `sdk/dotnet/Dotask.dotnet.dll`. Rust execution requires
-Cargo/Rust 1.95+ and the bundled `sdk/rust/` source directory.
+Cargo/Rust 1.95+ and the bundled `sdk/rust/` source directory. Go tasks require
+an installed stable Go 1.22+ compiler and bundled `sdk/go/`; automatic Go
+switching/downloads are disabled. See [Go authoring](TARGETS.md#go-tasks).
 
 The native CLI owns repository bootstrap. Distributions also ship the adjacent
 dotask-doinstall-create-installer helper; the declarative
 _/doinstall/create-installer adapter uses it without Rust/Cargo or .NET.
 Its application build steps still require their selected toolchains.
-See [verification](VERIFICATION.md). C# and Rust implementations may
-coexist: use `tools/check.cs` or `tools/check.rs` when `tools/check` is ambiguous. Shared
-management accepts `--lang csharp|rust`. The same selector resolves an individual
+See [verification](VERIFICATION.md). C#, Rust and Go implementations may
+coexist: use `tools/check.cs`, `tools/check.rs` or `tools/check.go` when `tools/check` is ambiguous. Shared
+management accepts `--lang csharp|rust|go`. The same selector resolves an individual
 task or help request: `dotask tools/check --lang rust`. Place it
 before or after the target; separated and equals syntax are supported. It filters
 only this selection, not nested calls or dependencies. A conflicting filename
@@ -65,7 +67,7 @@ Tasks are discovered recursively. The task-root `_` directory contains official 
 Other hidden and underscore-prefixed entries,
 `bin`, `obj`, `node_modules`, and symbolic links/reparse points are skipped.
 
-The task's path relative to `.tasks`, without `.cs`, `.rs`, or `.task`, is its full name. For example,
+The task's path relative to `.tasks`, without `.cs`, `.rs`, `.go`, or `.task`, is its full name. For example,
 `_/dotnet/build.cs` is `_/dotnet/build`. `dotnet/build`
 and `build` work as shortcuts when unique. Exact project-relative names take
 precedence, so `.tasks/build.cs` owns `dotask build` and can orchestrate several
@@ -179,7 +181,7 @@ no built-in `validate` or JSON help output. Management
 target for a sequence of tasks.
 
 This repository's `check` checks Git availability. `build` formats/lints Rust,
-compiles and privacy-checks the native CLI, then stages both SDKs. `run` executes
+compiles and privacy-checks the native CLI, then stages all three SDKs. `run` executes
 that inspected build. `test` runs the shared native gate and requires the local
 `verify` task for additional SDK/integration, task-formatting, docs and catalog
 checks. `verify` never calls `test`; standalone use requires a prior inspected

@@ -27,7 +27,8 @@ pub(crate) fn sources(root: &Path, task_root: bool, groups: bool) -> Result<Vec<
         result.extend(sources(&entry.path(), false, groups)?);
       }
     } else if entry.path().extension().and_then(|e| e.to_str()).is_some_and(|e| {
-      e.eq_ignore_ascii_case("cs") || (groups && (e.eq_ignore_ascii_case("rs") || e.eq_ignore_ascii_case("task")))
+      e.eq_ignore_ascii_case("cs")
+        || (groups && (e.eq_ignore_ascii_case("rs") || e.eq_ignore_ascii_case("go") || e.eq_ignore_ascii_case("task")))
     }) {
       result.push(entry.path());
     }

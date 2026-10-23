@@ -5,7 +5,7 @@ Use this guide when creating, editing, explaining, or running dotask tasks in a
 [AGENTS.md](../AGENTS.md). This guide describes implemented preview behavior;
 services and the other [deferred features](DESIGN.md#deferred) are not APIs.
 
-The [Rust CLI](../README.md#rust-cli-development-preview) runs C# and Rust tasks
+The [Rust CLI](../README.md#rust-cli-development-preview) runs C#, Rust and Go tasks
 and YAML tasks with target-call and direct-process steps, including nested calls,
 project management, help, shell completion, and the interactive group wizard.
 Stage `sdk/dotnet/Dotask.dotnet.dll` and the `sdk/rust/` helper crate beneath the
@@ -15,9 +15,9 @@ both languages is an ordinary-comment YAML header and needs no toolchain.
 Native initialization
 and YAML-only projects need no .NET host. Use `.cs`/`.rs` task names when variants
 coexist; extensionless calls must be unambiguous. Shared selection supports
-group-only `--add git`, `--lang csharp|rust`, and exact files such as `tools/check.rs`.
+group-only `--add git`, `--lang csharp|rust|go`, and exact files such as `tools/check.rs`.
 Language filters select roots; dependencies retain their declared implementation.
-For a direct CLI call/help request, `--lang csharp|rust` can select an individual
+For a direct CLI call/help request, `--lang csharp|rust|go` can select an individual
 implementation without a filename suffix. It is CLI-reserved and does not flow
 into nested calls; conflicting suffixes and ambiguous matches are errors.
 Use explicit implementation names in dependencies, YAML steps and nested calls
@@ -48,7 +48,7 @@ After final edits/formatting to any shared task or declared support file, run
 `./build.sh catalog`, then `./build.sh test`; its catalog check detects stale output
 without rewriting it. Commit the generated `shared-tasks/catalog.json` with
 those sources. The generator is `.tasks/catalog.rs`, using the native CLI's
-compiler-free metadata transport for C#, Rust and YAML catalog entries.
+compiler-free metadata transport for C#, Rust, Go and YAML catalog entries.
 Repository `verify-docs` checks required documents and delegates Git whitespace
 checks to its declared `git/check` dependency with `Whitespace = true`.
 Ordinary `git/check` remains a tool-availability check; `--whitespace` checks
@@ -120,6 +120,13 @@ need no project tool-path settings. Explicit target paths still override discove
 The creator records the actual artifact only after every packaging step passes.
 Follow the complete [self-extracting recipe](INSTALLATION.md#self-extracting-build-and-gather-workflow).
 
+For Go tasks, import the bundled `dotask.local/sdk`, use `dotask.Run`, and
+follow the [Go task contract](TARGETS.md#go-tasks). Never create a consumer
+`go.mod`/`go.sum` for dotask or run `go get` to obtain its SDK. Declare every local
+support file; use the precompiled shared installer creator for Go packaging.
+Go execution needs an installed stable Go 1.22+ compiler, with no Rust/.NET
+requirement unless the recipe explicitly calls tasks in those languages.
+
 ## Establish the project context
 
 1. Read the consuming project's instructions and existing task files before
@@ -127,8 +134,8 @@ Follow the complete [self-extracting recipe](INSTALLATION.md#self-extracting-bui
    discovered project root. Inspect `.dotasks.yaml` if present.
 2. Check `dotask --version`. If the tool is absent, use the
    [source or local-preview instructions](../README.md); there is no public
-   package release to assume. Check the SDK selected from the task directory
-   with `dotnet --version`.
+   package release to assume. For C# execution, check the SDK selected from the task directory
+   with `dotnet --version`; this is not a prerequisite for Go or native YAML tasks.
 3. Run `dotask --verbose` (or `dotask help --verbose`) for the project's name, description, shared
    settings, targets, and combined options. Use `dotask help TARGET` for one target
    and `dotask --help` for CLI usage only; `--help` does not inspect the project. Read

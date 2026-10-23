@@ -201,7 +201,7 @@ mod tests {
   #[test]
   fn one_header_contract_reads_each_comment_prefix_and_ignores_code() {
     let root = tempfile::tempdir().unwrap();
-    for extension in ["cs", "rs", "py", "c", "cpp", "ts"] {
+    for extension in ["cs", "rs", "go", "py", "c", "cpp", "ts"] {
       let prefix = if extension == "py" { "#" } else { "//" };
       let file = root.path().join(format!("task.{extension}"));
       let preamble = if extension == "py" {

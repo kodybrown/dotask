@@ -8,6 +8,7 @@ mod declarative;
 mod execution;
 mod file_steps;
 mod frontmatter;
+mod go_tasks;
 mod help;
 mod host;
 mod http_steps;

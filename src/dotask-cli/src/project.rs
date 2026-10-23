@@ -195,7 +195,11 @@ impl Catalog {
     if let Some(language) = language {
       let extension = Path::new(name).extension().and_then(|e| e.to_str());
       if let Some(extension) = extension {
-        let expected = if language == "rust" { "rs" } else { "cs" };
+        let expected = match language {
+          "rust" => "rs",
+          "go" => "go",
+          _ => "cs",
+        };
         if !extension.eq_ignore_ascii_case(expected) {
           bail!("Target '{name}' conflicts with --lang {language}.");
         }
@@ -243,6 +247,7 @@ impl Target {
     match self.file_path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
       "cs" => Some("csharp"),
       "rs" => Some("rust"),
+      "go" => Some("go"),
       _ => None,
     }
   }

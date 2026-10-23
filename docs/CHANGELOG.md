@@ -1139,3 +1139,41 @@ acceptance, installation, and publication.
   freshness and whitespace checks, using the existing checksum-pinned
   doinstall v0.1.1 prebuilt tools. No push, publication or active installation
   change was performed.
+
+### 2026-10-23 Add first-class Go tasks and bundled SDK
+
+- Recognize Go entry files and --lang go throughout discovery, metadata, help,
+  completion, requirements, defaults, extension-qualified identity, ambiguity,
+  nested calls and protected shared-task management. Metadata remains usable
+  without Go. Shared Go support imports survive source/group installation and
+  synchronization without adopting or overwriting local edits.
+- Bundle the standard-library sdk/go module with source staging, portable archives
+  and installers. Provide typed context/parameters/settings, portable paths,
+  process capture/execution and exit-code errors, optional/nested calls, and
+  installer artifact creation/return/recording/discovery/launching. Native
+  installer operations preserve existing locks, hashes, unknown-state protection
+  and Windows activation behavior without Rust/Cargo or .NET on the consumer.
+- Compile with a stable installed Go 1.22+ compiler and local toolchain selection;
+  never download toolchains or modules implicitly. Isolate consumer manifests,
+  workspaces, build flags and Cgo. Keep generated modules, source/SDK snapshots,
+  object caches and atomically published executables external. Cache identity
+  includes source/support/SDK bytes, compiler/target metadata and build settings;
+  snapshot locks protect concurrent builds and interrupted work.
+- Add a runnable Go example, native consumer fixtures, cross-language/cancellation
+  regressions, SDK tests, required test-go verification and pinned CI provisioning.
+  Document authoring, distribution and explicit prebuilt-tool acceptance.
+- Verification on Windows x64 with installed Go 1.26.6 and existing checksum-pinned
+  doinstall v0.1.1 tools: build.cmd test --doinstall-tools PATH passed 106 Rust
+  cases (including the explicitly invoked installer fixture), 328 .NET Release
+  tests and Go SDK tests, strict Clippy, formatting, docs, catalog and whitespace.
+  All 49 focused integration cases passed; Actionlint 1.7.11 and the documented
+  Unicode greeting passed. Evaluated Cargo and .NET outputs remain external.
+- Dedicated restricted-PATH acceptance exercised Go orchestration, nested Go
+  staging, the precompiled creator, real self-extracting assembly, artifact
+  return/record/find/run and preservation of the previous record after a final
+  packaging failure. Rust/Cargo/.NET traps were never invoked; consumer manifests
+  and source stayed unchanged. Real local portable and self-extracting dotask
+  deliveries passed packaged Go/Rust/C#/YAML execution, downstream creation,
+  temporary install/uninstall, inventory/privacy scans and persistent PATH checks.
+  Version remains 0.1.3. Native Linux/macOS acceptance is unverified locally;
+  gostatic, active installations and remote publication were not changed.

@@ -3,7 +3,7 @@
 // options:
 //   - { name: configuration, alias: c, choices: [Debug, Release], default: Release }
 //   - { name: doinstall-tools, type: path, description: 'Prebuilt runtime, builder, and launcher template; otherwise DOINSTALL_TOOL_DIR.' }
-// requires: [{ kind: tool, value: dotnet }, { kind: setting, value: solution }]
+// requires: [{ kind: tool, value: go }, { kind: tool, value: dotnet }, { kind: setting, value: solution }]
 // end-dotask
 use dotask_sdk::{BuildContext, Result};
 fn main() {

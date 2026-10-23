@@ -23,6 +23,10 @@ fn task(project: &BuildContext) -> Result<()> {
   {
     tests["doinstall-tools"] = tools.into();
   }
+  project.exec_target(
+    "test-go",
+    json!({"doinstall-tools":tests.get("doinstall-tools").cloned().unwrap_or_else(|| json!(""))}),
+  )?;
   project.exec_target("test-sdks", tests)?;
   project.exec_target("format-tasks", json!({"check":true}))?;
   project.exec_target("verify-docs", json!({}))?;

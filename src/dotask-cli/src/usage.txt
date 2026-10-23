@@ -1,4 +1,4 @@
-dotask - portable C# and Rust tasks (Rust CLI development preview)
+dotask - portable C#, Rust and Go tasks (Rust CLI development preview)
 Usage: dotask [--use-dir PATH] [TARGET [OPTIONS]]
        dotask help [TARGET]
        dotask completion <bash|zsh|fish|powershell>
@@ -20,11 +20,11 @@ Global options:
   --help, -h      Show CLI help, or target help when a target is given.
   --verbose       Show full project summaries and execution diagnostics.
   --version       Show version.
-  --lang LANGUAGE Select csharp or rust for this target/help request; nested calls resolve independently.
+  --lang LANGUAGE Select csharp, rust or go for this target/help request; nested calls resolve independently.
 
 Shared tasks:
   --list          List the online cache, or private-tasks/* for private tasks.
-  --lang LANGUAGE Filter shared roots by csharp or rust; dependencies retain their declared implementation.
+  --lang LANGUAGE Filter shared roots by csharp, rust or go; dependencies retain their declared implementation.
   --save          Download selected shared tasks into the local cache.
   --add           Copy shared tasks into the project; never overwrite existing tasks.
   --sync          Update installed shared tasks while protecting local edits.
@@ -34,5 +34,5 @@ Shared tasks:
 Selections: dotnet/build, "dotnet/{build,run,format}", "dotnet/*", private-tasks/my-group/my-task.
 Official tasks (_) are the default when the source is omitted. Commit .dotasks.yaml, .dotasks-lock.yaml, and .tasks/.
 
-Runs installed C# tasks using .NET 10, Rust tasks using Cargo/Rust 1.95+, and YAML groups.
-C# and Rust metadata is toolchain-free. Use .cs/.rs task names when implementations coexist; extensionless execution must be unambiguous.
+Runs installed C# tasks using .NET 10, Rust tasks using Cargo/Rust 1.95+, Go tasks using installed Go 1.22+, and YAML groups.
+C#, Rust and Go metadata is toolchain-free. Use .cs/.rs/.go task names when implementations coexist; extensionless execution must be unambiguous.

@@ -246,7 +246,7 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
     if words[index].eq_ignore_ascii_case("--lang") {
       if index + 1 == words.len() {
         return Ok(filter(
-          ["csharp", "rust"]
+          ["csharp", "rust", "go"]
             .iter()
             .map(|v| candidate(*v, "value", "Task language"))
             .collect(),
@@ -271,7 +271,7 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
   if current.to_ascii_lowercase().starts_with("--lang=") {
     return Ok(prefix(
       filter(
-        ["csharp", "rust"]
+        ["csharp", "rust", "go"]
           .iter()
           .map(|v| candidate(*v, "value", "Task language"))
           .collect(),
@@ -328,8 +328,13 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
             t.ids()
               .filter(|id| {
                 language.as_deref().is_none_or(|l| {
-                  t.entry_point(id)
-                    .is_ok_and(|p| p.ends_with(if l == "rust" { ".rs" } else { ".cs" }))
+                  t.entry_point(id).is_ok_and(|p| {
+                    p.ends_with(match l {
+                      "rust" => ".rs",
+                      "go" => ".go",
+                      _ => ".cs",
+                    })
+                  })
                 })
               })
               .flat_map(|id| {
@@ -357,6 +362,7 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
                   "{id}.{}",
                   match runtime.as_str() {
                     "rust" => "rs",
+                    "go" => "go",
                     "yaml" => "task",
                     _ => "cs",
                   }
@@ -370,7 +376,7 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
       );
     }
     if language.is_none() {
-      candidates.push(candidate("--lang", "option", "Select csharp or rust implementations"));
+      candidates.push(candidate("--lang", "option", "Select csharp, rust or go implementations"));
     }
     if ["--add", "--sync", "--remove"].contains(&action.as_str()) {
       candidates.push(candidate("--dry-run", "option", "Preview without changing project files"));
@@ -423,7 +429,7 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
       "Show full summaries and execution diagnostics",
     ));
     if language.is_none() {
-      candidates.push(candidate("--lang", "option", "Select csharp or rust implementations"));
+      candidates.push(candidate("--lang", "option", "Select csharp, rust or go implementations"));
     }
     return Ok(filter(candidates, &current));
   }
@@ -461,7 +467,7 @@ fn complete(line: &str, invocation: &Path, shell: &str) -> Result<Vec<Candidate>
   }
   let mut candidates = globals();
   if language.is_none() {
-    candidates.push(candidate("--lang", "option", "Select csharp or rust implementations"));
+    candidates.push(candidate("--lang", "option", "Select csharp, rust or go implementations"));
   }
   for o in &target.options {
     let name = o["Name"].as_str().unwrap();
