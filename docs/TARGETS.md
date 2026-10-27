@@ -597,10 +597,10 @@ official C# task copies in this repository are kept byte-identical to their
 canonical sources, enforced by the test suite. In consuming projects, shared-task synchronization still protects
 local edits; this convention does not authorize overwriting modified copies.
 
-`dotask format` runs the solution formatter, then checks/formats C# whitespace
+`dotask format` runs the solution formatter (settings.format.solutions can select an explicit list), then checks/formats C# whitespace
 throughout `project.TaskDirectory`, including other groups and custom `--use-dir`
 locations. `--verify` adds `--verify-no-changes` to both steps and skips optional
-line-ending normalization. Normal formatting runs the optional
+line-ending normalization. Normal formatting can disable broad text normalization with --normalize-text false; otherwise it runs the optional
 `_/text/fixeol` target only if installed and propagates its failures.
 The reusable `text/fixeol.task` runs the `fixeol` app directly without C#/Rust/Go
 tooling. It requires `fixeol` on PATH; a missing executable fails rather than
@@ -643,6 +643,41 @@ suitable SDK is available to compile it, dotask reports that failure first. This
 target is not a standalone SDK installer or bootstrap command. The .NET CLI
 documents [SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json)
 and [formatter version queries](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format).
+
+### Guarded .NET tests
+
+`dotask test` uses `settings.solution`, or `--solution PATH` to select a test
+project/solution. `-c` defaults to Release. `--filter EXPRESSION` forwards one
+literal dotnet-test filter argument; `--no-build` uses an existing build.
+`--dotnet` selects the executable. Fresh workers (`--disable-build-servers`)
+keep reused build servers from escaping the guarded process tree.
+
+The shared task owns its support file and applies a 600-second command timeout
+by default. `--timeout-seconds` accepts 1..86400. A named single-run mutex rejects
+overlap; `--lock-name` selects a shared project identity, otherwise the project
+root determines it. The mutex is released on success, failure and cancellation.
+`--memory-limit-mb` defaults to 0 (no memory cap); a positive value caps the
+complete process tree using a Windows Job Object or Linux systemd user scope.
+Linux reuses a suitable pre-existing cgroup-v2 limit when present. A configured
+cap fails visibly if the host cannot enforce it; macOS callers must currently
+use 0. Timeout/cancellation stop descendants, and child exit codes survive.
+
+Consumer-specific defaults belong in `.dotasks.yaml`, for example:
+
+```yaml
+targets:
+  _/dotnet/test:
+    defaults:
+      timeout-seconds: 600
+      memory-limit-mb: 4096
+      lock-name: Example-TestRunner
+```
+
+A thin local test task may forward configuration/filter to `_/dotnet/test`.
+It should not duplicate the guard or bypass it with direct dotnet test.
+These settings apply to explicit shared calls as well as project wrappers.
+The task does not impose a product's particular thresholds on other consumers.
+
 
 ### .NET calendar version preparation
 

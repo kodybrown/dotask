@@ -141,7 +141,7 @@
       "files": [
         {
           "path": "dotnet/format.cs",
-          "sha256": "66bdc61917afbb0bd23b7fe2b3287ff7ae13a1730ae69e1d1726afc7cbe6fd4a"
+          "sha256": "1a699dd9eb0529ff4d21d6d0bb1453867548ce1740191132a85f6125c088cc35"
         }
       ],
       "requires": []
@@ -201,12 +201,16 @@
     {
       "id": "dotnet/test",
       "entryPoint": "dotnet/test.cs",
-      "description": "Build and run the solution's tests.",
+      "description": "Build and test the configured solution with filtering, a timeout and a single-run process-tree guard.",
       "runtime": "csharp",
       "files": [
         {
+          "path": "dotnet/_support/TestProcess.cs",
+          "sha256": "a1dc199e3d0762bd4f617725a20cac625657e2623385457e938d35f475038ebc"
+        },
+        {
           "path": "dotnet/test.cs",
-          "sha256": "d18d951e0ce829437b6dacf05cd43012f1970aaf487b0a4205a9e03683fcef55"
+          "sha256": "a668f634e58aefa93f66c23ec25bae0c5d93dcbe11ec8ba910b74e68908e2f8a"
         }
       ],
       "requires": []

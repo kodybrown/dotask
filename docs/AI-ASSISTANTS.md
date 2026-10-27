@@ -66,6 +66,17 @@ only missing hooks are skipped, and hooks must never call `test`. Use
 Extra product checks, packaging and release triggers remain project policy.
 See the [Rust group contract](../shared-tasks/rust/README.md).
 
+For .NET tests, use the shared dotnet/test task rather than duplicating process
+guards in each consumer. Configure timeout-seconds, memory-limit-mb and lock-name
+under targets._/dotnet/test.defaults; zero memory cap is the generic default.
+The task supports filter, solution/project override and no-build, uses fresh
+workers, rejects concurrent runs and cleans descendants on timeout/cancellation.
+Windows caps use Job Objects; Linux uses a suitable existing cgroup cap or a
+systemd user scope. Unsupported configured caps fail visibly (macOS needs 0).
+Keep product-specific values in YAML and thin project entry points. See
+[TARGETS](TARGETS.md#guarded-net-tests) for exact options and platform limits.
+For formatting multiple explicit workspaces use settings.format.solutions;
+--normalize-text false disables broad optional FixEol traversal for vendored code.
 For .NET version preparation, install
 `dotnet/update-version.cs` and configure `settings.project` (or pass `--project`).
 With no local task, the short `dotask update-version` resolves to the shared task.

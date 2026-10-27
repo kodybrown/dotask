@@ -1263,3 +1263,21 @@ acceptance, installation, and publication.
   native/Rust/Go and pinned-tool installer acceptance, publisher simulation,
   strict lint/format, documentation, catalogue freshness and Git whitespace.
   Evaluated .NET and Cargo outputs remain external under C:\tmp.
+
+### 2026-10-27 Share guarded .NET tests and explicit formatting scope
+
+- Move test process-tree safeguards into shared support: filtering, project/
+  solution override, no-build, configurable timeout/memory cap and single-run
+  identity, fresh build workers, exit propagation and descendant cleanup.
+  Consumers supply their limits through YAML; no PTS paths/names are hard-coded.
+- Enforce Windows aggregate Job Object caps and Linux cgroup/systemd limits;
+  refuse unsupported configured caps rather than silently dropping protection.
+- Allow format.solutions to select explicit workspaces and normalize-text=false
+  to protect vendored dependencies from broad optional normalization.
+- Add real process/lock/memory and shared-entry forwarding regressions plus
+  multi-solution formatting coverage; update catalogue and authoring guidance.
+  Verification: eight focused cases and the complete Windows x64 build.cmd test
+  gate passed, including all 383 .NET tests (zero failures/skips), native/Rust/Go,
+  pinned-tool installer acceptance, publisher simulation, strict lint/format,
+  documentation, catalogue freshness and Git whitespace. Linux/macOS runtime
+  acceptance was not performed. Evaluated outputs remain external.

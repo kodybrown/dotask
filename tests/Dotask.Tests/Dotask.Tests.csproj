@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../shared-tasks/dotnet/_support/CalendarVersion.cs" Link="Shared/CalendarVersion.cs" />
+    <Compile Include="../../shared-tasks/dotnet/_support/TestProcess.cs" Link="Shared/TestProcess.cs" />
     <EmbeddedResource Include="NativeCliBaseline.json" LogicalName="NativeCliBaseline.json" />
     <AssemblyMetadata Include="RepositoryRoot" Value="$(MSBuildProjectDirectory)/../.." />
     <EmbeddedResource Include="../../.tasks/verify.rs;../../.tasks/test.task;../../.tasks/verify-docs.rs;../../.tasks/catalog.rs"

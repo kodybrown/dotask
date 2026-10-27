@@ -165,6 +165,29 @@ public sealed class SharedDotNetTaskTests
     Assert.Equal(before, File.ReadAllBytes(path));
   }
 
+
+  [Fact]
+  public async Task FormatSupportsMultipleSolutionsAndCanDisableRecursiveNormalization()
+  {
+    using var project = new TestProject();
+    CopyShared(project, "dotnet/format.cs", ".tasks");
+    var output = Path.Combine(project.Root, "format-arguments.jsonl");
+    var probe = await project.BuildProcessProbeAsync("File.AppendAllText(" + System.Text.Json.JsonSerializer.Serialize(output)
+      + ", System.Text.Json.JsonSerializer.Serialize(args) + \"\\n\");");
+    var executable = Path.ChangeExtension(probe, OperatingSystem.IsWindows() ? ".exe" : null);
+    project.Write("One.slnx", "<Solution />");
+    project.Write("Two.slnx", "<Solution />");
+    project.Write(".dotasks.yaml", "settings:\n  solution: One.slnx\n  format:\n    solutions: [One.slnx, Two.slnx]\n");
+    project.Target("_/text/fixeol", "throw new TaskException(\"Normalization must be disabled.\");");
+    var result = await project.RunAsync("format", "--dotnet", executable, "--normalize-text", "false");
+    Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
+    var calls = File.ReadAllLines(output).Select(line => System.Text.Json.JsonSerializer.Deserialize<string[]>(line)!).ToArray();
+    Assert.Equal(3, calls.Length);
+    Assert.Equal(Path.Combine(project.Root, "One.slnx"), calls[0][1]);
+    Assert.Equal(Path.Combine(project.Root, "Two.slnx"), calls[1][1]);
+    Assert.Equal(new[] { "format", "whitespace", project.Tasks, "--folder", "--verbosity", "minimal" }, calls[2]);
+  }
+
   private static void CopyShared( TestProject project, string relative, string directory )
   {
     using var stream = typeof(SharedDotNetTaskTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;
