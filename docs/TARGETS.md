@@ -408,8 +408,20 @@ Processes inherit stdin/stdout/stderr, run sequentially, preserve nonzero exit
 codes, stop later steps on failure, and use the native process-tree cancellation
 path. Help/completion read metadata and never launch a command. To run shell
 syntax or a script, explicitly invoke its interpreter and provide argument-list
-entries; Windows `.cmd` tools need an explicit `cmd` invocation. Dotask does not
+entries. Use a resolved tool reference for Windows `.cmd` launchers. Dotask does not
 introduce a shell or bundle interpreters.
+
+Use `{tool: npm}` (or `{tool: {parameter: executable}}`) to resolve an executable
+through the invocation environment's PATH before launching it. On Windows this
+uses PATHEXT's executable extensions (.exe, .com, .bat, .cmd) in their configured
+order, avoiding extensionless Unix scripts such as npm's companion launcher.
+The same resolver backs tool requirements. Missing tools fail before that process
+starts; help validates reference syntax without running the tool.
+Explicit paths resolve from the project root. A process's environment overrides
+do not change this reference's lookup. Arguments remain separate tokens; the
+Rust process launcher handles a resolved Windows batch shim rather than dotask
+constructing a shell command. Bare `executable: npm` retains its existing native
+process behavior; use the explicit tool reference for portable shim resolution.
 
 ### Staged process file output
 

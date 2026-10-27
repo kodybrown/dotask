@@ -14,6 +14,7 @@ run your first example. The preview is not yet published to a public package fee
 | Run tasks and understand CLI behavior                 | [Usage guide](USAGE.md)                                          |
 | Download, share, update, or remove tasks safely       | [Shared tasks](SHARED-TASKS.md)                                  |
 | Reuse Rust build/run/test and explicit version tasks | [Rust console-tool group](../shared-tasks/rust/README.md) |
+| Check Node/npm and project-local Angular, or install frontend dependencies | [Frontend tasks](features/frontend-tasks.md) |
 | Create a group interactively | [Creation wizard](TARGETS.md#interactive-group-creation) |
 | Compose existing tasks without C# | [YAML task groups](TARGETS.md#yaml-task-groups) |
 | Read/render configuration and run native installation workflows | [Native YAML workflow actions](YAML-WORKFLOWS.md) |

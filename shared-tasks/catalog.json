@@ -2,6 +2,19 @@
   "version": 1,
   "tasks": [
     {
+      "id": "angular/check",
+      "entryPoint": "angular/check.task",
+      "description": "Check the configured Angular workspace and report its local CLI diagnostics.",
+      "runtime": "yaml",
+      "files": [
+        {
+          "path": "angular/check.task",
+          "sha256": "c799d6e3f1f213b1f0e373bd10f62f5cad4d809865db0f46008d0ace52e3e100"
+        }
+      ],
+      "requires": []
+    },
+    {
       "id": "archive/create-7z",
       "entryPoint": "archive/create-7z.task",
       "description": "Create a 7z archive containing the named source directory.",
@@ -333,6 +346,32 @@
         {
           "path": "installer/install.rs",
           "sha256": "f60e5bcc35beba51c44f3311dfcb3066f3e15549cdee435f6c7db87e64194891"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "npm/check",
+      "entryPoint": "npm/check.task",
+      "description": "Check Node.js and npm availability and report their versions.",
+      "runtime": "yaml",
+      "files": [
+        {
+          "path": "npm/check.task",
+          "sha256": "fb6829b135c9fe51022b658d25393c2c346f76c6cd779799c8d57276a16399c6"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "npm/install",
+      "entryPoint": "npm/install.task",
+      "description": "Install the configured npm project's dependencies.",
+      "runtime": "yaml",
+      "files": [
+        {
+          "path": "npm/install.task",
+          "sha256": "0cc478b9ef5708f952bcde5a3836887a3e71a8b48af5128f03876d4644f8d403"
         }
       ],
       "requires": []

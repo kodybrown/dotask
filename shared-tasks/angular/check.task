@@ -1,0 +1,18 @@
+description: Check the configured Angular workspace and report its local CLI diagnostics.
+remarks: Requires installed project dependencies. Uses the project's CLI, never a global CLI or an automatic download. Angular owns its runtime compatibility diagnostics.
+requires: [{kind: tool, value: node}, {kind: setting, value: angular}]
+examples: [dotask angular/check]
+steps:
+  # Compose a configured path with existing text/file actions; no helper is needed.
+  - id: workspace
+    text:
+      template: '{{directory}}/angular.json'
+      values: {directory: {setting: angular}}
+  # Read as text: Angular workspaces may contain JSON comments.
+  - file:
+      operation: read
+      path: {result: workspace.text}
+  - exec:
+      executable: {tool: node}
+      arguments: [node_modules/@angular/cli/bin/ng.js, version]
+      cwd: {setting: angular}

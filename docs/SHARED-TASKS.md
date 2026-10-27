@@ -5,6 +5,20 @@ showing project help, and completing a target name require no online access,
 shared-task cache, or private original. Normal .NET SDK, package, and tool
 requirements still apply when compiling/executing C# tasks.
 
+## Preserve managed file bytes
+
+Catalog hashes cover exact file bytes, including line endings. Disable Git text
+conversion for managed copies when the consumer normally checks text out as CRLF:
+
+```gitattributes
+.tasks/_/** -text
+```
+
+Keep the equivalent rule for other managed task source directories. This preserves
+both LF and CRLF assets exactly as published; do not normalize or hand-edit managed
+copies to repair hash mismatches. Verify fresh checkout/export bytes against the
+catalog before committing new shared task installations.
+
 ## Locations and terminology
 
 | Name          | Purpose and default Linux location                                                                     |

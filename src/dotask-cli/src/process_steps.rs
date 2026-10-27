@@ -32,7 +32,7 @@ fn validate_value(value: &Value, target: &Target, output: bool, depth: usize) ->
   }
   let (kind, value) = reference.iter().next().unwrap();
   match kind.as_str() {
-    "path-parent" | "path-name" => return validate_value(value, target, false, depth + 1),
+    "path-parent" | "path-name" | "tool" => return validate_value(value, target, false, depth + 1),
     "output-file" if output && value == &Value::Bool(true) => return Ok(()),
     "output-file" => bail!("{{output-file: true}} is only valid as an argument of a process declaring output-file."),
     _ => {}
@@ -59,6 +59,13 @@ pub(crate) fn resolve(value: &Value, directory: &Directory, parameters: &Value, 
     value
   } else {
     let (kind, value) = value.as_object().unwrap().iter().next().unwrap();
+    if kind == "tool" {
+      let tool = resolve(value, directory, parameters, settings)?;
+      let tool = tool.to_str().ok_or_else(|| anyhow::anyhow!("Tool names must be UTF-8."))?;
+      return configuration::tool_path(tool, &directory.root_directory)
+        .map(PathBuf::into_os_string)
+        .ok_or_else(|| anyhow::anyhow!("Tool '{tool}' was not found on PATH or is not executable."));
+    }
     if matches!(kind.as_str(), "path-parent" | "path-name") {
       let path = resolve_path(resolve(value, directory, parameters, settings)?, directory)?;
       // Canonicalize existing inputs so aliases use the same parent and name.

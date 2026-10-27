@@ -1,0 +1,11 @@
+description: Check Node.js and npm availability and report their versions.
+remarks: Does not install packages, modify the project, or start a development server.
+requires: [{kind: tool, value: node}, {kind: tool, value: npm}]
+examples: [dotask npm/check]
+steps:
+  - exec:
+      executable: {tool: node}
+      arguments: [--version]
+  - exec:
+      executable: {tool: npm}
+      arguments: [--version]

@@ -164,7 +164,12 @@ public sealed class BootstrapTests
         Executable = OperatingSystem.IsWindows() ? Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe" : "/bin/bash",
         Arguments = command,
         WorkingDirectory = Path.Combine(Project.Root, "called from here"),
-        Environment = new Dictionary<string, string?> { ["TMPDIR"] = Temporary, ["TEMP"] = Temporary, ["TMP"] = Temporary },
+        Environment = new Dictionary<string, string?> {
+          ["TMPDIR"] = Temporary, ["TEMP"] = Temporary, ["TMP"] = Temporary,
+          // The fixture uses the same package and binary names as real dotask.
+          // Never let an inherited checkout override overwrite the live outputs.
+          ["CARGO_TARGET_DIR"] = Path.Combine(Path.GetTempPath(), "_rust", "dotask-bootstrap-tests", Identity)
+        },
         CaptureOutput = true,
         ThrowOnError = false
       }, timeout.Token);

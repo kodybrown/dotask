@@ -61,6 +61,9 @@ fn catalog_tasks_install_with_dependencies_and_run_offline_without_project_polic
           temporary.path().join("unavailable")
         },
       )
+      // Fixture output must not inherit the source checkout's target override.
+      // Its verification hook executes the binary in this isolated directory.
+      .env("CARGO_TARGET_DIR", temporary.path().join("target"))
       // The source CLI uses its source SDK, never an installed application.
       .env("DOTASK_SOURCE_RUST_SDK", root.join("src/dotask-sdk"))
       .env("DOTASK_SOURCE_SDK_STAGE", exe.parent().unwrap().join("sdk"))

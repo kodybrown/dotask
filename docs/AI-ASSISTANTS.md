@@ -106,7 +106,11 @@ references. Declare typed options and simple boolean `when` guards as needed;
 never construct shell command strings for ordinary argument passing. Interpreters
 must be explicit. The reusable Git task is now only `git/check.task`; invoke/add
 it without `--lang` and do not silently replace consumers' tracked code copies.
-See [direct process steps](TARGETS.md#direct-process-steps).
+See [direct process steps](TARGETS.md#direct-process-steps). Prefer `{tool: npm}`
+for portable Windows shim resolution. Shared `npm/check.task`, `npm/install.task`,
+and `angular/check.task` are declarative; configure `settings.angular` as the workspace
+path. Angular checks use the installed local CLI. See [frontend tasks](features/frontend-tasks.md).
+Review missing general `.task` capabilities before adding support scripts.
 For HTTP/JSON workflows, compose native `http`, `json`, `foreach`, `text`, and
 `file` actions. Named results are local to the invocation; loop item references
 and results stay lexical. Use `file: {operation: frontmatter}` with separate

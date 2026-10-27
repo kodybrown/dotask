@@ -1,0 +1,11 @@
+description: Install the configured npm project's dependencies.
+options:
+  - {name: directory, type: path, default: '.', completion: directory, description: Project directory containing package.json.}
+remarks: Runs npm install; it can update package-lock.json and execute package lifecycle scripts. Does not install Node.js or npm.
+requires: [{kind: tool, value: npm}]
+examples: [dotask npm/install, 'dotask npm/install --directory web']
+steps:
+  - exec:
+      executable: {tool: npm}
+      arguments: [install]
+      cwd: {parameter: directory}

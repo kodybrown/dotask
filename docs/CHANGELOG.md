@@ -1264,6 +1264,31 @@ acceptance, installation, and publication.
   strict lint/format, documentation, catalogue freshness and Git whitespace.
   Evaluated .NET and Cargo outputs remain external under C:\tmp.
 
+### 2026-10-27 Declarative npm and Angular tasks
+
+- Add shared native YAML npm/check, npm/install, and angular/check entry points.
+  Angular reads settings.angular and invokes the installed workspace-local CLI;
+  npm installation runs only the project's package installation command.
+  Checks do not install packages or start services. No task support scripts or
+  task-relative helper feature are needed. Document the declarative-first flow
+  and Git byte preservation for catalog-tracked task copies.
+- Add explicit {tool: ...} process references using the same executable resolver
+  as tool requirements. Windows lookup selects native executable extensions from
+  PATHEXT instead of npm's extensionless Unix wrapper, retaining argument arrays,
+  failure propagation, and normal child environment inheritance.
+- Add seven native regressions for Windows shims, configured paths with spaces,
+  custom task directories, missing prerequisites, metadata-only help, and failed
+  commands. Isolate the existing Rust acceptance and bootstrap fixtures' Cargo
+  output from source checkout overrides, protecting verification hooks and the
+  real dotask build artifacts from fixture binaries with matching names.
+- Verification: the complete build.cmd test gate passes on Windows x64, including
+  all 352 .NET tests, native/Rust/Go and prebuilt-tool installer acceptance,
+  formatting, documentation, catalog freshness, and whitespace. All seven new
+  regressions pass; evaluated .NET/Cargo output remains external and distinct.
+- Rebase verification (2026-10-28): the current native/Rust tests and complete
+  verify stage pass on Windows x64, including all 383 .NET tests, both Go
+  installer acceptance cases, formatting, docs, catalog, and whitespace checks.
+
 ### 2026-10-27 Share guarded .NET tests and explicit formatting scope
 
 - Move test process-tree safeguards into shared support: filtering, project/

@@ -1,7 +1,7 @@
 use crate::project::{portable_path, Directory, Target};
 use anyhow::{bail, Result};
 use serde_json::{json, Map, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 // Ordinal identifiers fold individual characters, never whole strings. Avoid
 // expansion (for example sharp-s into two letters) or culture-sensitive casing.
@@ -290,34 +290,46 @@ fn requirements(target: &Target, settings: &Value, root: &Path) -> Result<()> {
   Ok(())
 }
 pub(crate) fn tool_exists(tool: &str, root: &Path) -> bool {
-  let mut names = vec![tool.to_owned()];
+  tool_path(tool, root).is_some()
+}
+pub(crate) fn tool_path(tool: &str, root: &Path) -> Option<PathBuf> {
+  let mut names = vec![];
   if cfg!(windows) && Path::new(tool).extension().is_none() {
+    // Resolve native launchers before extensionless Unix scripts (npm ships both).
+    // Only extensions that Command can execute belong in this search.
     names.extend(
       std::env::var("PATHEXT")
         .unwrap_or_else(|_| ".EXE;.COM;.BAT;.CMD".into())
         .split(';')
+        .filter(|e| {
+          [".EXE", ".COM", ".BAT", ".CMD"]
+            .iter()
+            .any(|allowed| e.eq_ignore_ascii_case(allowed))
+        })
         .map(|e| format!("{tool}{e}")),
     );
+  } else {
+    names.push(tool.to_owned());
   }
   let directories = if tool.contains(['/', '\\']) {
     vec![root.to_path_buf()]
   } else {
     std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()).collect()
   };
-  directories.iter().any(|d| {
-    names.iter().any(|n| {
+  directories.iter().find_map(|d| {
+    names.iter().find_map(|n| {
       let p = root.join(d).join(n);
       if !p.is_file() {
-        return false;
+        return None;
       }
       #[cfg(unix)]
       {
         use std::os::unix::fs::PermissionsExt;
-        p.metadata().is_ok_and(|m| m.permissions().mode() & 0o111 != 0)
+        p.metadata().is_ok_and(|m| m.permissions().mode() & 0o111 != 0).then_some(p)
       }
       #[cfg(windows)]
       {
-        true
+        Some(p)
       }
     })
   })
