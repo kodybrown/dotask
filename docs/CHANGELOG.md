@@ -1205,3 +1205,14 @@ acceptance, installation, and publication.
 - Verification: all 22 focused calendar/shared-task cases and the complete
   build.cmd test gate passed, including 350 .NET tests, native/Go acceptance,
   formatting, documentation, catalog and whitespace on Windows x64.
+
+### 2026-10-27 Prepare dotask 0.1.4 publication
+
+- Explicitly advanced dotask-cli from 0.1.3 to 0.1.4 using the version task,
+  updating the manifest and corresponding Cargo lock entry together. Includes
+  the pending Go/installer/release workflow and shared Utah .NET version task.
+- Verified availability and checksum of the pinned published DoInstall v0.1.1
+  Windows tools before release verification and main promotion.
+- Verification: the complete build.cmd test gate passed for 0.1.4, including
+  all 350 .NET tests, native/Go installer acceptance, documentation, whitespace
+  and shared catalog freshness checks on Windows x64.
