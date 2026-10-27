@@ -183,6 +183,37 @@ public sealed class TargetCallTests
     Assert.Equal([project.Tasks], Directory.GetDirectories(project.Root));
   }
 
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task RequestCleanupWaitsForWindowsLocksButDoesNotHidePersistentFailure( bool persistentLock )
+  {
+    if (!OperatingSystem.IsWindows()) {
+      return; // Unix permits unlinking an open file; this is a Windows lock test.
+    }
+    using var project = new TestProject();
+    var directory = Path.Combine(project.Root, "owned-request");
+    Directory.CreateDirectory(directory);
+    var file = Path.Combine(directory, "Dotask.dotnet.dll");
+    File.WriteAllText(file, "locked request fixture");
+    using var locked = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+    var cleanup = DoTask.Runtime.ContextFile.DeleteDirectoryAsync(directory);
+    if (persistentLock) {
+      var error = await Record.ExceptionAsync(() => cleanup);
+      Assert.True(error is IOException or UnauthorizedAccessException, error?.ToString());
+      Assert.True(Directory.Exists(directory));
+      return;
+    }
+    try {
+      await Task.Delay(100);
+      Assert.False(cleanup.IsCompleted);
+    } finally {
+      locked.Dispose();
+      await cleanup;
+    }
+    Assert.False(Directory.Exists(directory));
+  }
+
   [Fact]
   public async Task VerifyRunsAvailableChecksInOrderForwardsOptionsAndStopsOnFailure()
   {

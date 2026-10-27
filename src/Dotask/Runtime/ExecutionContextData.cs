@@ -34,6 +34,25 @@ internal sealed record TargetCallReply( bool Exists, int? ExitCode = null, strin
 
 internal static class ContextFile
 {
+  internal static async Task DeleteDirectoryAsync( string directory )
+  {
+    // Killing a process tree and awaiting its root does not await every child.
+    // Windows can briefly retain loaded SDK DLLs after cancellation. Retry only
+    // this owned request directory, without the canceled token, and still fail
+    // visibly if the lock/permissions do not clear within the bounded grace.
+    var elapsed = System.Diagnostics.Stopwatch.StartNew();
+    while (Directory.Exists(directory)) {
+      try {
+        Directory.Delete(directory, recursive: true);
+        return;
+      } catch (Exception error) when (OperatingSystem.IsWindows()
+        && error is IOException or UnauthorizedAccessException
+        && elapsed.Elapsed < TimeSpan.FromSeconds(5)) {
+        await Task.Delay(50);
+      }
+    }
+  }
+
   public static async Task<string> WriteAsync<T>( string directory, T value, CancellationToken cancellationToken )
   {
     Directory.CreateDirectory(directory);

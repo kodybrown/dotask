@@ -150,9 +150,7 @@ public sealed class BuildContext
       return await JsonSerializer.DeserializeAsync<TargetCallReply>(stream, cancellationToken: linked.Token)
         ?? throw new TaskException("Invalid target-call response.");
     } finally {
-      if (Directory.Exists(callDirectory)) {
-        Directory.Delete(callDirectory, recursive: true);
-      }
+      await ContextFile.DeleteDirectoryAsync(callDirectory);
     }
   }
 

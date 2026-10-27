@@ -1226,3 +1226,19 @@ acceptance, installation, and publication.
   passed on Windows; strict Clippy and seven unit tests passed on WSL Linux.
   The WSL publisher shell acceptance requires jq, absent from that environment;
   the unchanged publisher acceptance passed on Windows and hosted Ubuntu.
+
+### 2026-10-27 Harden canceled nested-target request cleanup
+
+- Allow a bounded Windows grace period when deleting owned request directories
+  after child-process termination. Waiting for a killed process-tree root does
+  not guarantee that descendant DLL handles have closed; transient sharing errors
+  no longer replace successful cancellation cleanup with access-denied errors.
+- Keep persistent cleanup failures visible and retain cancellation/child-stop
+  assertions. Add deterministic transient-lock and persistent-lock regressions.
+- Advance only the macOS DoInstall source pin to the reviewed command-link fix
+  on its approved develop history. Keep macOS required for collection/publication
+  and leave checksum-pinned published Windows/Linux tools unchanged.
+- Verification: the complete build.cmd test gate passed on Windows x64 with
+  all 352 .NET tests, native/Rust/Go and pinned-tool installer acceptance,
+  publisher simulation, strict lint/format, documentation, catalog and whitespace.
+  Evaluated .NET bin/obj/publish paths remain under C:\tmp\_dotnet.
