@@ -72,13 +72,21 @@ With no local task, the short `dotask update-version` resolves to the shared tas
 It writes `major.minor.yyMM.ddHH` in Utah's America/Denver timezone (24-hour,
 DST-aware). Default/`--increment` refresh the date/hour; `--increment-minor`
 increments minor and `--increment-major` increments major and resets minor.
+`--increment-preview` increments `-preview.N` (or starts at `preview.1`).
+Default/`--increment` preserve an existing preview counter; minor/major increments
+remove it. Increment flags are mutually exclusive.
 `--dry-run` reports without writing. Same-hour refresh is a no-op, including
 the repeated autumn hour; no artificial counter or timezone offset is added. It
 preserves encoding/BOM, comments and line endings. It refuses ambiguous,
 conditional or inherited Version definitions and .NET component overflow.
 It does not build, restore, invoke Git, or change NuGet dependency lockfiles
 (which do not contain the root application version).
-Three-component numeric versions can be migrated; output always has four fields.
+Three-component numeric/preview versions can be migrated; numeric output always
+has four fields. Existing `AssemblyVersion` stays unchanged; existing `FileVersion`
+stays numeric. `InformationalVersion` follows `Version`, preserving custom metadata
+or a `$(Version)` expression. Optional properties are not added; declare
+`AssemblyVersion` explicitly for stable binding and `FileVersion` explicitly for
+an independent calendar file version.
 
 For basic external commands, prefer declarative `.task` process steps rather than
 requiring an unrelated language toolchain. Use `exec: {executable: ..., arguments:

@@ -214,16 +214,16 @@
     {
       "id": "dotnet/update-version",
       "entryPoint": "dotnet/update-version.cs",
-      "description": "Refresh major.minor.yyMM.ddHH in Utah time, optionally incrementing minor/major. Never build or commit.",
+      "description": "Refresh major.minor.yyMM.ddHH in Utah time, preserving preview unless explicitly incremented or clearing it for minor/major. Never build or commit.",
       "runtime": "csharp",
       "files": [
         {
           "path": "dotnet/_support/CalendarVersion.cs",
-          "sha256": "2776cc020016682f3c53f6599b09d4c4e3051cf5bd8f233a1ecaf2cfe8f32924"
+          "sha256": "d27e14abd6edbf9af168e95018d97e5d14099ed7bf70041ad6daa7fa61ecaee7"
         },
         {
           "path": "dotnet/update-version.cs",
-          "sha256": "dca03e2028fb07afc16b5beaf6762b7417f08f544a9dc22a14512012470fe79a"
+          "sha256": "ece5a4e690c41cbd61bde84225fac07a1be1f450036eb29f845859eaea6cc41e"
         }
       ],
       "requires": []

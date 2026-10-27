@@ -644,6 +644,28 @@ target is not a standalone SDK installer or bootstrap command. The .NET CLI
 documents [SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json)
 and [formatter version queries](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format).
 
+### .NET calendar version preparation
+
+`dotask update-version` refreshes `major.minor.yyMM.ddHH` in America/Denver.
+Use `--increment-preview` to increment/start preview, `--increment-minor` to bump minor,
+or `--increment-major` to bump major/reset minor. Minor/major clear preview; default
+and `--increment` preserve it. Choose at most one increment; `--dry-run` previews.
+
+The task accepts three- or four-component `Version` values, optionally followed
+by `-preview.N`. It preserves explicit `AssemblyVersion` properties, updates an
+existing numeric `FileVersion` to the new four-part numeric version, and updates
+an existing literal `InformationalVersion` while preserving its custom metadata
+suffix. Informational values beginning with `$(Version)` remain expressions;
+the SDK can append Git revision metadata later. Other prerelease identifiers are
+rejected. Preview counters must fit Int32, and incrementing its maximum fails.
+
+Missing optional properties are not added: SDK defaults still apply. Declare
+`AssemblyVersion` explicitly to keep assembly binding stable, and declare
+`FileVersion` explicitly to track the calendar version independently of binding.
+Conditional, duplicate or inherited properties that need updating are refused
+before any write. Comments, encoding/BOM, whitespace and line endings survive;
+no XML reserialization, build, restore, Git operation or lockfile edit occurs.
+
 ## Option metadata
 
 | Field        | Meaning                                                 |

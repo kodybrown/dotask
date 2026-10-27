@@ -1245,3 +1245,21 @@ acceptance, installation, and publication.
   all 352 .NET tests, native/Rust/Go and pinned-tool installer acceptance,
   publisher simulation, strict lint/format, documentation, catalog and whitespace.
   Evaluated .NET bin/obj/publish paths remain under C:\tmp\_dotnet.
+
+### 2026-10-27 Support preview calendar version preparation
+
+- Accept three-/four-part numeric Version with -preview.N. Preserve preview by
+  default, add --increment-preview (starts at 1), and clear preview on minor/major
+  increments. Refuse conflicting flags, invalid suffixes and counter overflow.
+- Preserve AssemblyVersion, update existing FileVersion numerically, and update
+  existing InformationalVersion while retaining custom suffixes or $(Version)
+  expressions. Leave absent optional properties to SDK defaults; document explicit
+  AssemblyVersion/FileVersion for stable binding and independent file numbering.
+- Validate all edited properties before writing. Preserve comments (including
+  commented-out version tags), whitespace, EOLs and UTF-8/UTF-16 BOMs without XML
+  serialization. Refresh the shared catalogue and authoritative task documentation.
+- Verification: all 46 focused calendar/version tests and the complete Windows x64
+  build.cmd test gate passed, including all 376 .NET tests (zero failures/skips),
+  native/Rust/Go and pinned-tool installer acceptance, publisher simulation,
+  strict lint/format, documentation, catalogue freshness and Git whitespace.
+  Evaluated .NET and Cargo outputs remain external under C:\tmp.
