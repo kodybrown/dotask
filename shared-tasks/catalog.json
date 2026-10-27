@@ -212,6 +212,19 @@
       "requires": []
     },
     {
+      "id": "dotnet/update-version",
+      "entryPoint": "dotnet/update-version.cs",
+      "description": "Increment patch by default, or explicitly choose minor/major. Never build or commit.",
+      "runtime": "csharp",
+      "files": [
+        {
+          "path": "dotnet/update-version.cs",
+          "sha256": "9418c577326d8aaaed4e7938f0872573398ac547907e4d561ef62f63a51f1430"
+        }
+      ],
+      "requires": []
+    },
+    {
       "id": "dotnet/verify",
       "entryPoint": "dotnet/verify.cs",
       "description": "Run available dependency, test, and formatting checks.",

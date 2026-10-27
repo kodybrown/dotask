@@ -85,6 +85,67 @@ public sealed class SharedDotNetTaskTests
     Assert.Equal(17, (await project.RunAsync(command)).ExitCode);
   }
 
+
+  [Theory]
+  [InlineData("", "1.2.4", false)]
+  [InlineData("--increment", "1.2.4", true)]
+  [InlineData("--increment-minor", "1.3.0", false)]
+  [InlineData("--increment-major", "2.0.0", true)]
+  public async Task UpdateVersionPreservesBytesAndNeverBuilds( string option, string expected, bool utf16 )
+  {
+    using var project = new TestProject();
+    CopyShared(project, "dotnet/update-version.cs", ".tasks");
+    project.Write(".dotasks.yaml", "settings:\n  project: source path/App.csproj\n");
+    const string source = "<Project>\r\n  <!-- café -->\r\n  <PropertyGroup><Version>1.2.3</Version></PropertyGroup>\r\n</Project>\r\n";
+    var manifest = project.Write("source path/App.csproj", source);
+    System.Text.Encoding encoding = utf16 ? System.Text.Encoding.Unicode : new System.Text.UTF8Encoding(true);
+    File.WriteAllText(manifest, source, encoding);
+    var original = File.ReadAllBytes(manifest);
+    var lockFile = project.Write("source path/packages.lock.json", "{ \"version\": 1 }");
+    var lockBytes = File.ReadAllBytes(lockFile);
+    string[] command = option.Length == 0 ? ["dotnet/update-version"] : ["dotnet/update-version", option];
+    var preview = await project.RunAsync([.. command, "--dry-run"]);
+    Assert.True(preview.ExitCode == 0, preview.StandardError);
+    Assert.Equal(original, File.ReadAllBytes(manifest));
+    Assert.Contains("1.2.3 -> " + expected, preview.StandardOutput);
+    var result = await project.RunAsync(command);
+    Assert.True(result.ExitCode == 0, result.StandardError);
+    var expectedBytes = encoding.GetPreamble().Concat(encoding.GetBytes(source.Replace("1.2.3", expected, StringComparison.Ordinal))).ToArray();
+    Assert.Equal(expectedBytes, File.ReadAllBytes(manifest));
+    Assert.Equal(lockBytes, File.ReadAllBytes(lockFile));
+    Assert.False(Directory.Exists(Path.Combine(project.Root, "bin")));
+    Assert.False(Directory.Exists(Path.Combine(project.Root, "obj")));
+  }
+
+  [Theory]
+  [InlineData("<Version Condition=\"'x'=='x'\">1.2.3</Version>")]
+  [InlineData("<Version>1.2.3</Version><Version>1.2.4</Version>")]
+  [InlineData("<VersionPrefix>1.2.3</VersionPrefix>")]
+  [InlineData("<Version>$(InheritedVersion)</Version>")]
+  [InlineData("<Version>1.2.65534</Version>")]
+  public async Task UpdateVersionRejectsAmbiguousInheritedOrOverflowWithoutWriting( string definition )
+  {
+    using var project = new TestProject();
+    CopyShared(project, "dotnet/update-version.cs", ".tasks");
+    var path = project.Write("App.csproj", "<Project><PropertyGroup>" + definition + "</PropertyGroup></Project>");
+    var before = File.ReadAllBytes(path);
+    var result = await project.RunAsync("dotnet/update-version", "--project", "App.csproj");
+    Assert.NotEqual(0, result.ExitCode);
+    Assert.Equal(before, File.ReadAllBytes(path));
+  }
+
+  [Fact]
+  public async Task UpdateVersionRejectsConflictingIncrementFlags()
+  {
+    using var project = new TestProject();
+    CopyShared(project, "dotnet/update-version.cs", ".tasks");
+    var path = project.Write("App.csproj", "<Project><PropertyGroup><Version>1.2.3</Version></PropertyGroup></Project>");
+    var before = File.ReadAllBytes(path);
+    var result = await project.RunAsync("dotnet/update-version", "--project", "App.csproj", "--increment", "--increment-major");
+    Assert.NotEqual(0, result.ExitCode);
+    Assert.Equal(before, File.ReadAllBytes(path));
+  }
+
   private static void CopyShared( TestProject project, string relative, string directory )
   {
     using var stream = typeof(SharedDotNetTaskTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;

@@ -1177,3 +1177,17 @@ acceptance, installation, and publication.
   temporary install/uninstall, inventory/privacy scans and persistent PATH checks.
   Version remains 0.1.3. Native Linux/macOS acceptance is unverified locally;
   gostatic, active installations and remote publication were not changed.
+
+### 2026-10-27 Shared .NET version preparation
+
+- Added canonical dotnet/update-version.cs with patch by default, explicit patch,
+  minor/major and dry-run options, configurable project path, original encoding,
+  BOM, whitespace and comments preserved. Conditional/inherited/ambiguous versions,
+  conflicting increments and assembly-version component overflow are rejected.
+  The task performs no build, restore or Git operations and does not alter NuGet
+  dependency lockfiles. Documented consumer wrappers and regenerated the catalog.
+- Added executable shared-task regression cases for patch/minor/major, dry-run,
+  UTF-8/UTF-16 BOM/CRLF preservation, lockfile preservation and rejected definitions.
+- Verification: build.cmd test with prebuilt DoInstall tools passed the complete
+  Windows native/Go gates, all 338 .NET tests, formatting, docs, catalog and
+  whitespace checks. No application version was changed or published.

@@ -66,6 +66,15 @@ only missing hooks are skipped, and hooks must never call `test`. Use
 Extra product checks, packaging and release triggers remain project policy.
 See the [Rust group contract](../shared-tasks/rust/README.md).
 
+For .NET version preparation, install
+`dotnet/update-version.cs` and delegate through a thin project wrapper. It uses
+`--project` or `settings.project`, increments patch by default, accepts explicit
+`--increment`, `--increment-minor`, `--increment-major`, and `--dry-run`, and
+preserves encoding/BOM, comments and line endings. It refuses ambiguous,
+conditional or inherited Version definitions and .NET component overflow.
+It does not build, restore, invoke Git, or change NuGet dependency lockfiles
+(which do not contain the root application version).
+
 For basic external commands, prefer declarative `.task` process steps rather than
 requiring an unrelated language toolchain. Use `exec: {executable: ..., arguments:
 [...] , cwd: ...}` with literal argument-list entries or exact parameter/setting
