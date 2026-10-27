@@ -118,7 +118,7 @@ jobs:
         run: |
           rustup show active-toolchain
           git clone --no-checkout https://github.com/kodybrown/doinstall.git "$SOURCE"
-          git -C "$SOURCE" checkout --detach 7d3010124386c10903c56fed1b17883dcf3489bf
+          git -C "$SOURCE" checkout --detach 9dd2e27e2c9af46208e804e2d33b2472faf0de38
           ./build.sh create-dotask-installer --source "$SOURCE"
 
   collect:

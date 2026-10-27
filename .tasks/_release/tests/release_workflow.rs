@@ -33,7 +33,7 @@ fn main_pushes_publish_manual_runs_only_build_and_only_publisher_can_write() {
   let macos = data["jobs"]["macos"]["steps"].as_array().unwrap();
   assert!(macos.iter().any(|step| step["run"]
     .as_str()
-    .is_some_and(|run| run.contains("checkout --detach 7d3010124386c10903c56fed1b17883dcf3489bf")
+    .is_some_and(|run| run.contains("checkout --detach 9dd2e27e2c9af46208e804e2d33b2472faf0de38")
       && run.contains("./build.sh create-dotask-installer --source"))));
   assert_eq!(data["jobs"]["publish"]["needs"], "collect");
   let windows_package = data["jobs"]["native"]["steps"]

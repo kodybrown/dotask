@@ -38,8 +38,9 @@ gate and does not publish a native bundle yet.
 Its existing explicit-source installer workflow remains available and creates a
 development self-extracting installer after the full gate, without release assets.
 The macOS development source is pinned to DoInstall commit
-`7d3010124386c10903c56fed1b17883dcf3489bf`, including the Unix command-link
-sibling-tool discovery fix. It does not change the published Windows/Linux tools pin.
+`9dd2e27e2c9af46208e804e2d33b2472faf0de38`, including the Unix command-link
+sibling-tool discovery and macOS PTY test portability fixes. It does not change
+the published Windows/Linux tools pin.
 
 [The reviewed doinstall pin](../.tasks/_release/doinstall.json) is v0.1.1, source
 commit `208b9a915db1efe1404b421d9070c534aec8bafb`:

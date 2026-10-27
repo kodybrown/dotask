@@ -1238,6 +1238,9 @@ acceptance, installation, and publication.
 - Advance only the macOS DoInstall source pin to the reviewed command-link fix
   on its approved develop history. Keep macOS required for collection/publication
   and leave checksum-pinned published Windows/Linux tools unchanged.
+- Include the follow-up macOS PTY ABI test fix in source pin 9dd2e27. Native
+  Linux PTY/Clippy, full Windows DoInstall verification and all-target Apple ARM64
+  compile/strict Clippy passed; native macOS runtime acceptance stays required.
 - Verification: the complete build.cmd test gate passed on Windows x64 with
   all 352 .NET tests, native/Rust/Go and pinned-tool installer acceptance,
   publisher simulation, strict lint/format, documentation, catalog and whitespace.
