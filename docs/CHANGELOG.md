@@ -1245,3 +1245,16 @@ acceptance, installation, and publication.
   all 352 .NET tests, native/Rust/Go and pinned-tool installer acceptance,
   publisher simulation, strict lint/format, documentation, catalog and whitespace.
   Evaluated .NET bin/obj/publish paths remain under C:\tmp\_dotnet.
+
+### 2026-10-27 Make native path fixtures reflect macOS filesystem rules
+
+- Resolve the system temporary parent before no-links file-action tests, keeping
+  fixture-created links subject to the unchanged runtime refusal checks.
+- Always test Unicode canonical-name preservation through a command alias, and
+  retain invalid-byte preservation on supporting filesystems. Accept only Apple's
+  specific EILSEQ rejection when an invalid UTF-8 fixture name cannot be created;
+  other fixture errors still fail. No runtime guard or macOS gate is relaxed.
+- Verification: complete Windows build.cmd test passed with all 352 .NET tests,
+  native/Rust/Go and pinned-tool installer acceptance, publisher simulation,
+  lint/format, documentation, catalog freshness and whitespace. Native Linux
+  fixture/declarative/HTTP checks, strict Clippy and linked-temp simulation passed.

@@ -196,25 +196,42 @@ mod tests {
   use std::os::unix::{ffi::OsStringExt, fs::symlink};
 
   #[test]
-  fn path_references_preserve_non_utf8_canonical_names() {
+  fn path_references_preserve_unicode_and_supported_non_utf8_canonical_names() {
     let root = tempfile::tempdir().unwrap();
-    let name = OsString::from_vec(b"source-\xff".to_vec());
-    let source = root.path().join(&name);
-    std::fs::create_dir(&source).unwrap();
-    symlink(&source, root.path().join("alias")).unwrap();
     let directory = Directory {
       root_directory: root.path().into(),
       task_directory: root.path().join(".tasks"),
       invocation_directory: root.path().into(),
     };
-    let parameters = json!({"source":"alias"});
-    let value = resolve(
-      &json!({"path-name":{"parameter":"source"}}),
-      &directory,
-      &parameters,
-      &json!({}),
-    )
-    .unwrap();
-    assert_eq!(value, name);
+    for (index, name) in [
+      OsString::from("source-日本語"),
+      OsString::from_vec(b"source-\xff".to_vec()),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+      let source = root.path().join(&name);
+      if let Err(error) = std::fs::create_dir(&source) {
+        // Apple filesystems can reject invalid UTF-8 names outright. Assert
+        // that exact boundary, while always exercising the Unicode alias case.
+        // Other filesystem failures must not silently bypass this regression.
+        assert!(
+          cfg!(target_os = "macos") && name.to_str().is_none() && error.raw_os_error() == Some(libc::EILSEQ),
+          "Cannot create {name:?}: {error}"
+        );
+        continue;
+      }
+      let alias = format!("alias-{index}");
+      symlink(&source, root.path().join(&alias)).unwrap();
+      let parameters = json!({"source":alias});
+      let value = resolve(
+        &json!({"path-name":{"parameter":"source"}}),
+        &directory,
+        &parameters,
+        &json!({}),
+      )
+      .unwrap();
+      assert_eq!(value, name);
+    }
   }
 }

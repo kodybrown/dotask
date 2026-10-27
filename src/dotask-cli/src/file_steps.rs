@@ -382,9 +382,14 @@ pub(crate) fn execute(action: &Value, directory: &Directory, parameters: &Value,
 #[cfg(test)]
 mod tests {
   use super::*;
+  fn physical_temporary() -> tempfile::TempDir {
+    // macOS exposes TMPDIR through /var -> /private/var. Resolve only this
+    // system parent; links created inside the fixture must still be refused.
+    tempfile::tempdir_in(fs::canonicalize(std::env::temp_dir()).unwrap()).unwrap()
+  }
   #[test]
   fn writes_are_guarded_and_idempotent() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = physical_temporary();
     let path = temp.path().join("config");
     assert!(write(&path, b"first", Some("missing"), None).unwrap());
     let modified = fs::metadata(&path).unwrap().modified().unwrap();
@@ -420,7 +425,7 @@ mod tests {
   #[test]
   fn links_and_linked_parents_are_refused() {
     use std::os::unix::fs::symlink;
-    let temp = tempfile::tempdir().unwrap();
+    let temp = physical_temporary();
     let real = temp.path().join("real");
     fs::create_dir(&real).unwrap();
     symlink(&real, temp.path().join("alias")).unwrap();
