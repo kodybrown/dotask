@@ -87,42 +87,8 @@ jobs:
           compression-level: 0
           retention-days: 14
 
-  macos:
-    # Retain the existing native CLI/SDK regression gate. Doinstall publishes
-    # no macOS tools bundle yet; only this non-release gate uses explicit source.
-    runs-on: macos-14
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
-        with:
-          go-version: '1.26.6'
-          cache: false
-      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
-        with:
-          global-json-file: global.json
-      - name: Prepare external .NET output policy
-        shell: pwsh
-        run: |
-          $destination = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Directory.Build.props'
-          if (!(Test-Path -LiteralPath $destination)) {
-            Copy-Item -LiteralPath .github/msbuild/Directory.Build.props -Destination $destination
-          }
-      - name: Prepare pinned development tools and verify
-        shell: bash
-        env:
-          SOURCE: ${{ runner.temp }}/doinstall-source
-          DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-tools
-        run: |
-          rustup show active-toolchain
-          git clone --no-checkout https://github.com/kodybrown/doinstall.git "$SOURCE"
-          git -C "$SOURCE" checkout --detach 9dd2e27e2c9af46208e804e2d33b2472faf0de38
-          ./build.sh create-dotask-installer --source "$SOURCE"
-
   collect:
-    needs: [native, macos]
+    needs: [native]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:

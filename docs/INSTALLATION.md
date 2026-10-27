@@ -514,8 +514,8 @@ Unix uses actual tool paths without `.exe`.
 over `DOINSTALL_TOOL_DIR`. They require prebuilt runtime, builder, and launcher
 template tools and fail when one is
 absent. If developing against source, explicitly run
-`build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. Release CI uses verified published Windows/Linux bundles; macOS verification
-uses a pinned explicit source build because no macOS bundle is published.
+`build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. Release CI uses
+verified published Windows/Linux bundles. macOS has no CI job or release gate.
 
 Unix uses `./build.sh`. Both launchers forward arbitrary arguments to a temporary
 native runner; no task whitelist is maintained. The Rust source SDK is available

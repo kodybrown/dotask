@@ -1258,3 +1258,15 @@ acceptance, installation, and publication.
   native/Rust/Go and pinned-tool installer acceptance, publisher simulation,
   lint/format, documentation, catalog freshness and whitespace. Native Linux
   fixture/declarative/HTTP checks, strict Clippy and linked-temp simulation passed.
+
+### 2026-10-27 Limit release CI to Windows and Linux
+
+- Remove the macOS job and its collection/publication dependency, as requested.
+  Keep both Windows/Linux verification, native packaging and temporary installer
+  acceptance gates, pinned tools, checksums and exact-source publication intact.
+- Add a workflow regression requiring only the Windows/Linux native matrix and
+  no macOS job; update current release, installation and authoring guidance.
+  Preview-version work on develop remains excluded from 0.1.4.
+- Verification: all nine release-driver/publisher tests, Rust formatting,
+  build.cmd verify-docs and whitespace checks passed. Application runtime and
+  pinned Windows/Linux tool inputs are unchanged from the passing native gates.

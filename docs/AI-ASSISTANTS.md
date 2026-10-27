@@ -37,8 +37,8 @@ For dotask's own complete source installer workflow, use
 This local task consumes matching prebuilt doinstall tools, builds/lints/stages
 dotask, and packages both Windows/Linux deliveries with native temporary-install acceptance.
 Run the full `test` gate first, then use `--reuse-build` to package its inspected
-executable. See [native releases](RELEASING.md) for the main-push workflow and
-the retained macOS source installer gate. Use `--doinstall-tools PATH`, `DOINSTALL_TOOL_DIR`
+executable. See [native releases](RELEASING.md) for the Windows/Linux-only
+main-push workflow. Use `--doinstall-tools PATH`, `DOINSTALL_TOOL_DIR`
 or builder discovery; `--source ../doinstall` explicitly selects source development
 and verifies that project too. The install task uses the successful-build record.
 It is not a shared consumer task; see

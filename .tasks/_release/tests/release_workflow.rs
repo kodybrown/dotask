@@ -29,12 +29,15 @@ fn main_pushes_publish_manual_runs_only_build_and_only_publisher_can_write() {
       assert!(job.get("permissions").is_none());
     }
   }
-  assert_eq!(data["jobs"]["collect"]["needs"], serde_json::json!(["native", "macos"]));
-  let macos = data["jobs"]["macos"]["steps"].as_array().unwrap();
-  assert!(macos.iter().any(|step| step["run"]
-    .as_str()
-    .is_some_and(|run| run.contains("checkout --detach 9dd2e27e2c9af46208e804e2d33b2472faf0de38")
-      && run.contains("./build.sh create-dotask-installer --source"))));
+  assert_eq!(data["jobs"]["collect"]["needs"], serde_json::json!(["native"]));
+  assert!(data["jobs"].get("macos").is_none());
+  let platforms: Vec<_> = data["jobs"]["native"]["strategy"]["matrix"]["include"]
+    .as_array()
+    .unwrap()
+    .iter()
+    .map(|entry| entry["platform"].as_str().unwrap())
+    .collect();
+  assert_eq!(platforms, ["windows", "linux"]);
   assert_eq!(data["jobs"]["publish"]["needs"], "collect");
   let windows_package = data["jobs"]["native"]["steps"]
     .as_array()

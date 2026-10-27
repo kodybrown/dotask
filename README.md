@@ -21,7 +21,7 @@ projects without a registration step.
 ```
 
 This is a **0.1 preview**. Release automation targets Windows x64 and Linux x64
-(Ubuntu 22.04 / glibc 2.35), with a separate macOS verification gate. See
+(Ubuntu 22.04 / glibc 2.35) only; macOS is outside the release/CI scope. See
 [verification status](docs/VERIFICATION.md).
 
 Use **.NET SDK 10.0.300 or later in the .NET 10 family** for C# execution, and
@@ -479,8 +479,8 @@ remain identical. Generic .NET build/format/package tasks belong to consuming
 projects; they do not build a managed dotask executable.
 
 Repository builds respect an existing user-level `Directory.Build.props` output
-policy. Runtime task builds use an isolated external cache. Windows, Linux, and
-macOS verification is configured in [.github/workflows/release.yml](.github/workflows/release.yml).
+policy. Runtime task builds use an isolated external cache. Windows and Linux
+verification is configured in [.github/workflows/release.yml](.github/workflows/release.yml).
 Local results are documented in [docs/VERIFICATION.md](docs/VERIFICATION.md).
 
 The [documentation index](docs/README.md) links to all guides and design contracts.
