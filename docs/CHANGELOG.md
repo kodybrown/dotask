@@ -1216,3 +1216,13 @@ acceptance, installation, and publication.
 - Verification: the complete build.cmd test gate passed for 0.1.4, including
   all 350 .NET tests, native/Go installer acceptance, documentation, whitespace
   and shared catalog freshness checks on Windows x64.
+
+### 2026-10-27 Fix Unix release packaging lint
+
+- Compile the GLIBC symbol regex once before inspecting the native executables.
+  This preserves the Ubuntu compatibility check and fixes the Linux-only Clippy
+  failure found by the first 0.1.4 release run; no lint or release gate is bypassed.
+- Verification: formatting, strict Clippy and all nine release-helper tests
+  passed on Windows; strict Clippy and seven unit tests passed on WSL Linux.
+  The WSL publisher shell acceptance requires jq, absent from that environment;
+  the unchanged publisher acceptance passed on Windows and hosted Ubuntu.

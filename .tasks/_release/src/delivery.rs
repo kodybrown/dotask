@@ -443,6 +443,7 @@ pub fn build(output: &Path, source: &Path, tools: &Path, result_file: Option<&Pa
       fs::metadata(stage.join("dotask"))?.permissions().mode() & 0o111 != 0,
       "Missing executable permission"
     );
+    let glibc_version = Regex::new(r"GLIBC_(\d+)\.(\d+)")?;
     for executable in ["dotask", "dotask-doinstall-create-installer"] {
       ensure!(
         fs::metadata(stage.join(executable))?.permissions().mode() & 0o111 != 0,
@@ -450,7 +451,7 @@ pub fn build(output: &Path, source: &Path, tools: &Path, result_file: Option<&Pa
       );
       let bytes = fs::read(stage.join(executable))?;
       let text = String::from_utf8_lossy(&bytes);
-      let versions: Vec<(u32, u32)> = Regex::new(r"GLIBC_(\d+)\.(\d+)")?
+      let versions: Vec<(u32, u32)> = glibc_version
         .captures_iter(&text)
         .map(|c| (c[1].parse().unwrap(), c[2].parse().unwrap()))
         .collect();
