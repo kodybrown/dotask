@@ -1191,3 +1191,17 @@ acceptance, installation, and publication.
 - Verification: build.cmd test with prebuilt DoInstall tools passed the complete
   Windows native/Go gates, all 338 .NET tests, formatting, docs, catalog and
   whitespace checks. No application version was changed or published.
+
+### 2026-10-27 Utah calendar versions for .NET projects
+
+- Changed the shared .NET version task to major.minor.yyMM.ddHH in America/Denver
+  with 24-hour time and DST, independent of the execution machine's timezone.
+  Default/explicit refresh retains major/minor; optional minor/major increments
+  keep the calendar suffix. Three-part numeric versions migrate on explicit use;
+  same-hour refreshes are no-ops, including the repeated autumn DST hour.
+- Kept encoding/BOM/EOL preservation, validation and no-build/no-Git boundaries.
+  Added deterministic Utah DST, leap-day/year-boundary and increment regressions,
+  and executable calendar-migration and repeated-refresh coverage.
+- Verification: all 22 focused calendar/shared-task cases and the complete
+  build.cmd test gate passed, including 350 .NET tests, native/Go acceptance,
+  formatting, documentation, catalog and whitespace on Windows x64.

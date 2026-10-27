@@ -567,7 +567,7 @@ The [official catalog sources](../shared-tasks/) provide reusable examples:
 | `_/doinstall/assemble.task` | Directly invokes a separately supplied builder/runtime pair with resolved configuration and payload; no language toolchain |
 | `_/doinstall/uninstall` | Runs the retained engine without rebuilding the application |
 | `_/dotnet/pack`    | `settings.project`; builds local NuGet packages; no upload                                      |
-| `_/dotnet/update-version.cs` | Explicit patch/minor/major preparation for one .NET project; preserves encoding and never builds or invokes Git |
+| `_/dotnet/update-version.cs` | Utah-time major.minor.yyMM.ddHH preparation for one .NET project; preserves encoding and never builds or invokes Git |
 | `_/git/check`      | Checks Git availability; optional `--whitespace` checks staged/unstaged diffs                    |
 
 `install` requires no creation-task convention. Configure `settings.installer.installer_file`

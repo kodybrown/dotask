@@ -87,11 +87,11 @@ public sealed class SharedDotNetTaskTests
 
 
   [Theory]
-  [InlineData("", "1.2.4", false)]
-  [InlineData("--increment", "1.2.4", true)]
-  [InlineData("--increment-minor", "1.3.0", false)]
-  [InlineData("--increment-major", "2.0.0", true)]
-  public async Task UpdateVersionPreservesBytesAndNeverBuilds( string option, string expected, bool utf16 )
+  [InlineData("", false)]
+  [InlineData("--increment", true)]
+  [InlineData("--increment-minor", false)]
+  [InlineData("--increment-major", true)]
+  public async Task UpdateVersionPreservesBytesAndNeverBuilds( string option, bool utf16 )
   {
     using var project = new TestProject();
     CopyShared(project, "dotnet/update-version.cs", ".tasks");
@@ -104,17 +104,36 @@ public sealed class SharedDotNetTaskTests
     var lockFile = project.Write("source path/packages.lock.json", "{ \"version\": 1 }");
     var lockBytes = File.ReadAllBytes(lockFile);
     string[] command = option.Length == 0 ? ["dotnet/update-version"] : ["dotnet/update-version", option];
+    var beforePreview = DateTimeOffset.UtcNow;
     var preview = await project.RunAsync([.. command, "--dry-run"]);
     Assert.True(preview.ExitCode == 0, preview.StandardError);
     Assert.Equal(original, File.ReadAllBytes(manifest));
-    Assert.Contains("1.2.3 -> " + expected, preview.StandardOutput);
+    var previewExpected = DoTask.Shared.DotNet.CalendarVersion.Create(1, 2,
+      option == "--increment-minor", option == "--increment-major", beforePreview);
+    var previewAfter = DoTask.Shared.DotNet.CalendarVersion.Create(1, 2,
+      option == "--increment-minor", option == "--increment-major", DateTimeOffset.UtcNow);
+    Assert.True(preview.StandardOutput.Contains("1.2.3 -> " + previewExpected, StringComparison.Ordinal)
+      || preview.StandardOutput.Contains("1.2.3 -> " + previewAfter, StringComparison.Ordinal), preview.StandardOutput);
+    var beforeWrite = DateTimeOffset.UtcNow;
     var result = await project.RunAsync(command);
     Assert.True(result.ExitCode == 0, result.StandardError);
+    var expected = System.Xml.Linq.XDocument.Load(manifest).Descendants("Version").Single().Value;
+    Assert.Contains(expected, new[] {
+      DoTask.Shared.DotNet.CalendarVersion.Create(1, 2, option == "--increment-minor", option == "--increment-major", beforeWrite),
+      DoTask.Shared.DotNet.CalendarVersion.Create(1, 2, option == "--increment-minor", option == "--increment-major", DateTimeOffset.UtcNow)
+    });
     var expectedBytes = encoding.GetPreamble().Concat(encoding.GetBytes(source.Replace("1.2.3", expected, StringComparison.Ordinal))).ToArray();
     Assert.Equal(expectedBytes, File.ReadAllBytes(manifest));
     Assert.Equal(lockBytes, File.ReadAllBytes(lockFile));
     Assert.False(Directory.Exists(Path.Combine(project.Root, "bin")));
     Assert.False(Directory.Exists(Path.Combine(project.Root, "obj")));
+    var stableBytes = File.ReadAllBytes(manifest);
+    var refresh = await project.RunAsync("dotnet/update-version");
+    Assert.True(refresh.ExitCode == 0, refresh.StandardError);
+    // For the same Utah hour, refreshing a four-component version is a byte no-op.
+    var refreshed = System.Xml.Linq.XDocument.Load(manifest).Descendants("Version").Single().Value;
+    if (refreshed == expected)
+      Assert.Equal(stableBytes, File.ReadAllBytes(manifest));
   }
 
   [Theory]
@@ -122,7 +141,7 @@ public sealed class SharedDotNetTaskTests
   [InlineData("<Version>1.2.3</Version><Version>1.2.4</Version>")]
   [InlineData("<VersionPrefix>1.2.3</VersionPrefix>")]
   [InlineData("<Version>$(InheritedVersion)</Version>")]
-  [InlineData("<Version>1.2.65534</Version>")]
+  [InlineData("<Version>1.2.65535</Version>")]
   public async Task UpdateVersionRejectsAmbiguousInheritedOrOverflowWithoutWriting( string definition )
   {
     using var project = new TestProject();
@@ -151,5 +170,7 @@ public sealed class SharedDotNetTaskTests
     using var stream = typeof(SharedDotNetTaskTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;
     using var reader = new StreamReader(stream);
     project.Write(directory + "/_/" + relative, reader.ReadToEnd());
+    if (relative == "dotnet/update-version.cs")
+      CopyShared(project, "dotnet/_support/CalendarVersion.cs", directory);
   }
 }

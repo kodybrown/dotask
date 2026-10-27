@@ -67,13 +67,18 @@ Extra product checks, packaging and release triggers remain project policy.
 See the [Rust group contract](../shared-tasks/rust/README.md).
 
 For .NET version preparation, install
-`dotnet/update-version.cs` and delegate through a thin project wrapper. It uses
-`--project` or `settings.project`, increments patch by default, accepts explicit
-`--increment`, `--increment-minor`, `--increment-major`, and `--dry-run`, and
+`dotnet/update-version.cs` and configure `settings.project` (or pass `--project`).
+With no local task, the short `dotask update-version` resolves to the shared task.
+It writes `major.minor.yyMM.ddHH` in Utah's America/Denver timezone (24-hour,
+DST-aware). Default/`--increment` refresh the date/hour; `--increment-minor`
+increments minor and `--increment-major` increments major and resets minor.
+`--dry-run` reports without writing. Same-hour refresh is a no-op, including
+the repeated autumn hour; no artificial counter or timezone offset is added. It
 preserves encoding/BOM, comments and line endings. It refuses ambiguous,
 conditional or inherited Version definitions and .NET component overflow.
 It does not build, restore, invoke Git, or change NuGet dependency lockfiles
 (which do not contain the root application version).
+Three-component numeric versions can be migrated; output always has four fields.
 
 For basic external commands, prefer declarative `.task` process steps rather than
 requiring an unrelated language toolchain. Use `exec: {executable: ..., arguments:
