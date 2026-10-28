@@ -104,6 +104,7 @@ func (c *BuildContext) text(key string) string {
 	_ = json.Unmarshal(c.data[key], &value)
 	return value
 }
+func (c *BuildContext) CLIExecutable() string { return c.text("CliExecutable") }
 func (c *BuildContext) Root() string          { return c.text("RootDirectory") }
 func (c *BuildContext) TaskDirectory() string { return c.text("TaskDirectory") }
 func (c *BuildContext) Invocation() string    { return c.text("InvocationDirectory") }

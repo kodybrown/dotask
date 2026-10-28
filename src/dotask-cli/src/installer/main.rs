@@ -8,6 +8,15 @@ use std::{
   path::{Component, Path, PathBuf},
 };
 fn main() {
+  let arguments: Vec<_> = std::env::args_os().skip(1).collect();
+  if arguments == ["--capabilities"] {
+    println!("{}", json!({"Schema":1,"InputPayload":1}));
+    return;
+  }
+  if !arguments.is_empty() {
+    eprintln!("Unsupported installer helper arguments. Use --capabilities or invoke through dotask.");
+    std::process::exit(2);
+  }
   dotask_sdk::run(task);
 }
 fn task(project: &BuildContext) -> Result<()> {
@@ -151,6 +160,19 @@ fn task(project: &BuildContext) -> Result<()> {
     ("build-info".into(), json!(serde_json::to_string(&build)?)),
     ("exe-extension".into(), json!(if cfg!(windows) { ".exe" } else { "" })),
   ]);
+  if let Ok(input) = project.string("input-payload") {
+    if input.trim().is_empty() {
+      dotask_sdk::bail!("input-payload must name a nonempty prepared payload directory");
+    }
+    let input = fs::canonicalize(project.path(input)).context("Prepared input payload is unavailable")?;
+    if !input.is_dir() {
+      dotask_sdk::bail!("Prepared input payload must be a directory");
+    }
+    // Keep the source-only recipe authoritative for payload selection. The
+    // language creator builds privately; ordinary gather steps copy only the
+    // declared files through the existing no-links and collision checks.
+    variables.insert("input-payload".into(), json!(input));
+  }
   settings("settings", project.settings(), &mut variables);
   // Tool selection belongs to this optional adapter, never to the native CLI.
   // Explicit paths select custom/target tools. Otherwise ask the selected native

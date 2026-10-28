@@ -490,7 +490,7 @@ func main(){if !reflect.DeepEqual(os.Args[1:],[]string{"--version","argument spa
   f.write("docs/notice.txt", "payload 日本語\n");
   f.write(".gostatic", "site-owned and excluded");
   let recipe = json!({"schema":1,"application":{"id":"go-widget","name":"Go widget"},"runtime":{"interactive":false,"commands":[{"name":"widget","executable":executable}]},"build-steps":[
-    {"run":"_/go/stage-installer.go","with":{"stage-dir":"${staging}/app","app-version":"${version}"},"gather":[{"from":"${staging}/app","files":[executable,"docs/notice.txt"]}]},
+    {"gather":[{"from":"${input-payload}","files":[executable,"docs/notice.txt"]}]},
     {"run":"_/doinstall/assemble-self-extracting.task","with":{"builder":"${builder}","installer":"${installer}","launcher-template":"${launcher-template}","config":"${config}","output":"${package}","result-file":"${result-file}"}}
   ]});
   f.write("installer.yaml", &recipe.to_string());
@@ -657,38 +657,16 @@ func main(){if os.Getenv("ACCEPTANCE_HANG")!="1"{os.Exit(23)};if len(os.Args)>1 
   assert_eq!(fs::read_to_string(f.root.join("go.mod")).unwrap(), module);
   assert_eq!(fs::read_to_string(f.root.join("cmd/widget/version.go")).unwrap(), version);
   assert!(!f.root.join("go.sum").exists());
-  let external = f._temporary.path().join("stage 日本語");
-  let stage = external.to_str().unwrap();
-  let failed = f.run(&[
-    "_/go/stage-installer.go",
-    "--stage-dir",
-    stage,
-    "--app-version",
-    "wrong",
-  ]);
+  assert!(!f.root.join(".tasks/_/go/stage-installer.go").exists());
+  // All preparation failures now come from create-installer itself. No public
+  // staging endpoint or consumer callback is needed by the packaging recipe.
+  let mut wrong_version = settings.clone();
+  wrong_version["settings"]["go"]["version-output"] = json!("wrong {version}");
+  f.write(".dotasks.yaml", &wrong_version.to_string());
+  let failed = f.run(&["_/go/create-installer.go"]);
   assert!(!failed.status.success());
   assert!(String::from_utf8_lossy(&failed.stderr).contains("version does not match"));
-  assert!(!external.join("docs/notice.txt").exists());
-  let failed = f.run(&[
-    "_/go/stage-installer.go",
-    "--stage-dir",
-    stage,
-    "--app-version",
-    "2.3.4",
-  ]);
-  assert!(!failed.status.success());
-  assert!(String::from_utf8_lossy(&failed.stderr).contains("must be fresh"));
-  let local = f.root.join("source-stage");
-  let failed = f.run(&[
-    "_/go/stage-installer.go",
-    "--stage-dir",
-    local.to_str().unwrap(),
-    "--app-version",
-    "2.3.4",
-  ]);
-  assert!(!failed.status.success());
-  assert!(String::from_utf8_lossy(&failed.stderr).contains("outside the project"));
-  assert!(!local.exists());
+  f.write(".dotasks.yaml", &settings.to_string());
   f.write(
     "cmd/widget/version.go",
     "package main\nvar Version = \"v2.3.4\" + \"computed\"\n",
@@ -700,38 +678,66 @@ func main(){if os.Getenv("ACCEPTANCE_HANG")!="1"{os.Exit(23)};if len(os.Args)>1 
   let mut traversal = settings.clone();
   traversal["settings"]["go"]["installer-files"] = json!(["../outside.txt"]);
   f.write(".dotasks.yaml", &traversal.to_string());
-  let fresh = f._temporary.path().join("fresh-stage");
-  let failed = f.run(&[
-    "_/go/stage-installer.go",
-    "--stage-dir",
-    fresh.to_str().unwrap(),
-    "--app-version",
-    "2.3.4",
-  ]);
+  let failed = f.run(&["_/go/create-installer.go"]);
   assert!(!failed.status.success());
   assert!(String::from_utf8_lossy(&failed.stderr).contains("must stay beneath"));
-  assert!(!fresh.exists());
   let mut bad_arguments = settings.clone();
   bad_arguments["settings"]["go"]["version-arguments"] = json!([]);
   f.write(".dotasks.yaml", &bad_arguments.to_string());
-  let failed = f.run(&[
-    "_/go/stage-installer.go",
-    "--stage-dir",
-    fresh.to_str().unwrap(),
-    "--app-version",
-    "2.3.4",
-  ]);
+  let failed = f.run(&["_/go/create-installer.go"]);
   assert_eq!(failed.status.code(), Some(37), "{}", String::from_utf8_lossy(&failed.stderr));
-  let newer = f._temporary.path().join("newer-toolchain-stage");
   f.write(".dotasks.yaml", &settings.to_string());
+  let helper = f
+    .dist
+    .join(format!("dotask-doinstall-create-installer{}", std::env::consts::EXE_SUFFIX));
+  let original_helper = fs::read(&helper).unwrap();
+  let probe_source = f._temporary.path().join("old-helper.go");
+  fs::write(&probe_source,r#"package main
+import("os")
+func main(){if os.Getenv("DOTASK_EXECUTION_CONTEXT")!=""{os.WriteFile(os.Getenv("UNSAFE_HELPER_PROBE"),[]byte("executed"),0600)};os.Exit(1)}
+"#).unwrap();
+  let old_helper = f._temporary.path().join(format!("old-helper{}", std::env::consts::EXE_SUFFIX));
+  success(
+    Command::new(compiler().join(format!("go{}", std::env::consts::EXE_SUFFIX)))
+      .args(["build", "-o"])
+      .arg(&old_helper)
+      .arg(probe_source)
+      .env("GO111MODULE", "off")
+      .env("GOTOOLCHAIN", "local")
+      .env("GOENV", "off")
+      .env("GOWORK", "off")
+      .env("CGO_ENABLED", "0")
+      .output()
+      .unwrap(),
+  );
+  fs::copy(old_helper, &helper).unwrap();
+  let probe_marker = f.root.join("unsafe-helper-probe");
+  let failed = f
+    .command(&["_/go/create-installer.go"])
+    .env("UNSAFE_HELPER_PROBE", &probe_marker)
+    .output()
+    .unwrap();
+  assert!(!failed.status.success());
+  assert!(String::from_utf8_lossy(&failed.stderr).contains("no application build was started"));
+  assert!(
+    !probe_marker.exists(),
+    "an old helper received task context during capability probing"
+  );
+  fs::write(&helper, original_helper).unwrap();
+  let sdk_context = f.dist.join("sdk/go/context.go");
+  let original_sdk = fs::read_to_string(&sdk_context).unwrap();
+  let old_sdk = original_sdk
+    .lines()
+    .filter(|line| !line.contains("func (c *BuildContext) CLIExecutable()"))
+    .collect::<Vec<_>>()
+    .join("\n");
+  fs::write(&sdk_context, old_sdk).unwrap();
+  let failed = f.run(&["_/go/create-installer.go"]);
+  assert!(!failed.status.success());
+  assert!(String::from_utf8_lossy(&failed.stderr).contains("requires an updated bundled Go SDK"));
+  fs::write(&sdk_context, original_sdk).unwrap();
   f.write("go.mod", "module example.invalid/widget\n\ngo 99.0.0\n");
-  let failed = f.run(&[
-    "_/go/stage-installer.go",
-    "--stage-dir",
-    newer.to_str().unwrap(),
-    "--app-version",
-    "2.3.4",
-  ]);
+  let failed = f.run(&["_/go/create-installer.go"]);
   assert!(!failed.status.success());
   assert!(String::from_utf8_lossy(&failed.stderr).contains("GOTOOLCHAIN=local"));
   assert!(!String::from_utf8_lossy(&failed.stderr).contains("downloading go"));
@@ -815,4 +821,24 @@ fn shared_go_version_preparation_preserves_source_bytes_without_other_toolchains
       .count(),
     0
   );
+}
+
+#[test]
+fn native_installer_helper_reports_payload_capability_without_task_context() {
+  let executable = env!("CARGO_BIN_EXE_dotask-doinstall-create-installer");
+  let result = success(
+    Command::new(executable)
+      .arg("--capabilities")
+      .env_remove("DOTASK_EXECUTION_CONTEXT")
+      .output()
+      .unwrap(),
+  );
+  let capability: Value = serde_json::from_slice(&result.stdout).unwrap();
+  assert_eq!(capability, json!({"Schema":1,"InputPayload":1}));
+  let rejected = Command::new(executable)
+    .arg("--unknown")
+    .env_remove("DOTASK_EXECUTION_CONTEXT")
+    .output()
+    .unwrap();
+  assert_eq!(rejected.status.code(), Some(2));
 }

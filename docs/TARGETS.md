@@ -189,7 +189,7 @@ build settings. Per-snapshot locks serialize concurrent builds; binaries are
 published only after success. Failed/cancelled compilations can be retried.
 
 `BuildContext` provides `Root`, `TaskDirectory`, `Invocation`, `TaskFile`,
-`TaskName`, `OS`, `Architecture`, and a cancellation `Context`. `Path` resolves
+`TaskName`, `OS`, `Architecture`, `CLIExecutable`, and a cancellation `Context`. `Path` resolves
 explicitly portable paths; it rejects NUL and foreign Windows roots on Unix.
 `String`, `Bool`, `Int` (int64), `Number`, `Parameter`, and `Setting` read typed
 values. `ParameterAs[T]`/`SettingAs[T]` decode additional typed values without
@@ -222,7 +222,7 @@ requirements. No doinstall tools are bundled in dotask. See
 [installation](INSTALLATION.md#self-extracting-build-and-gather-workflow).
 
 The reusable [Go installer group](../shared-tasks/go/README.md) provides
-`go/create-installer.go`, `go/stage-installer.go` and Windows installer acceptance
+`go/create-installer.go` with internal build/verification/preparation and Windows installer acceptance
 through `go/test-installer.go`. Configure `settings.go`
 for the native package, executable, literal version source, expected version
 output and explicit payload files. Project wrappers delegate through the Go SDK;

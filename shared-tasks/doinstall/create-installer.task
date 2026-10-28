@@ -1,6 +1,7 @@
 description: Run configured build steps and gather files to create an application installer.
 options:
   - { name: config, type: path, description: Source installer YAML; otherwise installer.config. }
+  - { name: input-payload, type: path, description: "Verified payload source for '${input-payload}' gather steps; never builds it." }
   - { name: output, type: path, description: Package parent directory; otherwise installer.output. }
   - { name: app-version, description: Override the application version pattern. }
   - { name: build-stamp, description: Reproducible UTC YYDDD-HHMM build stamp. }

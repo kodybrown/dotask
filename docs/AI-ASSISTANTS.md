@@ -158,8 +158,11 @@ follow the [Go task contract](TARGETS.md#go-tasks). Never create a consumer
 `go.mod`/`go.sum` for dotask or run `go get` to obtain its SDK. Declare every local
 support file; use the precompiled shared installer creator for Go packaging.
 Use the [shared Go installer tasks](../shared-tasks/go/README.md) for configurable
-native test/vet/build, literal version lookup, exact payload staging and artifact
-return through the precompiled creator. Keep consumer wrappers thin.
+native test/vet/build, literal version lookup, exact private payload preparation
+and artifact return, all inside create-installer. There is no separate staging
+task. Its recipe gathers `${input-payload}` and then assembles. Use matching
+updated precompiled CLI/helper/Go SDK with InputPayload capability; leave consumer
+wrappers thin and never update an active installation implicitly.
 The same group provides Windows-only temporary-root `go/test-installer.go`
 acceptance without Rust/.NET. Its `test-installer` shortcut uses the last
 successful installer record when `--installer` is omitted (an explicit

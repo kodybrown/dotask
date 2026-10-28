@@ -193,6 +193,12 @@ relationship. Configure SDK file selections in `.tasks/sdks.yaml` for the reusab
 
 Available build values are `${staging}`, `${payload}`, `${config}`, `${package}`,
 `${version}`, `${build-info}`, `${exe-extension}`, `${result-file}`, and `${settings.NAME}`.
+The optional `--input-payload DIR` adds `${input-payload}` as an already verified
+source directory for gather steps. File selection remains in this YAML; the helper
+never builds the input or copies undeclared files. Shared Go create-installer uses
+this to own all language build/verification privately before packaging starts.
+The matching precompiled helper exposes `--capabilities` without task context;
+schema 1 / InputPayload 1 advertises this contract.
 The doinstall creator also supplies `${builder}` (the `--builder` option,
 `settings.doinstall.builder`, or `doinstall-builder` on PATH) and `${installer}`
 (the `--installer` option or `settings.doinstall.installer`, resolved from the

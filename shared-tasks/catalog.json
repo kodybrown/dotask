@@ -74,7 +74,7 @@
       "files": [
         {
           "path": "doinstall/create-installer.task",
-          "sha256": "2fb5df6e10690bae77212efc620c36e1237a62f352c8b0d3586190bf1a826cc6"
+          "sha256": "5c2661477f9bde05a6bbc8bd73acbb0abf1c475d2cabf7bb33837a4905071418"
         }
       ],
       "requires": []
@@ -261,40 +261,22 @@
     {
       "id": "go/create-installer",
       "entryPoint": "go/create-installer.go",
-      "description": "Read a Go application's version and create an installer using the precompiled native helper.",
+      "description": "Test, vet, build and verify a Go application, then create its installer with the precompiled native helper.",
       "runtime": "go",
       "files": [
         {
           "path": "go/_support/installer/installer.go",
-          "sha256": "78d14436c046dc4fc39b8a3abe325168aba383a23758c3fbaef3862ac9b6913a"
+          "sha256": "a2a2356295675f544818dfaba4fdd07a2b3a70ee2e39c3f27e5897fb011e2a9e"
         },
         {
           "path": "go/create-installer.go",
-          "sha256": "b316ba56b359918ac383417a7615192d1d31c0ac4c29e7ed7813a193b0d4bf93"
+          "sha256": "84a8b1598d2c5b9a4a0886c8d8665f7d1f87471121a459711f6a91395b6a012e"
         }
       ],
       "requires": [
-        "go/stage-installer.go",
         "doinstall/create-installer.task",
         "doinstall/assemble-self-extracting.task"
       ]
-    },
-    {
-      "id": "go/stage-installer",
-      "entryPoint": "go/stage-installer.go",
-      "description": "Test, vet, build and verify a native Go application's exact installer payload outside source.",
-      "runtime": "go",
-      "files": [
-        {
-          "path": "go/_support/installer/installer.go",
-          "sha256": "78d14436c046dc4fc39b8a3abe325168aba383a23758c3fbaef3862ac9b6913a"
-        },
-        {
-          "path": "go/stage-installer.go",
-          "sha256": "96a4509e16e03fc4a4fed98b1e0002cf6a67ced6cd89793ee171c838e61b7e49"
-        }
-      ],
-      "requires": []
     },
     {
       "id": "go/test-installer",
@@ -316,7 +298,7 @@
         },
         {
           "path": "go/_support/installer/installer.go",
-          "sha256": "78d14436c046dc4fc39b8a3abe325168aba383a23758c3fbaef3862ac9b6913a"
+          "sha256": "a2a2356295675f544818dfaba4fdd07a2b3a70ee2e39c3f27e5897fb011e2a9e"
         },
         {
           "path": "go/test-installer.go",

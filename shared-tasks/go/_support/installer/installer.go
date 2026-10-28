@@ -4,6 +4,7 @@ package installer
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -125,7 +126,37 @@ func Create(c *dotask.BuildContext) error {
 	if err != nil {
 		return err
 	}
-	parameters := map[string]any{"app-version": value}
+	if err = checkHelper(c); err != nil {
+		return err
+	}
+	temporary, err := filepath.EvalSymlinks(os.TempDir())
+	if err != nil {
+		return err
+	}
+	preparation, err := os.MkdirTemp(temporary, "dotask-go-installer-*")
+	if err != nil {
+		return err
+	}
+	completed := false
+	defer func() {
+		if !completed {
+			fmt.Fprintln(os.Stderr, "Installer preparation retained:", preparation)
+			return
+		}
+		// Only delete the private immediate child created above; resolve its final
+		// identity again rather than trusting a caller-supplied or mutable path.
+		resolved, err := filepath.EvalSymlinks(preparation)
+		if err == nil && filepath.Dir(resolved) == temporary && strings.HasPrefix(filepath.Base(resolved), "dotask-go-installer-") {
+			if err = os.RemoveAll(resolved); err != nil {
+				fmt.Fprintln(os.Stderr, "Installer preparation cleanup:", err)
+			}
+		}
+	}()
+	payload := filepath.Join(preparation, "app")
+	if err = preparePayload(c, s, payload, value); err != nil {
+		return err
+	}
+	parameters := map[string]any{"app-version": value, "input-payload": payload}
 	for _, option := range []string{"output", "builder", "installer", "launcher-template"} {
 		raw, exists := c.Parameter(option)
 		if exists != nil {
@@ -149,8 +180,12 @@ func Create(c *dotask.BuildContext) error {
 	if err != nil {
 		return err
 	}
+	if err = c.SetInstallerResult(artifact); err != nil {
+		return err
+	}
+	completed = true
 	fmt.Println("Installer created:", artifact.FilePath)
-	return c.SetInstallerResult(artifact)
+	return nil
 }
 
 func relativeFile(name string) error {
@@ -206,19 +241,8 @@ func goCommand(c *dotask.BuildContext, args ...string) *exec.Cmd {
 	return command
 }
 
-func Stage(c *dotask.BuildContext) error {
-	s, err := config(c)
-	if err != nil {
-		return err
-	}
-	raw, err := c.String("stage-dir")
-	if err != nil {
-		return err
-	}
-	stage, err := c.Path(raw)
-	if err != nil {
-		return err
-	}
+func preparePayload(c *dotask.BuildContext, s settings, stage, value string) error {
+	var err error
 	// Resolve the existing parent so a source-local symlink cannot redirect an
 	// apparently external staging directory back into the consumer checkout.
 	parent, err := filepath.EvalSymlinks(filepath.Dir(stage))
@@ -236,10 +260,6 @@ func Stage(c *dotask.BuildContext) error {
 	}
 	if _, err = os.Lstat(stage); !os.IsNotExist(err) {
 		return fmt.Errorf("installer staging directory must be fresh: %s", stage)
-	}
-	value, err := c.String("app-version")
-	if err != nil {
-		return err
 	}
 	if strings.TrimSpace(value) == "" {
 		return errors.New("app-version cannot be empty")
@@ -332,4 +352,31 @@ func copyFile(source, destination string) error {
 		return err
 	}
 	return closeErr
+}
+
+func checkHelper(c *dotask.BuildContext) error {
+	executable, ok := any(c).(interface{ CLIExecutable() string })
+	if !ok {
+		return errors.New("Go installer creation requires an updated bundled Go SDK and matching precompiled helper with input-payload support; no application build was started")
+	}
+	helper := filepath.Join(filepath.Dir(executable.CLIExecutable()), "dotask-doinstall-create-installer")
+	if runtime.GOOS == "windows" {
+		helper += ".exe"
+	}
+	command := c.Command(helper, "--capabilities")
+	// Older helpers ignore arguments. Remove task context so probing one can
+	// never accidentally execute the project's installer recipe.
+	command.Env = []string{}
+	for _, entry := range os.Environ() {
+		name, _, _ := strings.Cut(entry, "=")
+		if !strings.EqualFold(name, "DOTASK_EXECUTION_CONTEXT") {
+			command.Env = append(command.Env, entry)
+		}
+	}
+	output, err := c.Capture(command)
+	var capability struct{ Schema, InputPayload int }
+	if err != nil || json.Unmarshal([]byte(output), &capability) != nil || capability.Schema != 1 || capability.InputPayload != 1 {
+		return errors.New("Go installer creation requires matching updated precompiled dotask/helper and bundled Go SDK with input-payload support; no application build was started")
+	}
+	return nil
 }

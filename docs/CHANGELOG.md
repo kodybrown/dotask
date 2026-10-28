@@ -1368,3 +1368,26 @@ acceptance, installation, and publication.
   refusal and explicit overrides without record mutation. The real consumer
   no-argument workflow also passed with Rust/Cargo/.NET blocked; YAML and record
   hashes remained unchanged. Linux/macOS acceptance remains unsupported.
+
+### 2026-10-27 Integrate Go payload preparation into installer creation
+
+- Make the shared Go creator own test/vet/build, private-path/version checks and
+  exact private payload preparation before invoking the precompiled helper.
+  Remove the public Go stage-installer entry and dependency; keep project
+  creators thin and source YAML authoritative for gathered file selection.
+- Add optional input-payload / ${input-payload} handoff and context-free helper
+  capability reporting. Probe the actual CLI's sibling helper safely without
+  task context, rejecting old SDK/helper combinations before application builds.
+  Expose CLIExecutable in the bundled Go SDK; keep compilation and payloads
+  outside consumer source and preserve successful artifact recording semantics.
+- Update managed-consumer fixtures for a gather/assembly-only recipe, preparation
+  failures, original exit codes, old SDK/helper refusal and read-only probes.
+  Document the updated precompiled bundle requirement without updating any
+  active installation.
+- Verification: the complete Windows x64 build.cmd test gate passed, including
+  383 .NET tests with zero failures/skips, native/Rust/Go and shared support
+  checks, both prebuilt-tool installer fixtures, strict lint/format, docs,
+  catalog freshness and whitespace. The actual consumer also passed integrated
+  creation and recorded-artifact acceptance with Rust/Cargo/.NET blocked using
+  a matching precompiled preview bundle. Managed copies match canonical sources;
+  evaluated Cargo/.NET outputs remain external. Linux/macOS acceptance was not run.
