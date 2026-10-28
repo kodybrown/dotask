@@ -1281,3 +1281,28 @@ acceptance, installation, and publication.
   pinned-tool installer acceptance, publisher simulation, strict lint/format,
   documentation, catalogue freshness and Git whitespace. Linux/macOS runtime
   acceptance was not performed. Evaluated outputs remain external.
+
+### 2026-10-27 Make native path fixtures reflect macOS filesystem rules
+
+- Resolve the system temporary parent before no-links file-action tests, keeping
+  fixture-created links subject to the unchanged runtime refusal checks.
+- Always test Unicode canonical-name preservation through a command alias, and
+  retain invalid-byte preservation on supporting filesystems. Accept only Apple's
+  specific EILSEQ rejection when an invalid UTF-8 fixture name cannot be created;
+  other fixture errors still fail. No runtime guard or macOS gate is relaxed.
+- Verification: complete Windows build.cmd test passed with all 352 .NET tests,
+  native/Rust/Go and pinned-tool installer acceptance, publisher simulation,
+  lint/format, documentation, catalog freshness and whitespace. Native Linux
+  fixture/declarative/HTTP checks, strict Clippy and linked-temp simulation passed.
+
+### 2026-10-27 Limit release CI to Windows and Linux
+
+- Remove the macOS job and its collection/publication dependency, as requested.
+  Keep both Windows/Linux verification, native packaging and temporary installer
+  acceptance gates, pinned tools, checksums and exact-source publication intact.
+- Add a workflow regression requiring only the Windows/Linux native matrix and
+  no macOS job; update current release, installation and authoring guidance.
+  Preview-version work on develop remains excluded from 0.1.4.
+- Verification: all nine release-driver/publisher tests, Rust formatting,
+  build.cmd verify-docs and whitespace checks passed. Application runtime and
+  pinned Windows/Linux tool inputs are unchanged from the passing native gates.

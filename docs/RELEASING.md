@@ -33,14 +33,9 @@ assembly rejects another baseline or ELF requirements newer than glibc 2.35.
 The tar archive preserves executable modes, with normalized owner IDs/times.
 Consumers need Rust/Cargo 1.95+ for Rust tasks, .NET SDK 10.0.300+ for C# tasks,
 and an installed stable Go 1.22+ compiler for Go tasks;
-metadata and YAML-only tasks need neither. macOS retains a separate verification
-gate and does not publish a native bundle yet.
-Its existing explicit-source installer workflow remains available and creates a
-development self-extracting installer after the full gate, without release assets.
-The macOS development source is pinned to DoInstall commit
-`9dd2e27e2c9af46208e804e2d33b2472faf0de38`, including the Unix command-link
-sibling-tool discovery and macOS PTY test portability fixes. It does not change
-the published Windows/Linux tools pin.
+metadata and YAML-only tasks need neither. CI and native release publication
+target Windows x64 and Linux x64 only. There is no macOS job, release gate or
+published macOS bundle.
 
 [The reviewed doinstall pin](../.tasks/_release/doinstall.json) is v0.1.1, source
 commit `208b9a915db1efe1404b421d9070c534aec8bafb`:
@@ -55,8 +50,7 @@ expected hash **before extracting or executing**, and compares the tools to
 the archive again before packaging. Keep the verified archive beside `tools/`.
 No `latest` resolution or doinstall source build is used for release platforms.
 To update the pin, review the published release and both archives, replace the
-version/commit/hashes together, then rerun both native gates. The macOS-only
-source pin must be reviewed separately until a macOS bundle is published.
+version/commit/hashes together, then rerun both native gates.
 
 ## Local review and release procedure
 
