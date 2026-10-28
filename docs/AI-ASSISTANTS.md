@@ -230,6 +230,13 @@ rules remain separate entries. Use `dotask help TARGET` for the exact target's
 description and effective default.
 Help wraps at console widths of at least 60 columns, with aligned continuation
 lines; narrower/unknown widths and redirected stdout are left unwrapped.
+Summary targets are grouped with root tasks under `Project:` first, then
+alphabetical path headings without blank lines between groups. Task labels are
+relative to their heading; use `group/task` when a project task takes precedence
+or a short name is ambiguous. Unique short names still work. Source prefixes and
+implementation extensions remain visible where needed to distinguish tasks.
+Descriptions share a name column capped at 24 characters; longer task names put
+their description on the next line even when stdout is redirected.
 Target help has labeled sections and a `Source:` line beneath the target
 description. Its path is relative to the selected project root and uses the actual
 task filename, including any grouping space;

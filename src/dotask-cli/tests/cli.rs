@@ -81,6 +81,113 @@ fn in_project(root: &std::path::Path, args: &[&str]) -> Output {
 }
 
 #[test]
+fn summary_groups_paths_and_aligns_descriptions_without_changing_resolution() {
+  let root = tempfile::tempdir().unwrap();
+  let long = "a-task-name-that-is-far-longer-than-twenty-four-characters";
+  for (name, description) in [
+    ("zebra", "Last project task"),
+    ("build", "Project build"),
+    (long, "Long task description"),
+    ("_/rust/build", "Shared build"),
+    ("_/archive/zip", "Archive files"),
+    ("release/windows/package", "Nested project task"),
+  ] {
+    let path = root.path().join(format!(".tasks/{name}.task"));
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, format!("description: {description}\nsteps: []\n")).unwrap();
+  }
+  for args in [&[][..], &["help"], &["--verbose"], &["help", "--verbose"]] {
+    let output = in_project(root.path(), args);
+    assert!(output.status.success(), "{output:?}");
+    assert!(output.stderr.is_empty(), "{output:?}");
+    let text = String::from_utf8(output.stdout).unwrap().replace("\r\n", "\n");
+    let expected = format!(
+      "Targets:\n  Project:\n    {long}\n{}Long task description\n    {:24}  Project build\n    {:24}  Last project task\n  archive/\n    {:24}  Archive files\n  release/windows/\n    {:24}  Nested project task\n  rust/\n    {:24}  Shared build\n",
+      " ".repeat(30), "build", "zebra", "zip", "package", "build"
+    );
+    assert!(text.contains(&expected), "{text}");
+    assert!(
+      text.contains("The prefix is only needed when a project task takes precedence or the short name is ambiguous."),
+      "{text}"
+    );
+  }
+  for (name, description) in [
+    ("build", "Project build"),
+    ("rust/build", "Shared build"),
+    ("zip", "Archive files"),
+  ] {
+    let output = in_project(root.path(), &["help", name]);
+    assert!(output.status.success(), "{output:?}");
+    assert!(String::from_utf8_lossy(&output.stdout).contains(description), "{output:?}");
+  }
+}
+
+#[test]
+fn summary_preserves_source_collisions_nested_paths_and_implementation_extensions() {
+  let root = tempfile::tempdir().unwrap();
+  for name in [
+    "_/tools/check",
+    "_/tools/other",
+    "tools/check",
+    "_/release/windows/package",
+  ] {
+    let path = root.path().join(format!(".tasks/{name}.task"));
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(path, "steps: []\n").unwrap();
+  }
+  for extension in ["rs", "go"] {
+    std::fs::write(root.path().join(format!(".tasks/tools/probe.{extension}")), "invalid source").unwrap();
+  }
+  let output = in_project(root.path(), &[]);
+  assert!(output.status.success(), "{output:?}");
+  let text = String::from_utf8(output.stdout).unwrap().replace("\r\n", "\n");
+  let headings: Vec<_> = text
+    .lines()
+    .filter(|line| line.starts_with("  ") && !line.starts_with("    "))
+    .collect();
+  assert_eq!(headings, ["  _/release/windows/", "  _/tools/", "  tools/"]);
+  assert!(text.contains("    probe.go"), "{text}");
+  assert!(text.contains("    probe.rs"), "{text}");
+  for name in [
+    "_/tools/check",
+    "_/tools/other",
+    "tools/check",
+    "_/release/windows/package",
+    "tools/probe.go",
+    "tools/probe.rs",
+  ] {
+    let output = in_project(root.path(), &["help", name]);
+    assert!(output.status.success(), "{output:?}");
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("Ambiguous"), "{output:?}");
+  }
+}
+
+#[test]
+fn summary_grows_only_to_the_longest_name_and_keeps_empty_projects_clear() {
+  let root = tempfile::tempdir().unwrap();
+  std::fs::create_dir_all(root.path().join(".tasks/_/tools")).unwrap();
+  let output = in_project(root.path(), &[]);
+  let text = String::from_utf8(output.stdout).unwrap().replace("\r\n", "\n");
+  assert!(text.contains("Targets:\n  (no targets)\n"), "{text}");
+  assert!(!text.contains("Project:") && !text.contains("group/task"), "{text}");
+  for name in ["a", "longest"] {
+    std::fs::write(
+      root.path().join(format!(".tasks/_/tools/{name}.task")),
+      "description: Description\nsteps: []\n",
+    )
+    .unwrap();
+  }
+  let output = in_project(root.path(), &[]);
+  assert!(output.status.success(), "{output:?}");
+  let text = String::from_utf8(output.stdout).unwrap().replace("\r\n", "\n");
+  assert!(
+    text.contains("Targets:\n  tools/\n    a        Description\n    longest  Description\n"),
+    "{text}"
+  );
+  assert!(!text.contains("Project:"), "{text}");
+}
+
+#[test]
 fn verbose_help_displays_shared_and_target_settings_without_a_toolchain() {
   let root = tempfile::tempdir().unwrap();
   std::fs::create_dir_all(root.path().join(".tasks/_/tools")).unwrap();

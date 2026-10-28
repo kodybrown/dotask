@@ -5,6 +5,10 @@ use crate::{
 use serde_json::Value;
 use std::{io::IsTerminal, path::Path};
 
+// Grow with the catalog, but keep one unusually long task from pushing every
+// description across the console. Longer labels get their own line.
+const TARGET_NAME_MAX_WIDTH: usize = 24;
+
 pub(crate) struct Text {
   width: Option<usize>,
 }
@@ -151,7 +155,26 @@ pub(crate) fn project(catalog: &Catalog, directory: &Directory, verbose: bool) {
     out.line("", 0);
   }
   out.line("Targets:", 0);
-  for target in &catalog.targets {
+  let rows = target_rows(catalog);
+  let width = rows
+    .iter()
+    .map(|(_, _, name)| name.chars().count())
+    .max()
+    .unwrap_or(0)
+    .min(TARGET_NAME_MAX_WIDTH);
+  let mut previous = None;
+  for (scope, target, name) in &rows {
+    if previous != Some(scope) {
+      out.line(
+        &if scope.is_empty() {
+          "  Project:".into()
+        } else {
+          format!("  {scope}/")
+        },
+        0,
+      );
+      previous = Some(scope);
+    }
     let diagnostic = configuration::bind(target, config, &[], &directory.root_directory, true)
       .err()
       .map(|e| e.to_string());
@@ -160,7 +183,9 @@ pub(crate) fn project(catalog: &Catalog, directory: &Directory, verbose: bool) {
     let description = unavailable
       .map(|reason| format!("{description} [unavailable: {reason}]"))
       .unwrap_or_else(|| description.into());
-    out.row(&format!("  {:18} ", catalog.display_name(target)), &description);
+    for line in target_lines(&out, name, &description, width) {
+      println!("{line}");
+    }
   }
   if catalog.targets.is_empty() {
     out.line("  (no targets)", 0);
@@ -168,7 +193,64 @@ pub(crate) fn project(catalog: &Catalog, directory: &Directory, verbose: bool) {
   if verbose {
     combined(&out, catalog);
   }
+  if rows.iter().any(|(scope, _, _)| !scope.is_empty()) {
+    out.line("\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.", 0);
+  }
   out.line("\nSee `dotask help <target>` for detailed information on each target.", 0);
+}
+
+fn target_rows(catalog: &Catalog) -> Vec<(String, &Target, &str)> {
+  let mut rows: Vec<_> = catalog
+    .targets
+    .iter()
+    .map(|target| {
+      let (scope, name) = target.name.rsplit_once('/').unwrap_or(("", &target.name));
+      // The official source is normally implicit. Retain it if omitting it
+      // would merge distinct scopes or suggest an invocation that cannot resolve
+      // this target (including deeper paths and collisions between sources).
+      let scope = scope
+        .strip_prefix("_/")
+        .filter(|short| {
+          !catalog
+            .targets
+            .iter()
+            .any(|t| t.name.rsplit_once('/').is_some_and(|(s, _)| s == *short))
+            && catalog
+              .targets
+              .iter()
+              .filter(|t| t.name.rsplit_once('/').is_some_and(|(s, _)| s == scope))
+              .all(|t| {
+                let leaf = t.name.rsplit('/').next().unwrap();
+                catalog
+                  .find(&format!("{short}/{leaf}"))
+                  .is_ok_and(|found| found.is_some_and(|found| found.file_path == t.file_path))
+              })
+        })
+        .unwrap_or(scope);
+      (scope.to_owned(), target, name)
+    })
+    .collect();
+  rows.sort_by(|a, b| {
+    a.0
+      .to_lowercase()
+      .cmp(&b.0.to_lowercase())
+      .then(a.0.cmp(&b.0))
+      .then(a.2.to_lowercase().cmp(&b.2.to_lowercase()))
+      .then(a.1.file_path.cmp(&b.1.file_path))
+  });
+  rows
+}
+
+fn target_lines(out: &Text, name: &str, description: &str, width: usize) -> Vec<String> {
+  if name.chars().count() > width {
+    let mut lines = out.lines(&format!("    {name}"), 4);
+    if !description.is_empty() {
+      lines.extend(out.row_lines(&" ".repeat(width + 6), description).0);
+    }
+    lines
+  } else {
+    out.row_lines(&format!("    {name:width$}  "), description).0
+  }
 }
 pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) {
   let out = Text::new();
@@ -480,6 +562,44 @@ fn unavailable(target: &Target, directory: &Directory) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  #[test]
+  fn task_description_column_is_capped_and_wrapped_continuations_stay_aligned() {
+    let description = ["Build the selected project with its configured tools."; 4].join(" ");
+    for width in [None, Some(60), Some(96)] {
+      let out = Text { width };
+      for name in [
+        "short".to_owned(),
+        "x".repeat(24),
+        "x".repeat(50),
+        "é".repeat(24),
+      ] {
+        let lines = target_lines(&out, &name, &description, TARGET_NAME_MAX_WIDTH);
+        let own_line = name.chars().count() > TARGET_NAME_MAX_WIDTH;
+        let descriptions = &lines[usize::from(own_line)..];
+        assert!(descriptions.iter().skip(1).all(|line| line.starts_with(&" ".repeat(30))));
+        assert!(descriptions[0].chars().skip(4).take(24).eq(
+          if own_line {
+            " ".repeat(24)
+          } else {
+            format!("{name:24}")
+          }
+          .chars()
+        ));
+        assert_eq!(
+          descriptions
+            .iter()
+            .map(|line| line.chars().skip(30).collect::<String>())
+            .collect::<Vec<_>>()
+            .join(" "),
+          description
+        );
+        if let Some(width) = width {
+          assert!(lines.iter().all(|line| line.chars().count() <= width));
+        }
+      }
+    }
+  }
+
   #[test]
   fn wrapping_preserves_words_and_aligned_continuations() {
     let prefix = "  --configuration, -c <Debug|Release>  ";

@@ -217,10 +217,28 @@ added key in `project.Config`. `Targets` lists the targets without a
 directory path in its heading. `Target options`
 shows the declared command-line parameters and any common defaults. Shared
 settings are not automatically command-line options.
-Each target appears once in `Targets:`, using only its short name (for example,
-`run`) when available. When the short name is ambiguous or taken, its full name
-is listed. Detailed help uses the same target label and identifies the actual
-task file on a `Source:` line below its description.
+Each target appears once in `Targets:`, grouped by its target path. Root tasks
+appear first under `Project:`, followed by alphabetically ordered path headings
+such as `archive/` and `rust/`, with alphabetically ordered task names in each
+group and no blank lines between groups. The official `_` source prefix is
+omitted from headings when the remaining path resolves to the same tasks and
+does not merge distinct scopes; otherwise the source-qualified path is retained.
+Nested paths remain visible, and coexisting implementations retain their file
+extensions. Legacy space-grouped filenames retain their canonical hyphenated
+task name within their path group.
+
+Descriptions align across all groups. The name column grows to fit the longest
+displayed task name, up to a built-in maximum of 24 characters, followed by two
+spaces. Longer names occupy their own line, with the description on the next
+line at the same description column. This layout also applies to redirected
+output, independently of terminal-width wrapping.
+
+For grouped tasks, the summary explains `group/task` invocation. A prefix is
+only needed when a project task takes precedence or the short name is ambiguous:
+`dotask build` selects `.tasks/build.rs` ahead of `.tasks/_/rust/build.rs`, while
+`dotask rust/build` explicitly selects the latter. Unique short names still work.
+Detailed help retains its callable target label and identifies the actual task
+file on a `Source:` line below its description.
 
 Project summaries and target help read common YAML comment headers and load
 the YAML configuration. All help forms avoid invoking the SDK, restoring packages,

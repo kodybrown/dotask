@@ -242,7 +242,7 @@ public sealed class HelpAndShellTests
   }
 
   [Fact]
-  public async Task HelpListsEachGroupedTargetOnceWithOnlyUsableAliasesAndFullNameDefaults()
+  public async Task HelpListsCanonicalNamesWithinScopesAndPreservesAliasesAndDefaults()
   {
     using var project = new TestProject();
     project.Target("dotnet run", metadata: """
@@ -256,8 +256,8 @@ public sealed class HelpAndShellTests
     var listing = await project.RunAsync("--verbose");
     Assert.Equal(0, listing.ExitCode);
     var targetLine = Assert.Single(listing.StandardOutput.Split('\n'), line => line.Contains("Run the app."));
-    Assert.StartsWith("  run ", targetLine);
-    Assert.DoesNotContain("dotnet-run", targetLine);
+    Assert.Contains("\n  Project:\n", listing.StandardOutput);
+    Assert.StartsWith("    dotnet-run  ", targetLine);
     Assert.Contains("default: Release", listing.StandardOutput);
     var shortHelp = await project.RunAsync("help", "RUN");
     var fullHelp = await project.RunAsync("DOTNET-RUN", "--help");

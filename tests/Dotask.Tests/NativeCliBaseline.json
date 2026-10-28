@@ -1,17 +1,17 @@
 {
   "help:": {
     "ExitCode": 0,
-    "StandardOutput": "Targets:\n  group              Group description\n  run                Run a useful task.\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardOutput": "Targets:\n  Project:\n    group  Group description\n  tools/\n    run    Run a useful task.\n\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.\n\nSee `dotask help <target>` for detailed information on each target.\n",
     "StandardError": ""
   },
   "help:help": {
     "ExitCode": 0,
-    "StandardOutput": "Targets:\n  group              Group description\n  run                Run a useful task.\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardOutput": "Targets:\n  Project:\n    group  Group description\n  tools/\n    run    Run a useful task.\n\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.\n\nSee `dotask help <target>` for detailed information on each target.\n",
     "StandardError": ""
   },
   "help:--verbose": {
     "ExitCode": 0,
-    "StandardOutput": "Example\nShared project\n\nSettings:\n  nested:\n    flag: true\n  phrase: 'two words'\n  solution: example.slnx\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Release)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardOutput": "Example\nShared project\n\nSettings:\n  nested:\n    flag: true\n  phrase: 'two words'\n  solution: example.slnx\n  tasks: ./.tasks\n\nTargets:\n  Project:\n    group  Group description\n  tools/\n    run    Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Release)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.\n\nSee `dotask help <target>` for detailed information on each target.\n",
     "StandardError": ""
   },
   "help:help run": {
@@ -91,27 +91,27 @@
   },
   "yaml:settings: { item: &item { first: 1 }, alias: *item }": {
     "ExitCode": 0,
-    "StandardOutput": "<project>\n\nSettings:\n  alias:\n    first: 1\n  item:\n    first: 1\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardOutput": "<project>\n\nSettings:\n  alias:\n    first: 1\n  item:\n    first: 1\n  tasks: ./.tasks\n\nTargets:\n  Project:\n    group  Group description\n  tools/\n    run    Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.\n\nSee `dotask help <target>` for detailed information on each target.\n",
     "StandardError": ""
   },
   "yaml:settings: { quoted: 'true', number: 0x10, quotedNumber: !!str 12 }": {
     "ExitCode": 0,
-    "StandardOutput": "<project>\n\nSettings:\n  number: 0x10\n  quoted: true\n  quotedNumber: 12\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardOutput": "<project>\n\nSettings:\n  number: 0x10\n  quoted: true\n  quotedNumber: 12\n  tasks: ./.tasks\n\nTargets:\n  Project:\n    group  Group description\n  tools/\n    run    Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.\n\nSee `dotask help <target>` for detailed information on each target.\n",
     "StandardError": ""
   },
   "yaml:SETTINGS: { Flag: true }\nNAME: Native": {
     "ExitCode": 0,
-    "StandardOutput": "Native\n\nSettings:\n  Flag: true\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardOutput": "Native\n\nSettings:\n  Flag: true\n  tasks: ./.tasks\n\nTargets:\n  Project:\n    group  Group description\n  tools/\n    run    Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: Été)\n\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.\n\nSee `dotask help <target>` for detailed information on each target.\n",
     "StandardError": ""
   },
   "yaml:targets: { tools/run: { defaults: { configuration: release, flag: true } } }": {
     "ExitCode": 0,
-    "StandardOutput": "<project>\n\nSettings:\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: release)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag. (default: true)\n  --label <Été|Hiver>                  Label. (default: Été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardOutput": "<project>\n\nSettings:\n  tasks: ./.tasks\n\nTargets:\n  Project:\n    group  Group description\n  tools/\n    run    Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: release)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag. (default: true)\n  --label <Été|Hiver>                  Label. (default: Été)\n\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.\n\nSee `dotask help <target>` for detailed information on each target.\n",
     "StandardError": ""
   },
   "yaml:targets: { tools/run: { defaults: { label: été } } }": {
     "ExitCode": 0,
-    "StandardOutput": "<project>\n\nSettings:\n  tasks: ./.tasks\n\nTargets:\n  group              Group description\n  run                Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: été)\n\nSee `dotask help <target>` for detailed information on each target.\n",
+    "StandardOutput": "<project>\n\nSettings:\n  tasks: ./.tasks\n\nTargets:\n  Project:\n    group  Group description\n  tools/\n    run    Run a useful task.\n\nTarget options:\n  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)\n  --input <path>                       Input file.\n  --flag <bool>                        Boolean flag.\n  --label <Été|Hiver>                  Label. (default: été)\n\nUse group/task for grouped targets (e.g. dotask rust/build). The prefix is only needed when a project task takes precedence or the short name is ambiguous.\n\nSee `dotask help <target>` for detailed information on each target.\n",
     "StandardError": ""
   }
 }

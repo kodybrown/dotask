@@ -1426,3 +1426,25 @@ acceptance, installation, and publication.
 - Updates agent instructions and applicable linked workflow examples together.
 - Verification: naming/path consistency assertions and Git whitespace checks.
 - Additional verification: build.cmd verify-docs passes.
+
+### 2026-10-28 Group project help targets by path
+
+- List root tasks first under Project:, then alphabetical path groups and task
+  names without blank lines between groups. Retain source-qualified headings
+  where needed to distinguish scopes or preserve valid invocations, plus file
+  extensions for coexisting implementations. Keep target resolution unchanged.
+- Align descriptions across groups using a dynamically sized task-name column
+  capped at 24 characters. Longer names put descriptions on the next line at
+  the common column, including redirected output. Explain that group/task is
+  needed when a project task takes precedence or the short name is ambiguous.
+- Update CLI and AI guidance and the fixed .NET summary snapshots, preserving
+  detailed-help and completion parity expectations. Three focused native summary
+  regressions and four help-rendering tests pass, covering sorting, compact
+  layout, column growth/capping, terminal wrapping, Unicode, empty projects,
+  source collisions, nested paths, language variants and shortcut precedence.
+- Verification: Windows native build/tests passed. After updating nine stale
+  layout expectations exposed by the initial full gate, the complete build.cmd
+  verify rerun passed all 383 .NET tests (zero failures/skips), both explicit Go
+  installer acceptances, Rust SDK/release checks, strict formatting/lint,
+  documentation, catalog freshness and whitespace. Linux/macOS acceptance was
+  not run; no active installation was changed.

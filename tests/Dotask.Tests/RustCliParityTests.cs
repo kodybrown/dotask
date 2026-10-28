@@ -8,8 +8,9 @@ public sealed class RustCliParityTests
 
   private static ProcessResult Baseline( string key )
   {
-    // Captured from 34f7e27 before removing the executable. These expectations
-    // are fixed data, so a native regression cannot change both sides of a comparison.
+    // Captured from 34f7e27 before removing the executable; only the summary
+    // layout and invocation hint were refreshed for grouped target output.
+    // Expectations remain fixed data, independently of the native renderer.
     using var stream = typeof(RustCliParityTests).Assembly.GetManifestResourceStream("NativeCliBaseline.json")!;
     return JsonSerializer.Deserialize<Dictionary<string, ProcessResult>>(stream)![key];
   }
