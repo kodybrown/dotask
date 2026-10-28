@@ -34,11 +34,7 @@ func Test(c *dotask.BuildContext) error {
 	if err != nil {
 		return err
 	}
-	raw, err := c.String("installer")
-	if err != nil {
-		return err
-	}
-	path, err := c.Path(raw)
+	path, err := acceptanceInstaller(c)
 	if err != nil {
 		return err
 	}
@@ -53,6 +49,7 @@ func Test(c *dotask.BuildContext) error {
 	if !info.Mode().IsRegular() {
 		return errors.New("installer must be an existing regular file")
 	}
+	fmt.Println("Testing installer:", path)
 	timeout, err := c.Int("timeout-seconds")
 	if err != nil {
 		return err
@@ -338,4 +335,28 @@ func cleanupFixture(ctx context.Context, root string) error {
 		case <-time.After(50 * time.Millisecond):
 		}
 	}
+}
+
+func acceptanceInstaller(c *dotask.BuildContext) (string, error) {
+	if _, err := c.Parameter("installer"); err == nil {
+		raw, err := c.String("installer")
+		if err != nil {
+			return "", err
+		}
+		if strings.TrimSpace(raw) == "" {
+			return "", errors.New("installer override must be a nonempty path")
+		}
+		return c.Path(raw)
+	}
+	// Reuse native discovery so successful-build hashes, platform checks and
+	// invalid-record refusal stay identical to the installation workflow. Never
+	// guess filenames or rebuild an installer merely to test the last success.
+	artifact, err := c.FindInstaller()
+	if err != nil {
+		return "", err
+	}
+	if artifact == nil {
+		return "", errors.New("no successful installer is recorded for this project/platform; create an installer first or pass --installer")
+	}
+	return artifact.FilePath, nil
 }

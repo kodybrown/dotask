@@ -1350,3 +1350,21 @@ acceptance, installation, and publication.
   exit 23/37, timeout descendant cleanup, managed source-preserving version edits
   and Go-only execution. Evaluated Cargo/.NET outputs remain external. Native
   Linux/macOS installer acceptance is unsupported and was not run.
+
+### 2026-10-27 Test the last successful Go installer by default
+
+- Make the shared Go acceptance task's installer path optional. Resolve it through
+  the native SDK's configured-path / successful-build record behavior, retaining
+  platform/hash/invalid-record checks and printing the selected path. Keep an
+  explicit --installer override without rewriting the record or rebuilding.
+- Document no-argument shared shortcuts and the separation between portable
+  .dotasks.yaml configuration and machine/platform successful-build records.
+  Add real prebuilt-tool coverage for recorded selection, missing/tampered
+  records and explicit overrides preserving prior state.
+- Verification: the complete Windows x64 build.cmd test gate passed, including
+  383 .NET tests with zero failures/skips, native/Rust/Go checks, both prebuilt
+  installer fixtures, strict lint/format, docs, catalog freshness and whitespace.
+  Focused cases verify no-argument record selection, missing/tampered-record
+  refusal and explicit overrides without record mutation. The real consumer
+  no-argument workflow also passed with Rust/Cargo/.NET blocked; YAML and record
+  hashes remained unchanged. Linux/macOS acceptance remains unsupported.

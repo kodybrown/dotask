@@ -90,10 +90,19 @@ the Go group; never edit its managed files or tracking hashes manually.
 Refresh/add `go/test-installer.go` through the shared-task manager, then run:
 
 ```powershell
-dotask _/go/test-installer.go --installer '<existing self-extracting installer>'
+dotask test-installer
 ```
 
-This Go task tests an existing native DoInstall installer without building it.
+With no local wrapper needed, the unique `test-installer` shortcut resolves to
+this shared Go task. It tests an existing native DoInstall installer without
+building it. Omit `--installer` to use the SDK's configured
+`installer.installer_file` resolution, or otherwise the last successful build
+record in `artifacts/.dotask/installers/<os>-<arch>.json`. These machine/platform
+build results are separate from `.dotasks.yaml` project configuration. The
+native resolver checks recorded artifact existence, platform and SHA-256; a
+missing/changed/invalid record is reported without guessing paths or rebuilding.
+`--installer PATH` explicitly selects another artifact and bypasses record
+selection without rewriting that record. The selected path is printed.
 Acceptance currently requires Windows x64/arm64; runtime verification here is
 Windows x64. Other hosts fail explicitly before attempting installation.
 It uses the same `settings.go` executable, payload files, version literal,

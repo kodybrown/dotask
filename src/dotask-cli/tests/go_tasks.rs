@@ -525,16 +525,33 @@ func main(){dotask.Run(func(c *dotask.BuildContext)error{
   assert!(delivery.is_file());
   if cfg!(windows) {
     let checked = success(
-      f.command(&[
-        "_/go/test-installer.go",
-        "--installer",
-        delivery.to_str().unwrap(),
-      ])
-      .env("WIDGET_SPOIL", "must be cleared")
-      .output()
-      .unwrap(),
+      f.command(&["_/go/test-installer.go"])
+        .env("WIDGET_SPOIL", "must be cleared")
+        .output()
+        .unwrap(),
     );
     assert!(String::from_utf8_lossy(&checked.stdout).contains("PASS: user/machine PATH unchanged"));
+    assert!(String::from_utf8_lossy(&checked.stdout).contains(delivery.to_str().unwrap()));
+    fs::remove_file(&record).unwrap();
+    let absent = f.run(&["_/go/test-installer.go"]);
+    assert!(!absent.status.success());
+    assert!(String::from_utf8_lossy(&absent.stderr).contains("no successful installer is recorded"));
+    let mut invalid_record = artifact.clone();
+    invalid_record["Sha256"] = json!("0".repeat(64));
+    let invalid = serde_json::to_vec(&invalid_record).unwrap();
+    fs::write(&record, &invalid).unwrap();
+    let changed = f.run(&["_/go/test-installer.go"]);
+    assert!(!changed.status.success());
+    assert!(String::from_utf8_lossy(&changed.stderr).contains("has changed since its successful build"));
+    // An explicit artifact remains usable even when a different prior record
+    // is unavailable or invalid; testing does not replace or repair that record.
+    success(f.run(&[
+      "_/go/test-installer.go",
+      "--installer",
+      delivery.to_str().unwrap(),
+    ]));
+    assert_eq!(fs::read(&record).unwrap(), invalid);
+    fs::write(&record, &saved).unwrap();
     let clean_failure = |failed: Output, code: i32, diagnostic: &str| {
       assert_eq!(failed.status.code(), Some(code), "{}", String::from_utf8_lossy(&failed.stderr));
       let error = String::from_utf8_lossy(&failed.stderr);

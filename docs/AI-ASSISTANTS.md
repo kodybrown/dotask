@@ -161,7 +161,11 @@ Use the [shared Go installer tasks](../shared-tasks/go/README.md) for configurab
 native test/vet/build, literal version lookup, exact payload staging and artifact
 return through the precompiled creator. Keep consumer wrappers thin.
 The same group provides Windows-only temporary-root `go/test-installer.go`
-acceptance without Rust/.NET, and `go/update-version.go` for explicit literal
+acceptance without Rust/.NET. Its `test-installer` shortcut uses the last
+successful installer record when `--installer` is omitted (an explicit
+`installer.installer_file` setting retains SDK precedence); no project wrapper
+or filename guessing is needed. Records stay separate from `.dotasks.yaml`.
+The group also provides `go/update-version.go` for explicit literal
 preparation. Use three-part SemVer with a numeric patch (default) or the built-in
 `go.version-patch: date` policy for Utah YYMMDD patches and preview preparation.
 No project-specific version wrapper or generated metadata package is needed.

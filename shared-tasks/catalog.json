@@ -304,7 +304,7 @@
       "files": [
         {
           "path": "go/_support/installer/acceptance.go",
-          "sha256": "9f56a7504c41855628b37acc76df6fba7e931808926d207e5f6e56e9c801f36c"
+          "sha256": "b9ac3f42803170495f3105aceb3027f6082b65b5e22e79e53719087cb04c2461"
         },
         {
           "path": "go/_support/installer/acceptance_other.go",
@@ -320,7 +320,7 @@
         },
         {
           "path": "go/test-installer.go",
-          "sha256": "5561f21b2ef1d253b71c26628578b54bb820d6a5c78cac64c6744d59d9282c1c"
+          "sha256": "bfab99807ba132df98435b93d5c08edc14ad0e1c32efb1279798ccd44d79170a"
         }
       ],
       "requires": []
