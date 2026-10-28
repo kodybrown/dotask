@@ -21,6 +21,8 @@ import (
 )
 
 type settings struct {
+	InstallerCommand         string   `json:"installer-command"`
+	InstallerForbiddenFiles  []string `json:"installer-forbidden-files"`
 	Package                  string   `json:"package"`
 	Executable               string   `json:"executable"`
 	VersionFile              string   `json:"version-file"`

@@ -222,10 +222,19 @@ requirements. No doinstall tools are bundled in dotask. See
 [installation](INSTALLATION.md#self-extracting-build-and-gather-workflow).
 
 The reusable [Go installer group](../shared-tasks/go/README.md) provides
-`go/create-installer.go` and `go/stage-installer.go`. Configure `settings.go`
+`go/create-installer.go`, `go/stage-installer.go` and Windows installer acceptance
+through `go/test-installer.go`. Configure `settings.go`
 for the native package, executable, literal version source, expected version
 output and explicit payload files. Project wrappers delegate through the Go SDK;
 the native creator owns successful artifact recording.
+
+Shared `go/update-version.go` prepares the configured top-level version literal
+with source bytes preserved. Both numeric and built-in Utah YYMMDD patch modes
+use three-part SemVer. Configure `go.version-patch: date` to refresh date patches;
+the shared default increments the numeric patch. Preview flags follow the C#
+explicit preparation workflow.
+It never changes Go module versions or runs automatically during builds. See the
+[Go group contract](../shared-tasks/go/README.md#explicit-semver-preparation).
 
 ## Target names
 

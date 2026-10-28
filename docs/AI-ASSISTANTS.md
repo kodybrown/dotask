@@ -160,6 +160,13 @@ support file; use the precompiled shared installer creator for Go packaging.
 Use the [shared Go installer tasks](../shared-tasks/go/README.md) for configurable
 native test/vet/build, literal version lookup, exact payload staging and artifact
 return through the precompiled creator. Keep consumer wrappers thin.
+The same group provides Windows-only temporary-root `go/test-installer.go`
+acceptance without Rust/.NET, and `go/update-version.go` for explicit literal
+preparation. Use three-part SemVer with a numeric patch (default) or the built-in
+`go.version-patch: date` policy for Utah YYMMDD patches and preview preparation.
+No project-specific version wrapper or generated metadata package is needed.
+Preview actual project versions with `--dry-run`; never bump versions as part
+of ordinary verification.
 Go execution needs an installed stable Go 1.22+ compiler, with no Rust/.NET
 requirement unless the recipe explicitly calls tasks in those languages.
 

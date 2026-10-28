@@ -461,6 +461,8 @@ fn shared_go_installer_tasks_package_a_configured_consumer_without_rust_or_dotne
   for args in [
     ["--save", "go/create-installer.go"],
     ["--add", "go/create-installer.go"],
+    ["--save", "go/test-installer.go"],
+    ["--add", "go/test-installer.go"],
   ] {
     success(
       f.command(&args)
@@ -471,7 +473,7 @@ fn shared_go_installer_tasks_package_a_configured_consumer_without_rust_or_dotne
   }
   let executable = format!("widget{}", std::env::consts::EXE_SUFFIX);
   let settings = json!({"version":1,"settings":{
-    "go":{"package":"./cmd/widget","executable":executable,"version-file":"cmd/widget/version.go","version-symbol":"Version","version-output":"Widget version {version}","version-arguments":["--version","argument spaces 日本語","","quote\"","C:\\a b\\"],"installer-files":["docs/notice.txt"],"clean-environment-prefixes":["WIDGET_"]},
+    "go":{"package":"./cmd/widget","executable":executable,"version-file":"cmd/widget/version.go","version-symbol":"Version","version-output":"Widget version {version}","version-arguments":["--version","argument spaces 日本語","","quote\"","C:\\a b\\"],"installer-files":["docs/notice.txt"],"installer-forbidden-files":[".gostatic"],"clean-environment-prefixes":["WIDGET_"]},
     "app":{"git-hash":"none","dirty-suffix":false},
     "installer":{"config":"installer.yaml","output":"deliveries spaces 日本語"},
     "doinstall":{"builder":f.dist.join(format!("doinstall-builder{}",std::env::consts::EXE_SUFFIX)),"installer":f.dist.join(format!("doinstall{}",std::env::consts::EXE_SUFFIX)),"launcher-template":f.dist.join(format!("doinstall-launcher{}",std::env::consts::EXE_SUFFIX))}
@@ -521,6 +523,114 @@ func main(){dotask.Run(func(c *dotask.BuildContext)error{
   let artifact: Value = serde_json::from_slice(&saved).unwrap();
   let delivery = Path::new(artifact["Installer"]["FilePath"].as_str().unwrap());
   assert!(delivery.is_file());
+  if cfg!(windows) {
+    let checked = success(
+      f.command(&[
+        "_/go/test-installer.go",
+        "--installer",
+        delivery.to_str().unwrap(),
+      ])
+      .env("WIDGET_SPOIL", "must be cleared")
+      .output()
+      .unwrap(),
+    );
+    assert!(String::from_utf8_lossy(&checked.stdout).contains("PASS: user/machine PATH unchanged"));
+    let clean_failure = |failed: Output, code: i32, diagnostic: &str| {
+      assert_eq!(failed.status.code(), Some(code), "{}", String::from_utf8_lossy(&failed.stderr));
+      let error = String::from_utf8_lossy(&failed.stderr);
+      assert!(error.contains(diagnostic), "{error}");
+      let retained = error
+        .lines()
+        .find_map(|line| line.strip_prefix("Failed acceptance fixture retained: "))
+        .expect("failure must report retained logs");
+      let retained = PathBuf::from(retained).canonicalize().unwrap();
+      assert!(retained.is_dir());
+      assert!(retained.parent() == Some(std::env::temp_dir().canonicalize().unwrap().as_path()));
+      assert!(retained
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .starts_with("dotask-installer-test-"));
+      assert!(retained.join("process-1.stdout").is_file());
+      let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+      loop {
+        match fs::remove_dir_all(&retained) {
+          Ok(()) => break,
+          Err(error) if matches!(error.raw_os_error(), Some(5 | 32 | 33)) && std::time::Instant::now() < deadline => {
+            std::thread::sleep(std::time::Duration::from_millis(50))
+          }
+          Err(error) => panic!("Failed to clean verified acceptance fixture: {error}"),
+        }
+      }
+    };
+    clean_failure(
+      f.run(&[
+        "_/go/test-installer.go",
+        "--installer",
+        delivery.to_str().unwrap(),
+        "--app-version",
+        "9.9.9",
+      ]),
+      1,
+      "unexpected installed version",
+    );
+    let fake_source = f._temporary.path().join("failed-installer.go");
+    fs::write(&fake_source,r#"package main
+import("os";"os/exec";"time")
+func main(){if os.Getenv("ACCEPTANCE_HANG")!="1"{os.Exit(23)};if len(os.Args)>1 && os.Args[1]=="--child"{for{os.WriteFile(os.Getenv("ACCEPTANCE_MARKER"),[]byte(time.Now().String()),0600);time.Sleep(20*time.Millisecond)}};cmd:=exec.Command(os.Args[0],"--child");if err:=cmd.Start();err!=nil{panic(err)};time.Sleep(time.Hour)}
+"#).unwrap();
+    let fake = f._temporary.path().join("failed-installer.exe");
+    success(
+      Command::new(compiler().join("go.exe"))
+        .args(["build", "-o"])
+        .arg(&fake)
+        .arg(fake_source)
+        .env("GOTOOLCHAIN", "local")
+        .env("GOENV", "off")
+        .env("GOWORK", "off")
+        .env("CGO_ENABLED", "0")
+        .output()
+        .unwrap(),
+    );
+    clean_failure(
+      f.run(&[
+        "_/go/test-installer.go",
+        "--installer",
+        fake.to_str().unwrap(),
+      ]),
+      23,
+      "failed; logs under",
+    );
+    let marker = f.root.join("timeout-child.marker");
+    let timed_out = f
+      .command(&[
+        "_/go/test-installer.go",
+        "--installer",
+        fake.to_str().unwrap(),
+        "--timeout-seconds",
+        "1",
+      ])
+      .env("ACCEPTANCE_HANG", "1")
+      .env("ACCEPTANCE_MARKER", &marker)
+      .output()
+      .unwrap();
+    clean_failure(timed_out, 1, "context deadline exceeded");
+    let last = fs::read(&marker).expect("timeout fixture child must start");
+    std::thread::sleep(std::time::Duration::from_millis(250));
+    assert_eq!(
+      fs::read(&marker).unwrap(),
+      last,
+      "timed-out installer descendant survived task cleanup"
+    );
+  } else {
+    let unsupported = f.run(&[
+      "_/go/test-installer.go",
+      "--installer",
+      delivery.to_str().unwrap(),
+    ]);
+    assert!(!unsupported.status.success());
+    assert!(String::from_utf8_lossy(&unsupported.stderr).contains("requires native Windows"));
+  }
   let extracted = PathBuf::from(format!("{}-extracted", delivery.display()));
   let inventory = tree(&extracted);
   assert!(inventory
@@ -612,4 +722,80 @@ func main(){dotask.Run(func(c *dotask.BuildContext)error{
   assert!(!f.root.join("forbidden.log").exists());
   assert!(!f.dist.join("sdk/rust").exists());
   assert!(!f.dist.join("sdk/dotnet").exists());
+}
+
+#[test]
+fn shared_go_version_preparation_preserves_source_bytes_without_other_toolchains() {
+  let f = Fixture::new();
+  f.traps();
+  for args in [
+    ["--save", "go/update-version.go"],
+    ["--add", "go/update-version.go"],
+  ] {
+    success(
+      f.command(&args)
+        .env("DOTASK_ONLINE_TASKS", repository().join("shared-tasks"))
+        .output()
+        .unwrap(),
+    );
+  }
+  f.write(
+    ".dotasks.yaml",
+    &json!({"version":1,"settings":{"go":{"version-file":"version.go","version-symbol":"Version"}}}).to_string(),
+  );
+  let source="\u{feff}// 日本語 header\r\npackage main\r\nvar Version = \"v1.2.3-preview.4+custom.007\" // preserve\r\nvar Other = \"unrelated\"\r\n";
+  f.write("version.go", source);
+  let module = "module example.invalid/unchanged\n\ngo 99.0.0\n";
+  f.write("go.mod", module);
+  success(f.run(&["_/go/update-version.go", "--dry-run"]));
+  assert_eq!(fs::read(f.root.join("version.go")).unwrap(), source.as_bytes());
+  success(f.run(&["_/go/update-version.go", "--increment-preview"]));
+  let preview = source.replace("v1.2.3-preview.4+custom.007", "v1.2.3-preview.5+custom.007");
+  assert_eq!(fs::read(f.root.join("version.go")).unwrap(), preview.as_bytes());
+  success(f.run(&["_/go/update-version.go", "--increment-minor"]));
+  let minor = source.replace("v1.2.3-preview.4+custom.007", "v1.3.0+custom.007");
+  assert_eq!(fs::read(f.root.join("version.go")).unwrap(), minor.as_bytes());
+  let failed = f.run(&[
+    "_/go/update-version.go",
+    "--increment",
+    "--increment-preview",
+  ]);
+  assert!(!failed.status.success());
+  assert_eq!(fs::read(f.root.join("version.go")).unwrap(), minor.as_bytes());
+  let raw = "package main\nconst Version = `v2.3.4` // untouched\n";
+  f.write("version.go", raw);
+  success(f.run(&["_/go/update-version.go"]));
+  assert_eq!(
+    fs::read_to_string(f.root.join("version.go")).unwrap(),
+    raw.replace("v2.3.4", "v2.3.5")
+  );
+  let computed = "package main\nvar Version = \"1.2.\" + \"3\"\n";
+  f.write("version.go", computed);
+  assert!(!f.run(&["_/go/update-version.go"]).status.success());
+  assert_eq!(fs::read_to_string(f.root.join("version.go")).unwrap(), computed);
+  let legacy = "package main\nvar Version = \"v1.5.261023.956\"\n";
+  f.write("version.go", legacy);
+  assert!(!f.run(&["_/go/update-version.go"]).status.success());
+  assert_eq!(fs::read_to_string(f.root.join("version.go")).unwrap(), legacy);
+  let dated = "package main\nvar Version = \"v1.5.261023\"\n";
+  f.write("version.go", dated);
+  let checked = success(f.run(&[
+    "_/go/update-version.go",
+    "--patch-mode",
+    "date",
+    "--dry-run",
+  ]));
+  assert!(String::from_utf8_lossy(&checked.stdout).contains("v1.5.26"));
+  assert_eq!(fs::read_to_string(f.root.join("version.go")).unwrap(), dated);
+  assert_eq!(fs::read_to_string(f.root.join("go.mod")).unwrap(), module);
+  assert!(!f.root.join("go.sum").exists());
+  assert!(!f.root.join("forbidden.log").exists());
+  assert_eq!(
+    fs::read_dir(&f.root)
+      .unwrap()
+      .filter_map(Result::ok)
+      .filter(|e| e.file_name().to_string_lossy().starts_with(".dotask-version-"))
+      .count(),
+    0
+  );
 }

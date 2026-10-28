@@ -266,7 +266,7 @@
       "files": [
         {
           "path": "go/_support/installer/installer.go",
-          "sha256": "dda842ee7e7ee5ebd3654bfdbdf1c7f7344dfc3aea88b371072d0ca4c787705d"
+          "sha256": "78d14436c046dc4fc39b8a3abe325168aba383a23758c3fbaef3862ac9b6913a"
         },
         {
           "path": "go/create-installer.go",
@@ -287,11 +287,57 @@
       "files": [
         {
           "path": "go/_support/installer/installer.go",
-          "sha256": "dda842ee7e7ee5ebd3654bfdbdf1c7f7344dfc3aea88b371072d0ca4c787705d"
+          "sha256": "78d14436c046dc4fc39b8a3abe325168aba383a23758c3fbaef3862ac9b6913a"
         },
         {
           "path": "go/stage-installer.go",
           "sha256": "96a4509e16e03fc4a4fed98b1e0002cf6a67ced6cd89793ee171c838e61b7e49"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "go/test-installer",
+      "entryPoint": "go/test-installer.go",
+      "description": "Validate, install, inspect, reinstall and uninstall a native Go installer in temporary roots without changing persistent PATH.",
+      "runtime": "go",
+      "files": [
+        {
+          "path": "go/_support/installer/acceptance.go",
+          "sha256": "9f56a7504c41855628b37acc76df6fba7e931808926d207e5f6e56e9c801f36c"
+        },
+        {
+          "path": "go/_support/installer/acceptance_other.go",
+          "sha256": "a55ce9b23d00022aeb6c2b2229cfee0decf022eb7ce77b740343297c1995900e"
+        },
+        {
+          "path": "go/_support/installer/acceptance_windows.go",
+          "sha256": "db7e4517f0e1800be31eefa73de5ab6f6d624b68d035d5b8462f69b99be13415"
+        },
+        {
+          "path": "go/_support/installer/installer.go",
+          "sha256": "78d14436c046dc4fc39b8a3abe325168aba383a23758c3fbaef3862ac9b6913a"
+        },
+        {
+          "path": "go/test-installer.go",
+          "sha256": "5561f21b2ef1d253b71c26628578b54bb820d6a5c78cac64c6744d59d9282c1c"
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "go/update-version",
+      "entryPoint": "go/update-version.go",
+      "description": "Prepare a Go source version explicitly, using SemVer with numeric or Utah date-based patches. Never build or commit.",
+      "runtime": "go",
+      "files": [
+        {
+          "path": "go/_support/version/version.go",
+          "sha256": "d4a4433b7e1bf84a382742b19e0d6803e15aea32dcc61ad9c62493d00fa2e648"
+        },
+        {
+          "path": "go/update-version.go",
+          "sha256": "a64483883b3e0ce12af259a2ed73ec55ccc7377625fda9a865e1f54952bb8624"
         }
       ],
       "requires": []

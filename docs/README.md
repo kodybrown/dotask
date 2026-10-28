@@ -20,7 +20,7 @@ run your first example. The preview is not yet published to a public package fee
 | Fetch JSON and refresh authored Markdown project pages | [GitHub project-page example](../examples/github-projects/README.md) |
 | Create a task or look up library APIs                 | [Authoring and configuration reference](TARGETS.md)              |
 | Write a Go task with compiler-free metadata | [Go tasks and SDK](TARGETS.md#go-tasks) |
-| Create reusable native Go installers | [Go installer shared tasks](../shared-tasks/go/README.md) |
+| Create/test Go installers and prepare explicit versions | [Go application shared tasks](../shared-tasks/go/README.md) |
 | Write a Rust task with compiler-free metadata | [Rust tasks and SDK](TARGETS.md#rust-tasks) |
 | Ask an AI assistant to create or maintain tasks       | [AI assistant guide and reusable instructions](AI-ASSISTANTS.md) |
 | Follow a runnable example with expected output        | [Basic example](../examples/basic/README.md)                     |

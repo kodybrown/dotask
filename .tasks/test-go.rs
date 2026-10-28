@@ -13,19 +13,47 @@ fn task(project: &BuildContext) -> Result<()> {
   let sdk = project.path("src/dotask-go");
   let cache = std::env::temp_dir().join("_go/dotask/sdk-tests");
   std::fs::create_dir_all(&cache)?;
-  let mut command = project.command("go");
-  command
-    .current_dir(&sdk)
-    .args(["test", "./..."])
-    .env("GOTOOLCHAIN", "local")
-    .env("GOWORK", "off")
-    .env("GOENV", "off")
-    .env("GOFLAGS", "")
-    .env("CGO_ENABLED", "0")
-    .env("GOPROXY", "off")
-    .env("GOSUMDB", "off")
-    .env("GOCACHE", &cache);
-  project.execute(&mut command)?;
+  // Shared task packages have no consumer module. Test physical source/SDK
+  // snapshots with a local-only manifest outside the source checkout.
+  let shared = dotask_sdk::tempfile::Builder::new()
+    .prefix("dotask-shared-go-tests-")
+    .tempdir()?;
+  std::fs::write(shared.path().join("go.mod"), "module dotask.local/shared-tests\n\ngo 1.22.0\n\nrequire dotask.local/sdk v0.0.0\nreplace dotask.local/sdk => ./sdk\n")?;
+  std::fs::create_dir(shared.path().join("sdk"))?;
+  for name in [
+    "go.mod",
+    "context.go",
+    "process.go",
+    "tasks.go",
+    "installers.go",
+  ] {
+    std::fs::copy(sdk.join(name), shared.path().join("sdk").join(name))?;
+  }
+  for package in ["version", "installer"] {
+    let destination = shared.path().join(package);
+    std::fs::create_dir(&destination)?;
+    for entry in std::fs::read_dir(project.path(format!("shared-tasks/go/_support/{package}")))? {
+      let entry = entry?;
+      if entry.path().extension().is_some_and(|extension| extension == "go") {
+        std::fs::copy(entry.path(), destination.join(entry.file_name()))?;
+      }
+    }
+  }
+  for directory in [sdk.as_path(), shared.path()] {
+    let mut command = project.command("go");
+    command
+      .current_dir(directory)
+      .args(["test", "-mod=readonly", "./..."])
+      .env("GOTOOLCHAIN", "local")
+      .env("GOWORK", "off")
+      .env("GOENV", "off")
+      .env("GOFLAGS", "")
+      .env("CGO_ENABLED", "0")
+      .env("GOPROXY", "off")
+      .env("GOSUMDB", "off")
+      .env("GOCACHE", &cache);
+    project.execute(&mut command)?;
+  }
   let mut format = project.command("gofmt");
   format
     .arg("-l")

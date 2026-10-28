@@ -1327,3 +1327,26 @@ acceptance, installation, and publication.
   source preservation, invalid staging/version/inventory refusal and no implicit
   toolchain download or Rust/Cargo/.NET invocation. Evaluated Cargo/.NET outputs
   remain external. Native Linux/macOS acceptance was not run.
+
+### 2026-10-27 Share Go installer acceptance and SemVer preparation
+
+- Add reusable Windows Go installer acceptance with exact configured payload and
+  version checks, temporary validation/install/reinstall/uninstall, isolated app
+  data, persistent PATH comparison and retained failure logs. Start each process
+  suspended in a nested kill-on-close job and wait for descendants on timeout;
+  successful fixture cleanup stays bounded to verified temporary roots.
+- Add explicit Go source-literal version preparation with three-part SemVer,
+  numeric or built-in Utah YYMMDD patches, mutually exclusive increment/preview/
+  minor/major flags and dry-run. Preserve prefix/build metadata, source bytes,
+  comments/BOM/EOLs and permissions; reject unsafe/ambiguous edits and never
+  modify module files, build, tag, commit or publish.
+- Extend catalog/authoring guidance and required Go verification with external
+  support/SDK snapshots, deterministic date/DST and source-preservation tests,
+  and real managed Go-only installer failure/timeout/descendant regressions.
+- Verification: the complete Windows x64 build.cmd test gate passed, including
+  383 .NET tests with zero failures/skips, native/Rust/Go and deterministic shared
+  support tests, both prebuilt-tool installer fixtures, strict lint/format, docs,
+  catalog freshness and whitespace. Regressions cover retained failure logs,
+  exit 23/37, timeout descendant cleanup, managed source-preserving version edits
+  and Go-only execution. Evaluated Cargo/.NET outputs remain external. Native
+  Linux/macOS installer acceptance is unsupported and was not run.
