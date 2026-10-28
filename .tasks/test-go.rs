@@ -27,7 +27,11 @@ fn task(project: &BuildContext) -> Result<()> {
     .env("GOCACHE", &cache);
   project.execute(&mut command)?;
   let mut format = project.command("gofmt");
-  format.arg("-l").arg(&sdk).arg(project.path("examples/go/.tasks"));
+  format
+    .arg("-l")
+    .arg(&sdk)
+    .arg(project.path("examples/go/.tasks"))
+    .arg(project.path("shared-tasks/go"));
   let output = project.capture(&mut format)?;
   if !output.trim().is_empty() {
     dotask_sdk::bail!("Go source needs gofmt:\n{output}");

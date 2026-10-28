@@ -1306,3 +1306,24 @@ acceptance, installation, and publication.
 - Verification: all nine release-driver/publisher tests, Rust formatting,
   build.cmd verify-docs and whitespace checks passed. Application runtime and
   pinned Windows/Linux tool inputs are unchanged from the passing native gates.
+
+### 2026-10-27 Share native Go installer creation and staging
+
+- Add configurable Go create-installer/stage-installer shared tasks and their
+  standard-library support package. Parse an explicit literal version without
+  rewriting source, test/vet/build the native package with readonly modules and
+  no toolchain downloads, verify its version/private paths and stage an explicit
+  inventory outside the project. Return the native helper's real artifact and
+  retain its successful-build recording semantics.
+- Add both tasks and their native creator/assembly dependencies to the shared
+  catalog; document settings, recipe composition and managed Rust replacement.
+  Extend Go formatting checks to canonical shared sources and add an independent
+  managed-consumer fixture with prebuilt tools and forbidden Rust/.NET traps.
+- Verification: the full Windows x64 build.cmd test gate passed, including all
+  383 .NET tests (zero failures/skips), native/Rust/Go checks, both prebuilt-tool
+  Go installer acceptances, strict lint/format, docs, catalog freshness and
+  whitespace. Shared-consumer coverage verifies real self-extracting packaging,
+  nested artifact validation/return/recording, exact argument tokens, exit 37,
+  source preservation, invalid staging/version/inventory refusal and no implicit
+  toolchain download or Rust/Cargo/.NET invocation. Evaluated Cargo/.NET outputs
+  remain external. Native Linux/macOS acceptance was not run.

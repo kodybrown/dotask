@@ -443,3 +443,173 @@ fn shared_go_support_packages_survive_installation_and_updates() {
   assert!(!f.run(&["--sync", "private-tasks/tools/say", "--lang", "go"]).status.success());
   assert_eq!(fs::read(installed).unwrap(), local);
 }
+
+#[test]
+#[ignore = "requires explicit prebuilt doinstall tools; the required test-go gate runs this acceptance"]
+fn shared_go_installer_tasks_package_a_configured_consumer_without_rust_or_dotnet() {
+  let f = Fixture::new();
+  f.traps();
+  let tools = PathBuf::from(std::env::var_os("DOINSTALL_TOOL_DIR").expect("prebuilt native tools"));
+  for name in ["doinstall", "doinstall-builder", "doinstall-launcher"] {
+    fs::copy(
+      tools.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)),
+      f.dist.join(format!("{name}{}", std::env::consts::EXE_SUFFIX)),
+    )
+    .unwrap();
+  }
+  // Exercise real catalog installation and rewritten group-relative support paths.
+  for args in [
+    ["--save", "go/create-installer.go"],
+    ["--add", "go/create-installer.go"],
+  ] {
+    success(
+      f.command(&args)
+        .env("DOTASK_ONLINE_TASKS", repository().join("shared-tasks"))
+        .output()
+        .unwrap(),
+    );
+  }
+  let executable = format!("widget{}", std::env::consts::EXE_SUFFIX);
+  let settings = json!({"version":1,"settings":{
+    "go":{"package":"./cmd/widget","executable":executable,"version-file":"cmd/widget/version.go","version-symbol":"Version","version-output":"Widget version {version}","version-arguments":["--version","argument spaces 日本語","","quote\"","C:\\a b\\"],"installer-files":["docs/notice.txt"],"clean-environment-prefixes":["WIDGET_"]},
+    "app":{"git-hash":"none","dirty-suffix":false},
+    "installer":{"config":"installer.yaml","output":"deliveries spaces 日本語"},
+    "doinstall":{"builder":f.dist.join(format!("doinstall-builder{}",std::env::consts::EXE_SUFFIX)),"installer":f.dist.join(format!("doinstall{}",std::env::consts::EXE_SUFFIX)),"launcher-template":f.dist.join(format!("doinstall-launcher{}",std::env::consts::EXE_SUFFIX))}
+  },"targets":{"_/doinstall/create-installer":{"defaults":{"build-stamp":"26300-1200"}}}});
+  f.write(".dotasks.yaml", &settings.to_string());
+  let module = "module example.invalid/widget\n\ngo 1.22.0\n";
+  let version="package main\n// A grouped raw literal and trailing comment must survive unchanged.\nconst (Version = `v2.3.4` /* release */)\n";
+  f.write("go.mod", module);
+  f.write("cmd/widget/version.go", version);
+  f.write("cmd/widget/main.go",r#"package main
+import("fmt";"os";"strings";"reflect")
+func main(){if !reflect.DeepEqual(os.Args[1:],[]string{"--version","argument spaces 日本語","","quote\"","C:\\a b\\"}){os.Exit(37)};if os.Getenv("WIDGET_SPOIL")!="" {fmt.Println("site settings leaked");return};fmt.Println("Widget version "+strings.TrimPrefix(Version,"v"))}
+"#);
+  f.write("docs/notice.txt", "payload 日本語\n");
+  f.write(".gostatic", "site-owned and excluded");
+  let recipe = json!({"schema":1,"application":{"id":"go-widget","name":"Go widget"},"runtime":{"interactive":false,"commands":[{"name":"widget","executable":executable}]},"build-steps":[
+    {"run":"_/go/stage-installer.go","with":{"stage-dir":"${staging}/app","app-version":"${version}"},"gather":[{"from":"${staging}/app","files":[executable,"docs/notice.txt"]}]},
+    {"run":"_/doinstall/assemble-self-extracting.task","with":{"builder":"${builder}","installer":"${installer}","launcher-template":"${launcher-template}","config":"${config}","output":"${package}","result-file":"${result-file}"}}
+  ]});
+  f.write("installer.yaml", &recipe.to_string());
+  f.write(".tasks/package.go",r#"package main
+import("errors";"fmt";dotask "dotask.local/sdk")
+func main(){dotask.Run(func(c *dotask.BuildContext)error{
+ a,err:=c.CreateInstaller("_/go/create-installer.go",nil);if err!=nil{return err}
+ found,err:=c.FindInstaller();if err!=nil{return err};if found==nil || found.FilePath!=a.FilePath{return errors.New("record mismatch")}
+ if err=c.RunInstaller(a,[]string{"--extract-to",a.FilePath+"-extracted","--","--validate"});err!=nil{return err}
+ fmt.Println("shared-artifact:",a.FilePath);return c.SetInstallerResult(a)
+})}
+"#);
+  let result = success(
+    f.command(&["package.go"])
+      .env("WIDGET_SPOIL", "must not reach version smoke")
+      .output()
+      .unwrap(),
+  );
+  assert!(String::from_utf8_lossy(&result.stdout).contains("shared-artifact:"));
+  let record = f.root.join(format!(
+    "artifacts/.dotask/installers/{}-{}.json",
+    std::env::consts::OS,
+    if cfg!(target_arch = "x86_64") {
+      "x64"
+    } else {
+      "arm64"
+    }
+  ));
+  let saved = fs::read(&record).unwrap();
+  let artifact: Value = serde_json::from_slice(&saved).unwrap();
+  let delivery = Path::new(artifact["Installer"]["FilePath"].as_str().unwrap());
+  assert!(delivery.is_file());
+  let extracted = PathBuf::from(format!("{}-extracted", delivery.display()));
+  let inventory = tree(&extracted);
+  assert!(inventory
+    .iter()
+    .any(|(p, b)| p.ends_with("docs/notice.txt") && b == "payload 日本語\n".as_bytes()));
+  assert!(!inventory.keys().any(|p| p.file_name().unwrap() == ".gostatic"));
+  assert_eq!(fs::read_to_string(f.root.join("go.mod")).unwrap(), module);
+  assert_eq!(fs::read_to_string(f.root.join("cmd/widget/version.go")).unwrap(), version);
+  assert!(!f.root.join("go.sum").exists());
+  let external = f._temporary.path().join("stage 日本語");
+  let stage = external.to_str().unwrap();
+  let failed = f.run(&[
+    "_/go/stage-installer.go",
+    "--stage-dir",
+    stage,
+    "--app-version",
+    "wrong",
+  ]);
+  assert!(!failed.status.success());
+  assert!(String::from_utf8_lossy(&failed.stderr).contains("version does not match"));
+  assert!(!external.join("docs/notice.txt").exists());
+  let failed = f.run(&[
+    "_/go/stage-installer.go",
+    "--stage-dir",
+    stage,
+    "--app-version",
+    "2.3.4",
+  ]);
+  assert!(!failed.status.success());
+  assert!(String::from_utf8_lossy(&failed.stderr).contains("must be fresh"));
+  let local = f.root.join("source-stage");
+  let failed = f.run(&[
+    "_/go/stage-installer.go",
+    "--stage-dir",
+    local.to_str().unwrap(),
+    "--app-version",
+    "2.3.4",
+  ]);
+  assert!(!failed.status.success());
+  assert!(String::from_utf8_lossy(&failed.stderr).contains("outside the project"));
+  assert!(!local.exists());
+  f.write(
+    "cmd/widget/version.go",
+    "package main\nvar Version = \"v2.3.4\" + \"computed\"\n",
+  );
+  let failed = f.run(&["_/go/create-installer.go"]);
+  assert!(!failed.status.success());
+  assert!(String::from_utf8_lossy(&failed.stderr).contains("must be a string literal"));
+  f.write("cmd/widget/version.go", version);
+  let mut traversal = settings.clone();
+  traversal["settings"]["go"]["installer-files"] = json!(["../outside.txt"]);
+  f.write(".dotasks.yaml", &traversal.to_string());
+  let fresh = f._temporary.path().join("fresh-stage");
+  let failed = f.run(&[
+    "_/go/stage-installer.go",
+    "--stage-dir",
+    fresh.to_str().unwrap(),
+    "--app-version",
+    "2.3.4",
+  ]);
+  assert!(!failed.status.success());
+  assert!(String::from_utf8_lossy(&failed.stderr).contains("must stay beneath"));
+  assert!(!fresh.exists());
+  let mut bad_arguments = settings.clone();
+  bad_arguments["settings"]["go"]["version-arguments"] = json!([]);
+  f.write(".dotasks.yaml", &bad_arguments.to_string());
+  let failed = f.run(&[
+    "_/go/stage-installer.go",
+    "--stage-dir",
+    fresh.to_str().unwrap(),
+    "--app-version",
+    "2.3.4",
+  ]);
+  assert_eq!(failed.status.code(), Some(37), "{}", String::from_utf8_lossy(&failed.stderr));
+  let newer = f._temporary.path().join("newer-toolchain-stage");
+  f.write(".dotasks.yaml", &settings.to_string());
+  f.write("go.mod", "module example.invalid/widget\n\ngo 99.0.0\n");
+  let failed = f.run(&[
+    "_/go/stage-installer.go",
+    "--stage-dir",
+    newer.to_str().unwrap(),
+    "--app-version",
+    "2.3.4",
+  ]);
+  assert!(!failed.status.success());
+  assert!(String::from_utf8_lossy(&failed.stderr).contains("GOTOOLCHAIN=local"));
+  assert!(!String::from_utf8_lossy(&failed.stderr).contains("downloading go"));
+  assert_eq!(fs::read(&record).unwrap(), saved);
+  assert!(!f.root.join("forbidden.log").exists());
+  assert!(!f.dist.join("sdk/rust").exists());
+  assert!(!f.dist.join("sdk/dotnet").exists());
+}

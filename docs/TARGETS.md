@@ -221,6 +221,12 @@ steps require no Rust/Cargo/.NET; the recipe's own tasks determine other tool
 requirements. No doinstall tools are bundled in dotask. See
 [installation](INSTALLATION.md#self-extracting-build-and-gather-workflow).
 
+The reusable [Go installer group](../shared-tasks/go/README.md) provides
+`go/create-installer.go` and `go/stage-installer.go`. Configure `settings.go`
+for the native package, executable, literal version source, expected version
+output and explicit payload files. Project wrappers delegate through the Go SDK;
+the native creator owns successful artifact recording.
+
 ## Target names
 
 Tasks are discovered recursively under `.tasks`. Their project-relative paths

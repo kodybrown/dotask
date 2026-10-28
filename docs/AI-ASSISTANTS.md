@@ -157,6 +157,9 @@ For Go tasks, import the bundled `dotask.local/sdk`, use `dotask.Run`, and
 follow the [Go task contract](TARGETS.md#go-tasks). Never create a consumer
 `go.mod`/`go.sum` for dotask or run `go get` to obtain its SDK. Declare every local
 support file; use the precompiled shared installer creator for Go packaging.
+Use the [shared Go installer tasks](../shared-tasks/go/README.md) for configurable
+native test/vet/build, literal version lookup, exact payload staging and artifact
+return through the precompiled creator. Keep consumer wrappers thin.
 Go execution needs an installed stable Go 1.22+ compiler, with no Rust/.NET
 requirement unless the recipe explicitly calls tasks in those languages.
 

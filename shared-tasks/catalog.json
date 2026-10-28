@@ -259,6 +259,44 @@
       "requires": []
     },
     {
+      "id": "go/create-installer",
+      "entryPoint": "go/create-installer.go",
+      "description": "Read a Go application's version and create an installer using the precompiled native helper.",
+      "runtime": "go",
+      "files": [
+        {
+          "path": "go/_support/installer/installer.go",
+          "sha256": "dda842ee7e7ee5ebd3654bfdbdf1c7f7344dfc3aea88b371072d0ca4c787705d"
+        },
+        {
+          "path": "go/create-installer.go",
+          "sha256": "b316ba56b359918ac383417a7615192d1d31c0ac4c29e7ed7813a193b0d4bf93"
+        }
+      ],
+      "requires": [
+        "go/stage-installer.go",
+        "doinstall/create-installer.task",
+        "doinstall/assemble-self-extracting.task"
+      ]
+    },
+    {
+      "id": "go/stage-installer",
+      "entryPoint": "go/stage-installer.go",
+      "description": "Test, vet, build and verify a native Go application's exact installer payload outside source.",
+      "runtime": "go",
+      "files": [
+        {
+          "path": "go/_support/installer/installer.go",
+          "sha256": "dda842ee7e7ee5ebd3654bfdbdf1c7f7344dfc3aea88b371072d0ca4c787705d"
+        },
+        {
+          "path": "go/stage-installer.go",
+          "sha256": "96a4509e16e03fc4a4fed98b1e0002cf6a67ced6cd89793ee171c838e61b7e49"
+        }
+      ],
+      "requires": []
+    },
+    {
       "id": "installer/install",
       "entryPoint": "installer/install.rs",
       "description": "Find and run the project's existing installer with optional guided configuration.",
