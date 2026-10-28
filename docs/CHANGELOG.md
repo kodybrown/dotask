@@ -1391,3 +1391,13 @@ acceptance, installation, and publication.
   creation and recorded-artifact acceptance with Rust/Cargo/.NET blocked using
   a matching precompiled preview bundle. Managed copies match canonical sources;
   evaluated Cargo/.NET outputs remain external. Linux/macOS acceptance was not run.
+
+### 2026-10-28 Use Purpose-Based Branch and Worktree Names
+
+- Uses normal Git Flow task branch names and explicitly excludes codex and ai
+  identifiers from new branch names. New task worktrees live directly under
+  worktrees without the extra ai directory; existing branches and directories
+  are preserved.
+- Updates agent instructions and applicable linked workflow examples together.
+- Verification: naming/path consistency assertions and Git whitespace checks.
+- Additional verification: build.cmd verify-docs passes.

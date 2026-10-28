@@ -9,8 +9,10 @@ These instructions apply to every task in this repository.
 - Project type: Rust CLI, Rust and Go task SDKs, .NET 10 C# task helper library
 - Integration checkout: the primary checkout on `develop`, located with `git worktree list --porcelain`
 - Integration branch: `develop`
-- Task worktree root: `../worktrees/ai` relative to the integration checkout
-- Task branch prefix: `codex/`
+- Task worktree root: `../worktrees` relative to the integration checkout
+- Task branch prefix: `feature/`, `bugfix/`, `hotfix/`, or `release/`,
+  according to the work. Use descriptive names such as `feature/<short-name>`.
+- Do not include `codex` or `ai` identifiers anywhere in new branch names.
 - Worktree mode: `direct-local-unless-requested` (single agent)
 - Root Markdown policy: canonical-restricted
 
