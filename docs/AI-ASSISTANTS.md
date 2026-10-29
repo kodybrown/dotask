@@ -25,9 +25,15 @@ when ambiguity is possible. No-op sync must preserve existing tracking bytes.
 
 In the dotask source checkout, use `./build.sh` (Windows: `.\build.cmd`) to
 bootstrap the checkout and list tasks. Use `./build.sh test` (Windows:
-`.\build.cmd test`) for repository verification. These launchers accept
+`.\build.cmd test`) for routine fast verification. These launchers accept
 dotask arguments and need no installed dotask; `./build.sh help` lists tasks.
-The source repository's `test` requires shared Rust build/tests followed by its
+Fast `test` covers Rust core/SDK logic, native CLI metadata/smoke, docs and catalog
+using isolated unoptimized output; it does not require .NET, Go or doinstall.
+Use focused language/SDK tests when those integrations change. The complete
+`test-all` suite is required for cross-language execution, SDK layout, bootstrap,
+installer and release-tooling changes, before release promotion, or on request;
+CI always runs it. Do not run it for every small CLI presentation change.
+The source repository's `test-all` requires shared Rust build/tests followed by its
 extra `verify` checks, including SDK/integration, documentation and catalog.
 Standalone `verify` requires a prior inspected native build and never calls
 `test`. The reusable `dotnet/verify` behavior below applies to consumers.
@@ -36,7 +42,7 @@ For dotask's own complete source installer workflow, use
 `./build.sh create-dotask-installer` (Windows: `.\build.cmd create-dotask-installer`).
 This local task consumes matching prebuilt doinstall tools, builds/lints/stages
 dotask, and packages both Windows/Linux deliveries with native temporary-install acceptance.
-Run the full `test` gate first, then use `--reuse-build` to package its inspected
+Run the full `test-all` gate first, then use `--reuse-build` to package its inspected
 executable. See [native releases](RELEASING.md) for the Windows/Linux-only
 main-push workflow. Use `--doinstall-tools PATH`, `DOINSTALL_TOOL_DIR`
 or builder discovery; `--source ../doinstall` explicitly selects source development
@@ -45,7 +51,8 @@ It is not a shared consumer task; see
 [installation](INSTALLATION.md#build-and-install-dotask-itself).
 
 After final edits/formatting to any shared task or declared support file, run
-`./build.sh catalog`, then `./build.sh test`; its catalog check detects stale output
+`./build.sh catalog`, then the relevant tests (`test-all` for integration changes);
+the fast `test` catalog check detects stale output
 without rewriting it. Commit the generated `shared-tasks/catalog.json` with
 those sources. The generator is `.tasks/catalog.rs`, using the native CLI's
 compiler-free metadata transport for C#, Rust, Go and YAML catalog entries.

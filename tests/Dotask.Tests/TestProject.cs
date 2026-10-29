@@ -6,7 +6,7 @@ namespace DoTask.Tests;
 
 public sealed class TestProject : IDisposable
 {
-  public string Root { get; } = Path.Combine(Path.GetTempPath(), "dotask-tests", "project with spaces " + Guid.NewGuid().ToString("N"));
+  public string Root { get; } = Path.Combine(Path.GetTempPath(), "_dotnet", "dotask-tests", "project with spaces " + Guid.NewGuid().ToString("N"));
   public string Tasks => Path.Combine(Root, ".tasks");
   public string OutputRoot => Path.Combine(OperatingSystem.IsWindows() ? @"C:\tmp\_dotnet" : "/tmp/_dotnet",
     "dotask-tests", Path.GetFileName(Root));

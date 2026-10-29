@@ -3,6 +3,65 @@
 Dated entries describe the revision tested. Older executable names, commands,
 and implementation references below are historical, not current instructions.
 
+## Current test tiers
+
+- `build.cmd test` / `./build.sh test`: routine fast Rust core/SDK, native CLI
+  metadata/smoke, documentation and catalog checks. Uses unoptimized, isolated
+  bootstrap output. Compiler integrations, process/consumer workflows and
+  installer/release acceptance are excluded; .NET/Go/doinstall are not required.
+- `test-all`: complete prior gate with inspected release build, all native
+  integration suites, C#/Go execution and SDK tests, prebuilt-tool installer
+  acceptances, release checks, formatting/lint, docs and catalog. CI and release
+  promotion require this tier; use it for affected cross-language/build/tooling
+  changes and periodically during development.
+- `test-sdks`, `test-go`, and focused Cargo/.NET tests: targeted integration
+  feedback. Standalone `verify` still requires a prior inspected release build;
+  a fast `test` pass cannot supply that prerequisite.
+
+Complete verification prints named phase starts and elapsed times. Some tests
+deliberately trigger errors such as ambiguous target names; the final test
+summary and exit status determine success, rather than isolated error text.
+
+Development scratch belongs below the cleanup-excluded `_rust` or `_dotnet`
+temp directories. The launchers supply a protected process-local temp root to
+all children; nested launchers reuse it. C# fixtures/native snapshots and TRX
+reports also use protected roots when tests are run directly. Before direct
+Cargo/.NET tests, set TEMP/TMP (Windows) or TMPDIR (Unix) to a protected base.
+Keep supplied prebuilt tools there too. This changes no persistent environment
+setting and leaves evaluated MSBuild/Cargo product output paths unchanged.
+
+## Fast/full split timing (2026-10-29)
+
+Windows x64 passed the 66-case fast tier plus documentation/catalog checks in
+4.51 seconds with cached outputs, including launcher/bootstrap/staging (3.1
+seconds inside the task). The first compile of the new unoptimized profile took
+32.86 seconds including those checks. Fast verification does not invoke .NET,
+Go or prebuilt installer tools and does not replace the inspected release build.
+
+Complete native build/tests and the final complete `verify` phase passed,
+including all 386 .NET tests with zero failures/skips, both prebuilt-tool Go
+installer acceptances, SDK/release checks, strict lint/format, docs, catalog and
+whitespace. Regressions cover fast selection/failure/release-output isolation,
+mandatory complete-CI commands, full-gate forwarding/failures, and protected
+child-temp propagation/default path length. A long/short prefix comparison
+confirmed two shared-task persistence errors only with the longer Windows
+prefix; the short excluded root passes the same assertions. Persistent temp
+settings and evaluated Cargo/MSBuild output paths are unchanged.
+
+The successful .NET integration phase took 214.4 seconds, with about 210 seconds
+in test execution. The helper and test assemblies were already up to date for
+restore/build. The per-case TRX report shows what the integration work includes:
+
+| Case | Elapsed |
+| --- | ---: |
+| Complete-gate option forwarding and failure fixtures | 54.02 s |
+| C# recorded-installer workflow | 28.61 s |
+| Self-extracting package/install/launch/uninstall workflow | 28.55 s |
+| Rust/C# nested calls, snapshots and cycles | 28.29 s |
+
+Cases can overlap; these durations are not additive. `test-sdks` prints the
+protected TRX location for each run. Native Linux/macOS acceptance was not run.
+
 ## Go tasks and bundled SDK (2026-10-23)
 
 Windows x64 passed the complete gate using installed Go 1.26.6 and the existing

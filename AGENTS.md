@@ -185,6 +185,11 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 ## Build And Verification
 
 - Source changes: `./build.sh test` on Linux/macOS; `build.cmd test` on Windows.
+  This is the routine fast Rust core/CLI smoke/SDK gate, plus docs/catalog.
+  Run relevant focused language/SDK tests for affected integrations. Use
+  `test-all` for cross-language execution, bootstrap, build/release tooling,
+  installer or SDK-layout changes, before release promotion, or when explicitly
+  requested; do not run the complete suite for every small CLI/docs change.
   Bare launchers bootstrap the checkout and list tasks; all arguments are forwarded.
 - Documentation-only changes: `./build.sh verify-docs` (Windows: `build.cmd verify-docs`); check relative links/anchors
   and run changed command or complete target examples where practical.
@@ -195,9 +200,12 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   Rust tasks use the source SDK; C# execution prepares the helper through the
   Rust `build-sdks` task using evaluated `PublishDir`. All build/test/format/docs/catalog/package operations
   belong in `.tasks`. Never run repository rebuilds from the live build output.
-- `test` is the complete gate: shared Rust build/tests followed by the required
-  project `verify` task. `verify` owns extra SDK/integration, task formatting,
-  documentation and catalog checks; it must never call `test`. Standalone
+- `test-all` is the complete gate: shared Rust build/tests followed by the required
+  project `verify` task. CI must call `test-all` explicitly. `test` uses the
+  isolated unoptimized bootstrap profile and skips compiler integration probes;
+  it cannot establish release-build acceptance. `verify` owns extra SDK/integration,
+  task formatting, documentation and catalog checks; it must never call `test`
+  or `test-all`. Standalone
   `verify` requires a successful inspected native build. Shared `rust/test`
   optionally calls a consumer's `verify`; dotask invokes it explicitly to
   forward tools/configuration, with the shared hook disabled to avoid duplication.
@@ -241,6 +249,12 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
   directory. Preserve the user's Cargo and rustfmt settings.
 - Verify evaluated output paths after build-tooling changes.
 - Repository builds import the optional user-level MSBuild output policy.
+- Keep development scratch and test inputs beneath the cleanup-excluded
+  `%TEMP%/_rust` or `%TEMP%/_dotnet` directories (C:/tmp is a junction to
+  `%TEMP%` on this machine). The launchers set a protected process-local temp
+  root inherited by child tools. For direct Cargo/.NET test invocations, set
+  TEMP/TMP (Windows) or TMPDIR (Unix) to a protected root first. Do not change
+  persistent user/machine temp settings.
 - Runtime target compilation is deliberately isolated from a consumer's build
   properties/targets and uses its own per-user external cache. Do not confuse
   target compilation with the repository's own output policy.

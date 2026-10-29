@@ -63,12 +63,12 @@ cd C:\Users\kodyb\Projects\dotask
 $bundle = Join-Path $env:TEMP ('dotask-tools-' + [guid]::NewGuid().ToString('N'))
 cargo run --locked -p dotask-release -- prepare --output $bundle
 $env:DOINSTALL_TOOL_DIR = Join-Path $bundle tools
-.\build.cmd test
+.\build.cmd test-all
 $output = Join-Path $env:TEMP ('dotask-release-' + [guid]::NewGuid().ToString('N'))
 .\build.cmd create-dotask-installer --reuse-build --output $output
 ```
 
-Linux uses the same Cargo commands with `./build.sh test` and
+Linux uses the same Cargo commands with `./build.sh test-all` and
 `./build.sh create-dotask-installer --reuse-build --output "$output"` on the
 declared Ubuntu baseline. Bare `create-dotask-installer` builds/lints/stages first;
 `--reuse-build` requires the existing inspected executable hash and reuses it.
@@ -81,7 +81,7 @@ Only after all acceptance passes is the installer recorded for `build.cmd instal
 
 Normal build/run/test/package tasks never change SemVer. Before a **new** release,
 run `build.cmd update-version` (patch by default; minor/major are explicit), review
-the diff, rerun `test`, and commit. The native version must be stable
+the diff, rerun `test-all`, and commit. The native version must be stable
 `MAJOR.MINOR.PATCH`, with no leading zeros, prerelease, or build metadata. UTC
 build time is displayed separately. The workflow rejects a version already
 assigned to a different commit. SDK library versions remain independent.

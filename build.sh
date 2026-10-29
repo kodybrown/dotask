@@ -3,6 +3,12 @@ set -euo pipefail
 
 # Always use this checkout's tasks, even when called from another directory.
 cd -- "$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+# Child tools and nested launchers share a protected scratch base. This changes
+# only this process tree, leaving the user's persistent temp settings untouched.
+export DOTASK_DEV_TEMP_ROOT="${DOTASK_DEV_TEMP_ROOT:-${TMPDIR:-/tmp}/_rust}"
+mkdir -p -- "$DOTASK_DEV_TEMP_ROOT"
+export TMPDIR="$DOTASK_DEV_TEMP_ROOT"
+
 dotask_bootstrap_dir="$(mktemp -d "${TMPDIR:-/tmp}/dotask-bootstrap.XXXXXXXX")"
 trap 'rm -rf -- "$dotask_bootstrap_dir"' EXIT
 trap 'exit 130' INT

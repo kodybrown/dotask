@@ -502,7 +502,7 @@ No language runtime, SDK, Roslyn, or managed support host is bundled.
 ```powershell
 .\build.cmd                         # Bootstrap and list available tasks.
 $env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt runtime, builder, and launcher template.
-.\build.cmd test                    # Complete gate, including external adapters.
+.\build.cmd test-all                # Complete gate, including external adapters.
 .\build.cmd verify                  # Extra checks; requires a prior inspected build.
 .\build.cmd create-dotask-installer --reuse-build # Package the inspected build and test both deliveries.
 # Or invoke the optional shared adapter directly with a prebuilt pair:
@@ -516,7 +516,7 @@ After creation, `build.cmd install` finds the self-extracting launcher through
 the SDK's separate successful-build record, including its external FilePath.
 It does not need doinstall build tools or source.
 Unix uses actual tool paths without `.exe`.
-`test`, `verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
+`test-all`, `verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
 over `DOINSTALL_TOOL_DIR`. They require prebuilt runtime, builder, and launcher
 template tools and fail when one is
 absent. If developing against source, explicitly run

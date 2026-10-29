@@ -1471,3 +1471,33 @@ acceptance, installation, and publication.
   repaired `.git` pointer; the original branch and commit are unchanged by the
   move. `build.cmd verify-docs` and Git whitespace checks pass in both checkouts.
   No application test suites were run for this documentation/metadata change.
+
+### 2026-10-29 Split fast and complete verification
+
+- Make test the routine Rust core/native CLI smoke/Rust SDK/docs/catalog tier,
+  requiring no .NET/Go/doinstall inputs. Preserve the prior unfiltered native,
+  SDK, language, installer and release pipeline as test-all, explicitly required
+  by CI and release promotion. Document targeted versus complete verification.
+- Build the disposable bootstrap runner unoptimized in its existing isolated
+  profile and match Windows CRT flags in fast tests to reuse compiled Cargo
+  dependencies. Keep release settings, inspected artifacts and external output
+  policies unchanged. Identify compiler integration probes explicitly so only
+  the fast tier excludes them.
+- Print named complete-verification phases and elapsed times. Write external
+  .NET TRX reports for per-test timing, and explain expected rejection diagnostics.
+  Add real-Cargo selection/failure/release-isolation regressions and retain full
+  gate option-forwarding/failure tests and explicit complete-CI assertions.
+- Keep development runner, fixture and child-tool scratch below cleanup-excluded
+  _rust/_dotnet temp roots. Reuse the protected base across nested launchers,
+  test child temp propagation and the short default prefix, and leave persistent
+  temp settings unchanged. Preserve Windows path budget for nested comparisons.
+- Verification: the 66-check fast tier passed in 32.86 seconds including first
+  compilation of the new profile; the finalized cached launcher passed in 4.51
+  seconds (3.1 seconds inside the task). Complete native tests/private-content
+  scans and the final complete verify phase passed, including all 386 .NET
+  tests with zero failures/skips, both Go installer acceptances, SDK/release,
+  formatting/lint, docs, catalog and whitespace checks. The long/short protected
+  prefix comparison reproduced two Windows persistence errors only with the
+  long prefix; both original assertions pass with the short excluded root.
+  Evaluated Cargo/.NET outputs remain external. Bash syntax passed; native
+  Linux/macOS acceptance was not run.

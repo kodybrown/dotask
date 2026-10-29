@@ -165,12 +165,67 @@ public sealed class RepositoryTaskTests
     Assert.Equal(baseline, File.ReadAllBytes(destination));
   }
 
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task FastTestSelectsOnlyCoreAndSmokePreservesFailuresAndLeavesReleaseUntouched( bool failCore )
+  {
+    using var project = new TestProject();
+    Copy(project, "test.rs");
+    project.Write(".tasks/verify-docs.task", "steps: []");
+    project.Write(".tasks/catalog.task", "options: [{name: verify, type: bool}]\nsteps: []");
+    project.Write("Cargo.toml", """
+      [workspace]
+      members = ["cli", "sdk"]
+      resolver = "3"
+      [profile.bootstrap]
+      inherits = "dev"
+      debug = 0
+      """);
+    // Real Cargo selection catches accidental execution of the slow integration
+    // targets, rather than merely comparing a hard-coded command string.
+    var output = Path.Combine(Path.GetTempPath(), "_rust", "dotask-fast-tests", Guid.NewGuid().ToString("N"));
+    project.Write(".cargo/config.toml", "[build]\ntarget-dir = " + JsonSerializer.Serialize(output.Replace('\\', '/')));
+    Directory.CreateDirectory(Path.Combine(output, "release"));
+    var release = Path.Combine(output, "release", "inspected-marker");
+    File.WriteAllText(release, "previous inspected release");
+    project.Write("cli/Cargo.toml", "[package]\nname = \"dotask-cli\"\nversion = \"0.0.0\"\nedition = \"2024\"\n[[bin]]\nname = \"dotask\"\npath = \"src/main.rs\"\n");
+    project.Write("cli/src/main.rs", $$"""
+      fn main() {}
+      #[cfg(test)] mod core {
+        #[test] fn fast() {
+          std::fs::write("core-ran", "yes").unwrap();
+          assert!({{(!failCore).ToString().ToLowerInvariant()}}, "intentional core failure");
+        }
+      }
+      #[cfg(test)] mod integration_tests {
+        #[test] fn compiler_probe() { panic!("slow compiler integration must not run"); }
+      }
+      """);
+    project.Write("cli/tests/cli.rs", "#[test] fn smoke() { std::fs::write(\"smoke-ran\", \"yes\").unwrap(); }");
+    project.Write("cli/tests/slow.rs", "#[test] fn slow() { panic!(\"unselected integration must not run\"); }");
+    project.Write("sdk/Cargo.toml", "[package]\nname = \"dotask-sdk\"\nversion = \"0.0.0\"\nedition = \"2024\"\n");
+    project.Write("sdk/src/lib.rs", "#[cfg(test)] mod tests { #[test] fn sdk() { std::fs::write(\"sdk-ran\", \"yes\").unwrap(); } }");
+    await project.Context().RunAsync(new ProcessDefinition {
+      Executable = "cargo", Arguments = ["generate-lockfile", "--offline"],
+      WorkingDirectory = project.Root, CaptureOutput = true
+    });
+    var result = await RustArtifacts.Run(project.Root, ["test"]);
+    Assert.True(result.ExitCode == (failCore ? 101 : 0), result.StandardOutput + result.StandardError);
+    Assert.True(File.Exists(Path.Combine(project.Root, "cli/core-ran")));
+    Assert.Equal(!failCore, File.Exists(Path.Combine(project.Root, "cli/smoke-ran")));
+    Assert.Equal(!failCore, File.Exists(Path.Combine(project.Root, "sdk/sdk-ran")));
+    Assert.Equal("previous inspected release", File.ReadAllText(release));
+    Assert.DoesNotContain("Complete verification:", result.StandardOutput);
+    if (!failCore) Assert.Contains("Fast checks passed", result.StandardOutput);
+  }
+
   [Fact]
-  public async Task RepositoryTestRequiresExtraVerificationForwardsOptionsAndStopsOnFailure()
+  public async Task CompleteTestRequiresExtraVerificationForwardsOptionsAndStopsOnFailure()
   {
     using var project = new TestProject();
     Copy(project, "verify.rs");
-    Copy(project, "test.task");
+    Copy(project, "test-all.task");
     void Stub( string name, string expression, string options = "[]" ) => project.Target(name,
       "File.AppendAllText(\"order\", " + expression + " + \";\");",
       "// dotask: 1\n// options: " + options + "\n// end-dotask\n");
@@ -202,26 +257,26 @@ public sealed class RepositoryTaskTests
     project.Target("build", "Environment.Exit(91);");
     project.Target("rust/cargo", "Environment.Exit(92);");
     project.Target("rust/clippy", "Environment.Exit(93);");
-    var result = await RustArtifacts.Run(project.Root, ["test", "-c", "Debug", "--doinstall-tools", "tools with spaces"]);
+    var result = await RustArtifacts.Run(project.Root, ["test-all", "-c", "Debug", "--doinstall-tools", "tools with spaces"]);
     Assert.True(result.ExitCode == 0, result.StandardError);
     var order = Path.Combine(project.Root, "order");
     Assert.Equal("native:dotask-cli:False;check;stage:Debug;test:dotask-sdk;lint:dotask-sdk;test:dotask-release;lint:dotask-release;go;Debug:tools with spaces;format:True;docs;catalog:True;", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify-docs.cs"));
-    result = await RustArtifacts.Run(project.Root, ["test", "--doinstall-tools", "tools"]);
+    result = await RustArtifacts.Run(project.Root, ["test-all", "--doinstall-tools", "tools"]);
     Assert.Equal(1, result.ExitCode);
     Assert.Equal("native:dotask-cli:False;check;stage:Release;test:dotask-sdk;lint:dotask-sdk;test:dotask-release;lint:dotask-release;go;Release:tools;format:True;", File.ReadAllText(order));
     File.Delete(order);
     project.Target("stage-build", "Environment.Exit(23);", "// dotask: 1\n// options: " + configOptions + "\n// end-dotask\n");
-    Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["test"])).ExitCode);
+    Assert.Equal(23, (await RustArtifacts.Run(project.Root, ["test-all"])).ExitCode);
     Assert.Equal("native:dotask-cli:False;check;", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "stage-build.cs"));
-    Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["test"])).ExitCode);
+    Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["test-all"])).ExitCode);
     Assert.Equal("native:dotask-cli:False;check;", File.ReadAllText(order));
     File.Delete(order);
     File.Delete(Path.Combine(project.Tasks, "verify.rs"));
-    Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["test"])).ExitCode);
+    Assert.Equal(1, (await RustArtifacts.Run(project.Root, ["test-all"])).ExitCode);
     Assert.Equal("native:dotask-cli:False;", File.ReadAllText(order));
   }
 

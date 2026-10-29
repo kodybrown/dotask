@@ -113,7 +113,10 @@ The Windows scope now combines Rust task authoring with bootstrap and packaging
 cutover. Repository orchestration includes `.rs` files such as
 `create-dotask-installer`; shared C# tasks and their authoring library remain maintained.
 Thin build/run/test/format/Clippy/version tasks compose the managed Rust group.
-`test` owns the full gate; its required `verify` hook contains only additional
+`test` owns fast Rust core/SDK and native CLI metadata/smoke checks plus docs and
+catalog freshness. It uses unoptimized bootstrap output without replacing an
+inspected release, and excludes compiler/installer integration. `test-all` owns
+the full gate; its required `verify` hook contains only additional
 SDK/integration, task-formatting, docs and catalog checks. The generic Rust test
 hook is optional for consumers, but failures are never skipped. Bootstrap uses
 a separate Cargo profile so it cannot replace the inspected release executable.

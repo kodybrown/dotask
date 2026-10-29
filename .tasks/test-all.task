@@ -1,4 +1,4 @@
-description: Build and test native dotask, then run every additional repository verification check.
+description: Complete release-build, language, installer, SDK and repository verification; required by CI and before release.
 options:
   - {name: configuration, alias: c, choices: [Debug, Release], default: Release}
   - {name: doinstall-tools, default: '', completion: directory, description: Prebuilt tools directory; otherwise DOINSTALL_TOOL_DIR.}

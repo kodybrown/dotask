@@ -43,7 +43,7 @@ select an older SDK even if a suitable one is installed.
 
 ## Build and verify
 
-From the repository checkout, bootstrap and verify the project:
+From the repository checkout, run the fast checks during routine development:
 
 ```sh
 # Linux or macOS
@@ -55,11 +55,21 @@ From the repository checkout, bootstrap and verify the project:
 .\build.cmd test
 ```
 
-The .NET SDK, Git, Rust 1.95+ with rustfmt, clippy and the host linker, and
+Fast `test` checks Rust core logic, native CLI metadata/smoke, the Rust SDK,
+documentation and catalog freshness. It needs Rust/Cargo and Git, without .NET,
+Go or doinstall tools. It skips compiler and installer integration and does not
+produce an inspected release build. Existing language-specific targets such as
+`test-sdks` and `test-go` remain available for affected integrations.
+
+Use `./build.sh test-all` (Windows: `.\build.cmd test-all`) for complete
+verification before release or after language/SDK, installer, bootstrap or
+release-tooling changes. CI always runs this complete suite. The .NET SDK, Git,
+Rust 1.95+ with rustfmt, clippy and the host linker, and
 stable Go 1.22+ with gofmt are required for the complete gate; dotask does not need to be installed. The release publisher simulation
 in the full gate also requires Bash and `jq` (Git Bash on Windows).
 The launchers compile this checkout, stage a temporary runner, and use it to run
-the requested tasks. Use `test` for the complete repository gate: the shared Rust
+the requested tasks using an unoptimized, isolated bootstrap profile. `test-all`
+is the complete repository gate: the shared Rust
 build/tests followed by dotask's required extra `verify` checks for SDKs,
 external installer adapters, task formatting, documentation and the catalog.
 Supply prebuilt doinstall tools through `--doinstall-tools PATH` or
@@ -185,13 +195,14 @@ The SDK also writes compilation/cache output. See the
 [example walkthrough](examples/basic/README.md) for all commands and expected results.
 
 The source checkout also contains
-`build`, `run`, `test`, `format`, `clippy`, `update-version`, `build-sdks`,
+`build`, `run`, `test`, `test-all`, `format`, `clippy`, `update-version`, `build-sdks`,
 `test-sdks`, `test-go`, `check`, `verify`, and `verify-docs` targets in its own
 [.tasks](.tasks/) directory.
 
 Here, `check` checks Git availability. `build` formats, lints, builds and scans
 the native CLI, then stages all three SDKs. `run` executes that inspected binary after
-staging. `test` builds/tests native dotask, then requires `verify` for the Rust SDK,
+staging. `test` runs fast development checks. `test-all` builds/tests native dotask,
+then requires `verify` for the Rust SDK,
 C#/Go SDK and native integration, task formatting, docs, catalog and whitespace.
 `test-go` also requires the prebuilt doinstall tools and explicitly runs the
 native Go installer fixture, which is excluded from generic Cargo-only tests.
@@ -412,8 +423,9 @@ Tab: it should offer `Debug` and `Release`. See [completion details](docs/USAGE.
 
 ```sh
 ./build.sh                         # List available tasks
-./build.sh test                    # Complete repository verification
+./build.sh test                    # Fast core/CLI/SDK checks
 ./build.sh verify                  # Extra checks after a successful inspected build
+./build.sh test-all                # Complete language/installer/release gate
 ./build.sh test-sdks -c Release    # Run C# helper/native integration tests
 ./build.sh verify-docs             # Required docs and Git whitespace
 ./build.sh git/check --whitespace  # Git availability and staged/unstaged whitespace

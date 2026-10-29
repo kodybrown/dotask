@@ -313,7 +313,7 @@ public class SharedTaskTests
     File.AppendAllText(source, "\n// upstream change\n");
     var conflict = await fixture.Run("--sync");
     Assert.Equal(1, conflict.Code);
-    Assert.Contains("Locally modified", conflict.Output);
+    Assert.True(conflict.Output.Contains("Locally modified", StringComparison.Ordinal), conflict.Output + conflict.Error);
     Assert.Equal(edited, File.ReadAllText(fixture.Installed("private-tasks/tools/hello")));
     Assert.Equal(originalLock, File.ReadAllBytes(fixture.LockPath));
     Assert.NotEmpty(Directory.GetFiles(fixture.Options.CacheDirectory, "*.base", SearchOption.AllDirectories));
@@ -334,7 +334,7 @@ public class SharedTaskTests
     var merged = File.ReadAllBytes(fixture.Installed("private-tasks/tools/hello"));
     Assert.Equal(1, (await fixture.Run("--sync", "private-tasks/tools/hello")).Code);
     var result = await fixture.Run("--sync", "private-tasks/tools/hello", "--accept-merge");
-    Assert.Equal(0, result.Code);
+    Assert.True(result.Code == 0, result.Output + result.Error);
     Assert.Equal(merged, File.ReadAllBytes(fixture.Installed("private-tasks/tools/hello")));
     Assert.Equal(SharedTaskFiles.HashFile(original), fixture.Lock().Tasks["private-tasks/tools/hello"].Files["private-tasks/tools/hello.cs"]);
     Assert.Equal(0, (await fixture.Run("--sync")).Code);

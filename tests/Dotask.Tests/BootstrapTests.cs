@@ -28,9 +28,24 @@ public sealed class BootstrapTests
       Assert.False(json.RootElement.GetProperty("dotnetSdk").GetBoolean());
       Assert.False(json.RootElement.GetProperty("rustSdk").GetBoolean());
       Assert.True(json.RootElement.GetProperty("sourceRustSdk").GetBoolean());
+      Assert.Equal(fixture.Identity, File.ReadAllText(Path.Combine(json.RootElement.GetProperty("temp").GetString()!, "bootstrap-owner")));
       Assert.DoesNotContain("Dotask.dotnet.dll", json.RootElement.GetProperty("supportFiles").EnumerateArray().Select(item => item.GetString()));
       Assert.Empty(Directory.EnumerateDirectories(fixture.Temporary, "dotask-bootstrap*"));
     }
+  }
+
+  [Fact]
+  public async Task LauncherDefaultsToShortExcludedTempRoot()
+  {
+    using var fixture = new Fixture();
+    var result = await fixture.RunWithDefaultTemp("inspect");
+    Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
+    var report = result.StandardOutput.Split('\n').Single(line => line.StartsWith("REPORT:", StringComparison.Ordinal))[7..];
+    using var json = JsonDocument.Parse(report);
+    var temporary = json.RootElement.GetProperty("temp").GetString()!.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    Assert.Equal("_rust", Path.GetFileName(temporary));
+    Assert.Equal(fixture.Identity, File.ReadAllText(Path.Combine(Path.GetDirectoryName(temporary)!, "bootstrap-owner")));
+    Assert.Empty(Directory.EnumerateDirectories(temporary, "dotask-bootstrap*"));
   }
 
   [Fact]
@@ -113,6 +128,7 @@ public sealed class BootstrapTests
           }
           println!("REPORT:{}", serde_json::json!({
             "args":args, "cwd":std::env::current_dir().unwrap(), "assembly":std::env::current_exe().unwrap(),
+            "temp":std::env::temp_dir(),
             "dotnetSdk":std::env::current_exe().unwrap().parent().unwrap().join("sdk/dotnet/Dotask.dotnet.dll").is_file(),
             "rustSdk":std::env::current_exe().unwrap().parent().unwrap().join("sdk/rust/Cargo.toml").is_file(),
             "sourceRustSdk":std::path::Path::new(&std::env::var("DOTASK_SOURCE_RUST_SDK").unwrap()).join("Cargo.toml").is_file(),
@@ -136,7 +152,10 @@ public sealed class BootstrapTests
       Directory.CreateDirectory(Path.Combine(Project.Root, "called from here"));
     }
 
-    public async Task<ProcessResult> Run( params string[] arguments )
+    public Task<ProcessResult> Run( params string[] arguments ) => RunCore(false, arguments);
+    public Task<ProcessResult> RunWithDefaultTemp( params string[] arguments ) => RunCore(true, arguments);
+
+    private async Task<ProcessResult> RunCore( bool useDefaultTemp, string[] arguments )
     {
       using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
       if (!File.Exists(Path.Combine(Project.Root, "Cargo.lock"))) {
@@ -166,6 +185,7 @@ public sealed class BootstrapTests
         WorkingDirectory = Path.Combine(Project.Root, "called from here"),
         Environment = new Dictionary<string, string?> {
           ["TMPDIR"] = Temporary, ["TEMP"] = Temporary, ["TMP"] = Temporary,
+          ["DOTASK_DEV_TEMP_ROOT"] = useDefaultTemp ? null : Temporary,
           // The fixture uses the same package and binary names as real dotask.
           // Never let an inherited checkout override overwrite the live outputs.
           ["CARGO_TARGET_DIR"] = Path.Combine(Path.GetTempPath(), "_rust", "dotask-bootstrap-tests", Identity)

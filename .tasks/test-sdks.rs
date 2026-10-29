@@ -10,6 +10,8 @@ fn main() {
   dotask_sdk::run(task);
 }
 fn task(project: &BuildContext) -> Result<()> {
+  println!("C# helper/native integration: builds and runs disposable consumer projects.");
+  println!("Expected rejection diagnostics can appear; the final test summary determines success.");
   // Verification consumes prebuilt tools just like a consumer project. Source
   // preparation is an explicit development/CI step, not an execution side effect.
   let tools = project
@@ -25,6 +27,14 @@ fn task(project: &BuildContext) -> Result<()> {
       dotask_sdk::bail!("Required prebuilt doinstall tool is missing: {}", file.display());
     }
   }
+  // Keep timings and diagnostics outside source. The TRX report distinguishes
+  // compilation/restore overhead from individual consumer and timeout fixtures.
+  let reports = std::env::temp_dir().join("_dotnet/dotask-test-results").join(format!(
+    "sdks-{}-{}",
+    std::process::id(),
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_nanos()
+  ));
+  println!("Per-test timing report: {}", reports.join("dotask-sdks.trx").display());
   // Direct SDK invocation keeps repository verification authored in Rust while
   // preserving consumer C# task and helper-library regression coverage.
   project.execute(
@@ -33,6 +43,12 @@ fn task(project: &BuildContext) -> Result<()> {
       .env("DOINSTALL_TOOL_DIR", tools)
       .arg("test")
       .arg(project.setting_path("solution")?)
+      .args([
+        "--logger",
+        "trx;LogFileName=dotask-sdks.trx",
+        "--results-directory",
+      ])
+      .arg(reports)
       .args([
         "--nologo",
         "-m:1",

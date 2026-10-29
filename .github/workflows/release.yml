@@ -60,12 +60,12 @@ jobs:
         shell: cmd
         env:
           DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-bundle/tools
-        run: build.cmd test
+        run: build.cmd test-all
       - name: Verify standalone project with published tools (Linux)
         if: runner.os != 'Windows'
         env:
           DOINSTALL_TOOL_DIR: ${{ runner.temp }}/doinstall-bundle/tools
-        run: ./build.sh test
+        run: ./build.sh test-all
       - name: Package inspected build and exercise both native deliveries (Windows)
         if: runner.os == 'Windows'
         shell: cmd

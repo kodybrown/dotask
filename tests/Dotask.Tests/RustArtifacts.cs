@@ -52,7 +52,7 @@ internal static class RustArtifacts
     // Tests execute an immutable physical snapshot. Repository verification can
     // rebuild normal Cargo output on Windows without locking a live executable.
     var source = Path.Combine(TargetDirectory.Value, "release");
-    var destination = Path.Combine(Path.GetTempPath(), "dotask-native-tests", Guid.NewGuid().ToString("N"));
+    var destination = Path.Combine(Path.GetTempPath(), "_rust", "dotask-native-tests", Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(destination);
     foreach (var name in new[] { "dotask", "dotask-doinstall-create-installer" }) {
       var file = name + (OperatingSystem.IsWindows() ? ".exe" : "");

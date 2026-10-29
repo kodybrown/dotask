@@ -50,7 +50,7 @@ pub fn inspected_executable(project: &BuildContext, name: &str) -> Result<PathBu
     .context("Missing dotask-cli package")?;
   let report: Value = serde_json::from_slice(
     &fs::read(target_directory(project)?.join("rust-build/dotask-cli-executables.json"))
-      .context("Run build or test before staging dotask")?,
+      .context("Run build or test-all before staging dotask")?,
   )?;
   if report["version"] != package["version"] || report["profile"] != "release" {
     dotask_sdk::bail!("Build the current dotask package in release profile before staging");
@@ -58,7 +58,7 @@ pub fn inspected_executable(project: &BuildContext, name: &str) -> Result<PathBu
   let binary = PathBuf::from(report["binaries"][name].as_str().context("Missing built dotask executable")?);
   let expected = report["sha256"][name].as_str().context("Missing inspected dotask hash")?;
   if format!("{:x}", Sha256::digest(fs::read(&binary)?)) != expected {
-    dotask_sdk::bail!("Dotask executable changed since inspection; run build or test again");
+    dotask_sdk::bail!("Dotask executable changed since inspection; run build or test-all again");
   }
   Ok(binary)
 }

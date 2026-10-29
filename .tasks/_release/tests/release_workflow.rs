@@ -39,6 +39,18 @@ fn main_pushes_publish_manual_runs_only_build_and_only_publisher_can_write() {
     .collect();
   assert_eq!(platforms, ["windows", "linux"]);
   assert_eq!(data["jobs"]["publish"]["needs"], "collect");
+  // A fast local test pass cannot authorize release packaging. Both native
+  // platforms must continue to run every language/installer integration check.
+  for command in ["build.cmd test-all", "./build.sh test-all"] {
+    assert!(
+      data["jobs"]["native"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|step| step["run"] == command),
+      "Missing complete CI gate: {command}"
+    );
+  }
   let windows_package = data["jobs"]["native"]["steps"]
     .as_array()
     .unwrap()

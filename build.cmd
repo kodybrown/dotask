@@ -2,6 +2,19 @@
 setlocal DisableDelayedExpansion
 pushd "%~dp0" || exit /b 1
 
+rem Keep scratch under the cleanup-excluded Rust root, with a short Windows
+rem prefix so deeply nested shared-task revision paths retain their path budget.
+rem Nested launchers reuse this base rather than adding another nested prefix.
+if not defined DOTASK_DEV_TEMP_ROOT set "DOTASK_DEV_TEMP_ROOT=%TEMP%\_rust"
+if not exist "%DOTASK_DEV_TEMP_ROOT%" mkdir "%DOTASK_DEV_TEMP_ROOT%" 2>nul
+if not exist "%DOTASK_DEV_TEMP_ROOT%" (
+  >&2 echo Could not create the protected development temporary directory.
+  popd
+  exit /b 1
+)
+set "TEMP=%DOTASK_DEV_TEMP_ROOT%"
+set "TMP=%DOTASK_DEV_TEMP_ROOT%"
+
 :create_temp
 set "dotask_bootstrap_dir=%TEMP%\dotask-bootstrap-%RANDOM%-%RANDOM%"
 if exist "%dotask_bootstrap_dir%" goto create_temp

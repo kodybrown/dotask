@@ -231,7 +231,7 @@ fn copy_output(source: &Path, destination: &Path) -> Result<()> {
 }
 
 #[cfg(test)]
-mod tests {
+mod integration_tests {
   use super::*;
 
   #[test]

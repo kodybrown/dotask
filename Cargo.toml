@@ -10,5 +10,8 @@ codegen-units = 1
 
 # Bootstrap compilation must not replace the inspected release executable that
 # standalone verification and packaging consume later in the same checkout.
+# This disposable runner is a development tool: optimizing/linking it like a
+# release adds substantial latency before even a metadata or fast-test command.
 [profile.bootstrap]
-inherits = "release"
+inherits = "dev"
+debug = 0
