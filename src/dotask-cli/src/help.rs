@@ -165,6 +165,9 @@ pub(crate) fn project(catalog: &Catalog, directory: &Directory, verbose: bool) {
   let mut previous = None;
   for (scope, target, name) in &rows {
     if previous != Some(scope) {
+      if previous.is_some() {
+        out.line("", 0);
+      }
       out.line(
         &if scope.is_empty() {
           "  Project:".into()

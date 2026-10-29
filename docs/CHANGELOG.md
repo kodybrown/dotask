@@ -1430,9 +1430,10 @@ acceptance, installation, and publication.
 ### 2026-10-28 Group project help targets by path
 
 - List root tasks first under Project:, then alphabetical path groups and task
-  names without blank lines between groups. Retain source-qualified headings
-  where needed to distinguish scopes or preserve valid invocations, plus file
-  extensions for coexisting implementations. Keep target resolution unchanged.
+  names. The October 29 follow-up adds one blank line between groups. Retain
+  source-qualified headings where needed to distinguish scopes or preserve valid
+  invocations, plus file extensions for coexisting implementations. Keep target
+  resolution unchanged.
 - Align descriptions across groups using a dynamically sized task-name column
   capped at 24 characters. Longer names put descriptions on the next line at
   the common column, including redirected output. Explain that group/task is
@@ -1448,3 +1449,9 @@ acceptance, installation, and publication.
   installer acceptances, Rust SDK/release checks, strict formatting/lint,
   documentation, catalog freshness and whitespace. Linux/macOS acceptance was
   not run; no active installation was changed.
+- October 29 spacing verification: the complete Windows build.cmd test gate
+  passed, including all 383 .NET tests (zero failures/skips), native/Rust/Go
+  checks, both prebuilt-tool installer acceptances, formatting/lint, docs,
+  catalog freshness and whitespace. An initial installer-validation stall
+  required stopping its verified fixture-owned child; the unchanged focused
+  acceptance and complete rerun passed. The stall cause remains unknown.

@@ -231,7 +231,7 @@ description and effective default.
 Help wraps at console widths of at least 60 columns, with aligned continuation
 lines; narrower/unknown widths and redirected stdout are left unwrapped.
 Summary targets are grouped with root tasks under `Project:` first, then
-alphabetical path headings without blank lines between groups. Task labels are
+alphabetical path headings with one blank line between groups. Task labels are
 relative to their heading; use `group/task` when a project task takes precedence
 or a short name is ambiguous. Unique short names still work. Source prefixes and
 implementation extensions remain visible where needed to distinguish tasks.

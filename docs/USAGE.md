@@ -220,7 +220,7 @@ settings are not automatically command-line options.
 Each target appears once in `Targets:`, grouped by its target path. Root tasks
 appear first under `Project:`, followed by alphabetically ordered path headings
 such as `archive/` and `rust/`, with alphabetically ordered task names in each
-group and no blank lines between groups. The official `_` source prefix is
+group and one blank line between groups. The official `_` source prefix is
 omitted from headings when the remaining path resolves to the same tasks and
 does not merge distinct scopes; otherwise the source-qualified path is retained.
 Nested paths remain visible, and coexisting implementations retain their file

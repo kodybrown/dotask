@@ -102,7 +102,7 @@ fn summary_groups_paths_and_aligns_descriptions_without_changing_resolution() {
     assert!(output.stderr.is_empty(), "{output:?}");
     let text = String::from_utf8(output.stdout).unwrap().replace("\r\n", "\n");
     let expected = format!(
-      "Targets:\n  Project:\n    {long}\n{}Long task description\n    {:24}  Project build\n    {:24}  Last project task\n  archive/\n    {:24}  Archive files\n  release/windows/\n    {:24}  Nested project task\n  rust/\n    {:24}  Shared build\n",
+      "Targets:\n  Project:\n    {long}\n{}Long task description\n    {:24}  Project build\n    {:24}  Last project task\n\n  archive/\n    {:24}  Archive files\n\n  release/windows/\n    {:24}  Nested project task\n\n  rust/\n    {:24}  Shared build\n",
       " ".repeat(30), "build", "zebra", "zip", "package", "build"
     );
     assert!(text.contains(&expected), "{text}");
