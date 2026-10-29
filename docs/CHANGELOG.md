@@ -1455,3 +1455,19 @@ acceptance, installation, and publication.
   catalog freshness and whitespace. An initial installer-validation stall
   required stopping its verified fixture-owned child; the unchanged focused
   acceptance and complete rerun passed. The stall cause remains unknown.
+
+### 2026-10-29 Relocate Frontend Checks Worktree Under dotask
+
+- Move the registered `dotask-rca-checks` checkout from the shared
+  `Projects/worktrees/ai` directory to `dotask/worktrees/dotask-rca-checks`.
+  Git registration and relative pointers follow the move; preserve the
+  existing `feature/frontend-checks` branch and product commit history.
+- Declare `./worktrees/<short-name>` beneath the integration checkout for new
+  explicitly requested worktrees, without agent grouping directories. Retain
+  Git Flow branch naming and document eligible rebase/fast-forward integration.
+- Ignore the root worktrees directory to keep nested checkouts out of the
+  integration checkout's tracked/untracked file scope.
+- Verification: all 252 relocated files retain their SHA-256 hashes except the
+  repaired `.git` pointer; the original branch and commit are unchanged by the
+  move. `build.cmd verify-docs` and Git whitespace checks pass in both checkouts.
+  No application test suites were run for this documentation/metadata change.

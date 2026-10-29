@@ -9,8 +9,9 @@ These instructions apply to every task in this repository.
 - Project type: Rust CLI, Rust and Go task SDKs, .NET 10 C# task helper library
 - Integration checkout: the primary checkout on `develop`, located with `git worktree list --porcelain`
 - Integration branch: `develop`
-- Task worktree root: `../worktrees` relative to the integration checkout
-- Task branch prefix: `feature/`, `bugfix/`, `hotfix/`, or `release/`,
+- Task worktree root: `./worktrees` relative to the integration checkout
+  (`C:\Users\kodyb\Projects\dotask\worktrees` on this machine).
+- Task branch prefixes: `feature/`, `bugfix/`, `hotfix/`, or `release/`,
   according to the work. Use descriptive names such as `feature/<short-name>`.
 - Do not include `codex` or `ai` identifiers anywhere in new branch names.
 - Worktree mode: `direct-local-unless-requested` (single agent)
@@ -18,6 +19,12 @@ These instructions apply to every task in this repository.
 
 Resolve the integration checkout from the current repository's Git metadata
 before using it. Do not create additional worktrees unless explicitly requested.
+Create requested task worktrees directly at `./worktrees/<short-name>` beneath
+that checkout, using short, descriptive directory names without `ai` or `codex`
+grouping directories or agent identifiers. Base new task branches on `develop`.
+These directory and Git Flow branch rules replace older agent-prefixed naming
+instructions. Preserve existing branch names and worktree paths unless the user
+explicitly requests renaming or relocation.
 
 <!-- powercode-agent-modules:start -->
 ## Shared Agent Modules
@@ -53,6 +60,18 @@ cleanup require explicit user acceptance and a request. Pushing, publishing,
 installation, and deployment require separate authorization.
 Preserve the user-owned notes in the parent directory. Work as a single agent.
 Use ordinary filesystem tools, apply_patch, Git, and .NET tools as appropriate.
+
+For an explicitly requested feature worktree, the command shape from the
+integration checkout is
+`git worktree add ./worktrees/<short-name> -b feature/<short-name> develop`.
+Use `bugfix/`, `hotfix/`, or `release/` when appropriate for the work.
+
+Before accepted integration, rebase a clean, unpublished, short-lived,
+agent-owned task branch onto current local `develop`, rerun applicable
+verification, and integrate with `git merge --ff-only` under the integration
+lock. Do not rebase pushed, shared, user-owned, or long-running branches. Stop
+for direction if ownership/publication is unclear or fast-forward integration
+fails; do not create an automatic merge commit to bypass that failure.
 
 ## Terminal Completion Facts
 
