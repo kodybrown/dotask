@@ -1501,3 +1501,13 @@ acceptance, installation, and publication.
   long prefix; both original assertions pass with the short excluded root.
   Evaluated Cargo/.NET outputs remain external. Bash syntax passed; native
   Linux/macOS acceptance was not run.
+
+### 2026-10-29 Use Central Shared Agent Instructions
+
+- Keep dotask-specific product contracts, task/test interfaces, protected scratch,
+  bootstrap isolation, focused .NET test permission, notes/lock locations, and
+  extra uncommitted-task changelog requirements in AGENTS.md.
+- Remove six duplicated shared modules and obsolete selection/source ownership;
+  update the continuation guide to refer to applicable global instructions.
+- Verification: documentation gate, retained-contract/reference checks, and Git
+  whitespace passed. No product test suite or task migration was needed.

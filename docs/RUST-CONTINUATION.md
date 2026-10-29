@@ -48,7 +48,7 @@ contracts; [VERIFICATION.md](VERIFICATION.md) owns dated acceptance evidence.
 
 ## Windows verification and package acceptance
 
-Read [AGENTS.md](../AGENTS.md) and its selected modules. Work as one agent on
+Read [AGENTS.md](../AGENTS.md) and applicable global instructions. Work as one agent on
 `develop`, preserve unrelated changes and the user's Cargo/rustfmt configuration,
 commit scoped verified work with a changelog entry, and do not install into the
 active user roots, publish, or push without separate authorization.
