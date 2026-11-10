@@ -222,17 +222,33 @@ func sourceFile(c *dotask.BuildContext, name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	relative, err := filepath.Rel(c.Root(), path)
-	if err != nil || relative == "." || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-		return "", errors.New("version source must be beneath the project root")
-	}
-	root, err := filepath.EvalSymlinks(c.Root())
+	return checkedPath(c.Root(), path, false)
+}
+
+func checkedPath(rootDirectory, path string, allowMissing bool) (string, error) {
+	root, err := filepath.EvalSymlinks(rootDirectory)
 	if err != nil {
 		return "", err
 	}
-	for _, part := range strings.Split(relative, string(filepath.Separator)) {
+	beneath := func(relative string, err error) bool {
+		return err == nil && relative != "." && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
+	}
+	relative, err := filepath.Rel(rootDirectory, path)
+	if !beneath(relative, err) {
+		// Paths returned by sourceFile are already resolved. Accept those too
+		// when the project root itself is a junction/symlink.
+		relative, err = filepath.Rel(root, path)
+		if !beneath(relative, err) {
+			return "", errors.New("version source must be beneath the project root")
+		}
+	}
+	parts := strings.Split(relative, string(filepath.Separator))
+	for i, part := range parts {
 		root = filepath.Join(root, part)
 		info, err := os.Lstat(root)
+		if allowMissing && i == len(parts)-1 && errors.Is(err, os.ErrNotExist) {
+			return root, nil
+		}
 		if err != nil {
 			return "", err
 		}
@@ -250,17 +266,25 @@ func sourceFile(c *dotask.BuildContext, name string) (string, error) {
 	return root, nil
 }
 
-func option(c *dotask.BuildContext, name, setting string, defaultValue string) (string, error) {
+func option(c *dotask.BuildContext, name, setting string, defaultValue string, required bool) (string, error) {
 	if _, err := c.Parameter(name); err == nil {
 		return c.String(name)
 	}
 	if _, err := c.Setting(setting); err == nil {
 		return dotask.SettingAs[string](c, setting)
 	}
-	if defaultValue != "" {
+	if !required {
 		return defaultValue, nil
 	}
-	return "", fmt.Errorf("%s or settings.%s is required", name, setting)
+	return "", fmt.Errorf("Go version preparation needs --%s or settings.%s.\n"+
+		"Choose the existing Go file and its top-level string const/var.\n"+
+		"Save those choices once with:\n"+
+		"  dotask update-version --init --file path/to/app.go --symbol Version\n"+
+		"For a JSON version mirror, add --json-file mygo.json.\n"+
+		"Replace the example file and symbol with your application's existing declaration.\n"+
+		"Alternatively, configure .dotasks.yaml:\n"+
+		"  settings:\n    go:\n      version-file: path/to/app.go\n      version-symbol: Version\n      version-json-file: mygo.json # optional\n"+
+		"You can also pass --file and --symbol on each invocation.", name, setting)
 }
 
 func Update(c *dotask.BuildContext) error {
@@ -276,20 +300,30 @@ func Update(c *dotask.BuildContext) error {
 	if err != nil {
 		return err
 	}
-	name, err := option(c, "file", "go.version-file", "")
+	initialize, err := c.Bool("init")
 	if err != nil {
 		return err
 	}
-	symbol, err := option(c, "symbol", "go.version-symbol", "")
+	if initialize && (op.minor || op.major || op.preview || op.refresh) {
+		return errors.New("--init saves settings only; run version increments separately")
+	}
+	name, err := option(c, "file", "go.version-file", "", true)
+	if err != nil {
+		return err
+	}
+	symbol, err := option(c, "symbol", "go.version-symbol", "", true)
 	if err != nil {
 		return err
 	}
 	if !token.IsIdentifier(symbol) || token.Lookup(symbol).IsKeyword() {
 		return errors.New("version symbol must be a Go identifier")
 	}
-	mode, err := option(c, "patch-mode", "go.version-patch", "increment")
+	mode, err := option(c, "patch-mode", "go.version-patch", "increment", false)
 	if err != nil {
 		return err
+	}
+	if mode != "increment" && mode != "date" {
+		return errors.New("patch mode must be increment or date")
 	}
 	path, err := sourceFile(c, name)
 	if err != nil {
@@ -303,14 +337,23 @@ func Update(c *dotask.BuildContext) error {
 	if err != nil {
 		return err
 	}
+	jsonName, err := option(c, "json-file", "go.version-json-file", "", false)
+	if err != nil {
+		return err
+	}
+	if initialize {
+		if jsonName != "" {
+			if _, err := jsonChange(c, jsonName, span.value, span.value); err != nil {
+				return err
+			}
+		}
+		return initializeSettings(c, name, symbol, jsonName, mode, dryRun)
+	}
 	next, err := prepare(span.value, mode, op, time.Now().UTC())
 	if err != nil {
 		return err
 	}
 	fmt.Printf("%s (%s): %s -> %s\n", path, symbol, span.value, next)
-	if dryRun || next == span.value {
-		return nil
-	}
 	replacement := strconv.Quote(next)
 	if span.raw {
 		replacement = "`" + next + "`"
@@ -319,37 +362,23 @@ func Update(c *dotask.BuildContext) error {
 	updated = append(updated, original[:span.start]...)
 	updated = append(updated, replacement...)
 	updated = append(updated, original[span.end:]...)
-	// Atomic replacement preserves all bytes outside the one literal, including
-	// comments, encoding/BOM, EOLs and unrelated version/build metadata fields.
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
+	if next == span.value {
+		updated = original
 	}
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".dotask-version-*.tmp")
-	if err != nil {
-		return err
+	changes := []fileChange{{path, original, updated}}
+	if jsonName != "" {
+		mirror, err := jsonChange(c, jsonName, span.value, next)
+		if err != nil {
+			return err
+		}
+		if mirror.path == path {
+			return errors.New("Go version source and JSON mirror must be different files")
+		}
+		changes = append(changes, mirror)
+		fmt.Printf("%s (version): %s -> %s\n", mirror.path, span.value, next)
 	}
-	defer os.Remove(temporary.Name())
-	if err = temporary.Chmod(info.Mode().Perm()); err != nil {
-		temporary.Close()
-		return err
+	if dryRun {
+		return nil
 	}
-	if _, err = temporary.Write(updated); err != nil {
-		temporary.Close()
-		return err
-	}
-	if err = temporary.Close(); err != nil {
-		return err
-	}
-	current, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	if !bytes.Equal(current, original) {
-		return errors.New("version source changed during preparation; no update written")
-	}
-	if _, err = sourceFile(c, name); err != nil {
-		return err
-	}
-	return os.Rename(temporary.Name(), path)
+	return commitChanges(changes, func(change fileChange) error { return replaceFile(c.Root(), change) })
 }

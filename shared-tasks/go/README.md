@@ -148,6 +148,35 @@ configured `go.version-file` / `go.version-symbol` top-level string const/var,
 the same source used by installer creation. No filename, symbol, generated
 package or additional historical version store is assumed.
 
+Save those choices once with the task's setup-only `--init` option:
+
+```powershell
+dotask update-version --init --file cmd/myapp/main.go --symbol Version
+# For MyGo projects, include the existing JSON version mirror:
+dotask update-version --init --file cmd/myapp/main.go --symbol Version --json-file mygo.json
+```
+
+Use your existing source path and symbol. Initialization checks that the selected
+declaration exists, fills missing `settings.go.version-file` / `version-symbol`
+and optional `version-json-file` fields in `.dotasks.yaml`, and never increments.
+An explicitly supplied `--patch-mode` is saved as `version-patch` too. Existing
+values are preserved; conflicting choices require editing the configuration
+explicitly. `--init --dry-run` previews the configuration without writing. It
+cannot be combined with increment flags. Block mappings and empty `{}` mappings
+are supported while preserving comments, unrelated settings, BOM and line endings;
+nonempty flow mappings, aliases and complex keys require manual configuration. Missing configuration
+errors include the setup command and a YAML example. Initialization does not
+create or move the Go version declaration.
+
+The optional `go.version-json-file` setting (or `--json-file` override) selects an
+existing JSON file with a top-level `version` string, such as `mygo.json`. There
+is no implicit filename discovery. The JSON version must match the Go source;
+malformed, missing, duplicate or mismatched versions fail before either file is
+written. Normal increments update both literals; `--dry-run` previews both.
+Other JSON fields, formatting, BOM and line endings are preserved. A failed
+second write attempts to restore the Go source, reporting recovery failures
+without overwriting a concurrent edit. Multi-file updates are not crash-atomic.
+
 [Go module releases use three-part SemVer](https://go.dev/doc/modules/version-numbers),
 usually represented by tags such as `v1.5.261023`. A date is allowed as the numeric
 patch; Go gives it no special meaning. The module's own release version is not
@@ -187,8 +216,8 @@ external OS timezone database dependency.
 
 `--file` and `--symbol` override the configured source. Only the selected literal
 changes, preserving raw/double quote style, UTF-8 BOM, comments, whitespace, EOLs,
-unrelated declarations and file permissions. Computed/ambiguous values, links,
-paths outside the project and invalid versions are rejected. Updates compare the
+unrelated declarations and file permissions. Computed/ambiguous values, linked
+paths below the project root, paths outside the project and invalid versions are rejected. Updates compare the
 original bytes before atomic replacement. Module files are never modified.
 Build/test/installer tasks never call update-version automatically.
 
@@ -197,6 +226,7 @@ settings:
   go:
     version-file: cmd/myapp/version.go
     version-symbol: Version
+    version-json-file: mygo.json # optional; omit for projects without a JSON mirror
     version-patch: date
 ```
 

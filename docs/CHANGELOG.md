@@ -1511,3 +1511,20 @@ acceptance, installation, and publication.
   update the continuation guide to refer to applicable global instructions.
 - Verification: documentation gate, retained-contract/reference checks, and Git
   whitespace passed. No product test suite or task migration was needed.
+
+### 2026-11-10 Initialize Go Version Settings And Synchronize JSON Versions
+
+- Explain missing Go version configuration with the required source/symbol
+  settings, per-invocation overrides, and a setup command using existing source.
+- Add setup-only `go/update-version --init` to fill missing version settings
+  while preserving existing choices and YAML comments/formatting.
+- Add optional `version-json-file` / `--json-file` support for existing top-level
+  JSON version strings such as MyGo's manifest. Validate both files before
+  updating, preview both in dry runs, and attempt rollback on a later failure.
+- Cover setup, source/JSON byte preservation, malformed or mismatched mirrors,
+  unchanged initialization, linked project roots, failure recovery and
+  concurrent edits. Build/test tasks continue to leave application versions
+  unchanged.
+- Verification: Windows fast and full DoTask gates passed with prebuilt DoInstall
+  tools. Focused Go verification and a real Windows junction fixture passed
+  after the final path-handling fix.

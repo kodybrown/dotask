@@ -323,16 +323,28 @@
     {
       "id": "go/update-version",
       "entryPoint": "go/update-version.go",
-      "description": "Prepare a Go source version explicitly, using SemVer with numeric or Utah date-based patches. Never build or commit.",
+      "description": "Prepare a configured Go source version and optional JSON mirror, or initialize the version settings.",
       "runtime": "go",
       "files": [
         {
+          "path": "go/_support/version/config.go",
+          "sha256": "8ad37ebc9cb5bbcaca36459bb676732ca3cae847576f6eb70bd4cc98fef05e42"
+        },
+        {
+          "path": "go/_support/version/files.go",
+          "sha256": "d487a509c678ff3b6d339f4bd9771d465ce4024d485019abb13b789e1d054da7"
+        },
+        {
+          "path": "go/_support/version/mirror.go",
+          "sha256": "395905534880333f114944d389a0cc39954b777192eef2eb7a0aedb320871792"
+        },
+        {
           "path": "go/_support/version/version.go",
-          "sha256": "d4a4433b7e1bf84a382742b19e0d6803e15aea32dcc61ad9c62493d00fa2e648"
+          "sha256": "e894872222cd2945e633248b89e2ae9151c880cb423e416ad9ab80e80826b45b"
         },
         {
           "path": "go/update-version.go",
-          "sha256": "a64483883b3e0ce12af259a2ed73ec55ccc7377625fda9a865e1f54952bb8624"
+          "sha256": "0cd0e9b0e57ebf60eee42de8c115da1f0007e0d82c22213ad03a49d09df17aac"
         }
       ],
       "requires": []

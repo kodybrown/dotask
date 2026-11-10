@@ -233,6 +233,10 @@ with source bytes preserved. Both numeric and built-in Utah YYMMDD patch modes
 use three-part SemVer. Configure `go.version-patch: date` to refresh date patches;
 the shared default increments the numeric patch. Preview flags follow the C#
 explicit preparation workflow.
+Use `--init --file path/to/app.go --symbol Version` to save missing version
+settings without incrementing or creating source code. Add `--json-file mygo.json`
+to save `go.version-json-file` and update its existing top-level version alongside
+the Go literal. The mirror is opt-in; both current versions must agree.
 It never changes Go module versions or runs automatically during builds. See the
 [Go group contract](../shared-tasks/go/README.md#explicit-semver-preparation).
 

@@ -813,6 +813,60 @@ fn shared_go_version_preparation_preserves_source_bytes_without_other_toolchains
   assert_eq!(fs::read_to_string(f.root.join("go.mod")).unwrap(), module);
   assert!(!f.root.join("go.sum").exists());
   assert!(!f.root.join("forbidden.log").exists());
+  let config = "\u{feff}# preserve setup\r\nversion: 1\r\nname: Example\r\nsettings: {} # keep\r\n";
+  let entry = "package main\nconst Release = \"1.2.3\" // keep\n";
+  let mirror = "\u{feff}{\r\n  \"version\" : \"1.2.3\",\r\n  \"nested\": {\"version\":\"unchanged\"}\r\n}\r\n";
+  f.write(".dotasks.yaml", config);
+  f.write("entry.go", entry);
+  f.write("mygo.json", mirror);
+  let failed = f.run(&["_/go/update-version.go", "--increment-minor"]);
+  assert!(!failed.status.success());
+  let message = String::from_utf8_lossy(&failed.stderr);
+  assert!(message.contains("settings.go.version-file"));
+  assert!(message.contains("--init --file path/to/app.go --symbol Version"));
+  assert!(message.contains("version-json-file: mygo.json"));
+  let setup = [
+    "_/go/update-version.go",
+    "--init",
+    "--file",
+    "entry.go",
+    "--symbol",
+    "Release",
+    "--json-file",
+    "mygo.json",
+  ];
+  let mut preview_setup = setup.to_vec();
+  preview_setup.push("--dry-run");
+  success(f.run(&preview_setup));
+  assert_eq!(fs::read_to_string(f.root.join(".dotasks.yaml")).unwrap(), config);
+  success(f.run(&setup));
+  let configured = fs::read_to_string(f.root.join(".dotasks.yaml")).unwrap();
+  assert!(configured.starts_with("\u{feff}# preserve setup\r\nversion: 1\r\nname: Example\r\nsettings: # keep\r\n"));
+  assert!(configured.contains("version-json-file: \"mygo.json\"\r\n"));
+  success(f.run(&["_/go/update-version.go", "--init"]));
+  assert_eq!(fs::read_to_string(f.root.join(".dotasks.yaml")).unwrap(), configured);
+  success(f.run(&["_/go/update-version.go", "--increment-minor", "--dry-run"]));
+  assert_eq!(fs::read_to_string(f.root.join("entry.go")).unwrap(), entry);
+  assert_eq!(fs::read_to_string(f.root.join("mygo.json")).unwrap(), mirror);
+  success(f.run(&["_/go/update-version.go", "--increment-minor"]));
+  let changed_entry = entry.replace("1.2.3", "1.3.0");
+  assert_eq!(fs::read_to_string(f.root.join("entry.go")).unwrap(), changed_entry);
+  assert_eq!(
+    fs::read_to_string(f.root.join("mygo.json")).unwrap(),
+    mirror.replace("1.2.3", "1.3.0")
+  );
+  for invalid in ["{broken", "{\"version\":\"9.0.0\"}"] {
+    f.write("mygo.json", invalid);
+    assert!(!f.run(&["_/go/update-version.go"]).status.success());
+    assert_eq!(fs::read_to_string(f.root.join("entry.go")).unwrap(), changed_entry);
+    assert_eq!(fs::read_to_string(f.root.join("mygo.json")).unwrap(), invalid);
+  }
+  assert!(!f
+    .run(&["_/go/update-version.go", "--init", "--increment-major"])
+    .status
+    .success());
+  assert_eq!(fs::read_to_string(f.root.join(".dotasks.yaml")).unwrap(), configured);
+  assert_eq!(fs::read_to_string(f.root.join("go.mod")).unwrap(), module);
   assert_eq!(
     fs::read_dir(&f.root)
       .unwrap()

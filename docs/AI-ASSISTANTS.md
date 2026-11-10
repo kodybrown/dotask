@@ -183,6 +183,12 @@ The group also provides `go/update-version.go` for explicit literal
 preparation. Use three-part SemVer with a numeric patch (default) or the built-in
 `go.version-patch: date` policy for Utah YYMMDD patches and preview preparation.
 No project-specific version wrapper or generated metadata package is needed.
+Use `--init --file <existing-source.go> --symbol <existing-identifier>` to fill
+missing version settings without incrementing. Add `--json-file mygo.json` when
+the project needs its existing top-level JSON version kept in sync; this saves
+`go.version-json-file`. Initialization preserves configured choices, and ordinary
+updates require the Go and JSON versions to agree. Never assume the source path
+or generate a new version declaration to resolve missing configuration.
 Preview actual project versions with `--dry-run`; never bump versions as part
 of ordinary verification.
 Go execution needs an installed stable Go 1.22+ compiler, with no Rust/.NET
