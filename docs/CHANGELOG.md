@@ -1577,3 +1577,10 @@ acceptance, installation, and publication.
   tests and package checks use the pinned SDK even when the runner image
   includes a newer major version.
 - Verification: release workflow tests and the Windows fast gate passed.
+
+### 2026-11-12 Save shared task conflict files at long Windows paths
+
+- Use Windows extended-length paths for atomic shared task writes so
+  `--sync` can save conflict comparisons in deeply nested caches.
+- Verification: Windows fast and full gates and native packaging passed.
+  Conflict review and merge acceptance preserved edits at a 317-character path.

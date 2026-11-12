@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use sha2::{Digest, Sha256};
 use std::{
   fs,
@@ -99,15 +99,42 @@ pub(crate) fn resolve(root: &Path, path: &str) -> Result<PathBuf> {
 pub(crate) fn atomic(path: &Path, bytes: &[u8], replace: bool) -> Result<()> {
   let parent = path.parent().unwrap();
   fs::create_dir_all(parent)?;
-  let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
+  // Tempfile's Windows persistence calls Win32 directly. Use a verbatim
+  // parent for both names so deeply nested conflict files can be renamed.
+  #[cfg(windows)]
+  let target = fs::canonicalize(parent)?.join(path.file_name().unwrap());
+  #[cfg(windows)]
+  let destination = target.as_path();
+  #[cfg(not(windows))]
+  let destination = path;
+  let mut temporary = tempfile::NamedTempFile::new_in(destination.parent().unwrap())?;
   temporary.write_all(bytes)?;
   temporary.as_file().sync_all()?;
   if replace {
-    temporary.persist(path)?;
+    temporary.persist(destination)
   } else {
-    temporary.persist_noclobber(path)?;
+    temporary.persist_noclobber(destination)
   }
+  .with_context(|| format!("Could not save {}", path.display()))?;
   Ok(())
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn atomic_writes_and_replaces_shared_files_beyond_the_legacy_windows_path_limit() {
+  let temp = tempfile::tempdir().unwrap();
+  let component = "nested-conflict-directory".repeat(3);
+  let mut directory = temp.path().to_owned();
+  for _ in 0..4 {
+    directory.push(&component);
+  }
+  let path = directory.join("task.cs.project");
+  assert!(path.as_os_str().len() > 260);
+  atomic(&path, b"original", false).unwrap();
+  assert!(atomic(&path, b"another write", false).is_err());
+  assert_eq!(fs::read(&path).unwrap(), b"original");
+  atomic(&path, b"replacement", true).unwrap();
+  assert_eq!(fs::read(&path).unwrap(), b"replacement");
 }
 pub(crate) fn private_directory(path: &Path) -> Result<()> {
   fs::create_dir_all(path)?;
