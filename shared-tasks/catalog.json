@@ -340,7 +340,7 @@
         },
         {
           "path": "go/_support/version/version.go",
-          "sha256": "e894872222cd2945e633248b89e2ae9151c880cb423e416ad9ab80e80826b45b"
+          "sha256": "5583a5940062ccf0167d0aa664fc7ebc81b5d8e23ee7a73010e5583912cc8387"
         },
         {
           "path": "go/update-version.go",

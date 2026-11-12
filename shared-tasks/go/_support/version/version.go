@@ -239,7 +239,10 @@ func checkedPath(rootDirectory, path string, allowMissing bool) (string, error) 
 		// when the project root itself is a junction/symlink.
 		relative, err = filepath.Rel(root, path)
 		if !beneath(relative, err) {
-			return "", errors.New("version source must be beneath the project root")
+			relative, err = relativeThroughRootAlias(root, path)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 	parts := strings.Split(relative, string(filepath.Separator))
@@ -264,6 +267,29 @@ func checkedPath(rootDirectory, path string, allowMissing bool) (string, error) 
 		return "", errors.New("version source must be a regular file")
 	}
 	return root, nil
+}
+
+func relativeThroughRootAlias(root, path string) (string, error) {
+	rootInfo, err := os.Stat(root)
+	if err != nil {
+		return "", err
+	}
+	// Windows short names and extended-length paths can name the same
+	// directory with different spellings. Match the outermost ancestor by
+	// identity so any links farther down still go through the Lstat checks.
+	var alias string
+	for parent := filepath.Dir(path); ; parent = filepath.Dir(parent) {
+		if info, err := os.Stat(parent); err == nil && os.SameFile(rootInfo, info) {
+			alias = parent
+		}
+		if parent == filepath.Dir(parent) {
+			break
+		}
+	}
+	if alias == "" {
+		return "", errors.New("version source must be beneath the project root")
+	}
+	return filepath.Rel(alias, path)
 }
 
 func option(c *dotask.BuildContext, name, setting string, defaultValue string, required bool) (string, error) {

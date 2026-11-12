@@ -1559,3 +1559,13 @@ acceptance, installation, and publication.
   page on failure. Keep URL paths, query strings, and credentials out of errors.
 - Keep the numeric status and show the redirect note only for redirects with
   a destination. Optional 404 and redirect handling retain their behavior.
+
+### 2026-11-12 Prepare dotask 0.1.5
+
+- Advance the CLI manifest and lockfile to 0.1.5 for the next Windows and Linux
+  release.
+- Resolve equivalent Windows project-root spellings during Go version setup.
+  The version task continues to reject linked files and directories below
+  the root.
+- Verification: Windows fast and full gates passed with the pinned DoInstall
+  bundle. The 0.1.5 portable archive and installer passed native acceptance.

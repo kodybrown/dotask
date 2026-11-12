@@ -9,12 +9,12 @@ tested commit. Never manually tag to start a release.
 
 ## Deliveries and pins
 
-For version `0.1.4`, the stable public names are:
+For version `0.1.5`, the stable public names are:
 
 | Platform | Portable CI bundle | Interactive installer |
 | --- | --- | --- |
-| Windows x64 | `dotask-v0.1.4-windows-x64-portable.zip` | `dotask-v0.1.4-windows-x64-setup.exe` |
-| Linux x64 | `dotask-v0.1.4-linux-x64-portable.tar.gz` | `dotask-v0.1.4-linux-x64-setup` |
+| Windows x64 | `dotask-v0.1.5-windows-x64-portable.zip` | `dotask-v0.1.5-windows-x64-setup.exe` |
+| Linux x64 | `dotask-v0.1.5-linux-x64-portable.tar.gz` | `dotask-v0.1.5-linux-x64-setup` |
 
 Each release also contains `SHA256SUMS`, `RELEASE-METADATA.json`, and
 `dotask-vVERSION-PLATFORM-x64-metadata.json` for each platform. The archives have

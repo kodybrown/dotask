@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -263,5 +264,39 @@ func TestVersionUpdatesThroughLinkedProjectRoot(t *testing.T) {
 	}
 	if _, err := checkedPath(alias, filepath.Join(parent, "outside.go"), true); err == nil {
 		t.Fatal("accepted a path outside the linked project")
+	}
+	if runtime.GOOS == "windows" && len(filepath.VolumeName(root)) == 2 {
+		linkedChild := filepath.Join(root, "linked-child")
+		if err := os.Symlink(root, linkedChild); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := checkedPath(alias, `\\?\`+filepath.Join(linkedChild, "entry.go"), false); err == nil || !strings.Contains(err.Error(), "cannot contain links") {
+			t.Fatalf("expected a link below the root to be rejected, got %v", err)
+		}
+	}
+}
+
+func TestVersionSetupThroughAlternateWindowsPathSpelling(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows extended-length paths")
+	}
+	root := t.TempDir()
+	if len(filepath.VolumeName(root)) != 2 {
+		t.Skip("requires a local drive path")
+	}
+	source := filepath.Join(root, "entry.go")
+	if err := os.WriteFile(source, []byte("package main\nconst Release = \"1.2.3\"\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	setup := map[string]any{"init": true, "file": `\\?\` + source, "symbol": "Release"}
+	if err := Update(versionContext(t, root, setup, nil)); err != nil {
+		t.Fatal(err)
+	}
+	config, err := os.ReadFile(filepath.Join(root, ".dotasks.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(config, []byte(`version-file: "entry.go"`)) {
+		t.Fatalf("setup stored a nonportable path: %q", config)
 	}
 }

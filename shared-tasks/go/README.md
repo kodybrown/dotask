@@ -216,9 +216,11 @@ external OS timezone database dependency.
 
 `--file` and `--symbol` override the configured source. Only the selected literal
 changes, preserving raw/double quote style, UTF-8 BOM, comments, whitespace, EOLs,
-unrelated declarations and file permissions. Computed/ambiguous values, linked
-paths below the project root, paths outside the project and invalid versions are rejected. Updates compare the
-original bytes before atomic replacement. Module files are never modified.
+unrelated declarations and file permissions. A junction or alternate Windows
+path spelling may identify the project root. The task rejects links below that
+root, paths outside the project, computed or ambiguous values, and invalid
+versions. Updates compare the original bytes before atomic replacement. Module
+files are never modified.
 Build/test/installer tasks never call update-version automatically.
 
 ```yaml
