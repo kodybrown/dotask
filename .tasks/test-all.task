@@ -1,7 +1,7 @@
 description: Complete release-build, language, installer, SDK and repository verification; required by CI and before release.
 options:
   - {name: configuration, alias: c, choices: [Debug, Release], default: Release}
-  - {name: doinstall-tools, default: '', completion: directory, description: Prebuilt tools directory; otherwise DOINSTALL_TOOL_DIR.}
+  - {name: doinstall-tools, default: '', completion: directory, description: Use prebuilt DoInstall tools instead of building from source.}
 requires: [{kind: task, value: _/rust/test}, {kind: task, value: verify}]
 steps:
   - run: _/rust/test

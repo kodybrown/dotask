@@ -40,13 +40,14 @@ Standalone `verify` requires a prior inspected native build and never calls
 
 For dotask's own complete source installer workflow, use
 `./build.sh create-dotask-installer` (Windows: `.\build.cmd create-dotask-installer`).
-This local task consumes matching prebuilt doinstall tools, builds/lints/stages
-dotask, and packages both Windows/Linux deliveries with native temporary-install acceptance.
+This local task builds and stages DoInstall from `settings.doinstall.source`,
+builds/lints/stages dotask, and tests both Windows/Linux deliveries with
+temporary installations.
 Run the full `test-all` gate first, then use `--reuse-build` to package its inspected
 executable. See [native releases](RELEASING.md) for the Windows/Linux-only
-main-push workflow. Use `--doinstall-tools PATH`, `DOINSTALL_TOOL_DIR`
-or builder discovery; `--source ../doinstall` explicitly selects source development
-and verifies that project too. The install task uses the successful-build record.
+main-push workflow. Use `--doinstall-tools PATH` or `DOINSTALL_TOOL_DIR` to
+reuse a prebuilt bundle, or `--source PATH` for another checkout.
+The install task uses the successful-build record.
 It is not a shared consumer task; see
 [installation](INSTALLATION.md#build-and-install-dotask-itself).
 
@@ -360,12 +361,12 @@ Group shared installer settings under `settings.installer`: `config` and `output
 control creation; `installer_file`, optional `select: highest-version`, `kind`
 and `installer_args` control existing-output selection/launch. Accessors use
 dotted keys such as `installer.config`. Separately
-supplied tool selections belong under `settings.doinstall.builder` and
-`settings.doinstall.installer`; `source` is only an explicit development helper.
+supplied consumer tool selections belong under `settings.doinstall.builder`
+and `settings.doinstall.installer`; consumer builds do not compile DoInstall.
 Dotask's own stable source template is `.tasks/installer.yaml`. Its local
-`create-dotask-installer` task builds/verifies the external tools and dotask,
-then delegates build/gather/packaging and successful-output recording to the
-shared creator. There is no local `create-installer` wrapper. Other
+`create-dotask-installer` task stages its tools and dotask, delegates assembly
+to the builder, and records the installer after native acceptance.
+There is no local `create-installer` wrapper. Other
 applications keep their own build wrapper and installer configuration.
 Application versions are owned by each application.
 Supply `application.build.stamp` and optional `commit` to align package and

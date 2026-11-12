@@ -9,7 +9,7 @@
     <Compile Include="../../shared-tasks/dotnet/_support/TestProcess.cs" Link="Shared/TestProcess.cs" />
     <EmbeddedResource Include="NativeCliBaseline.json" LogicalName="NativeCliBaseline.json" />
     <AssemblyMetadata Include="RepositoryRoot" Value="$(MSBuildProjectDirectory)/../.." />
-    <EmbeddedResource Include="../../.tasks/verify.rs;../../.tasks/test-all.task;../../.tasks/test.rs;../../.tasks/verify-docs.rs;../../.tasks/catalog.rs"
+    <EmbeddedResource Include="../../.tasks/verify.rs;../../.tasks/test-all.task;../../.tasks/test.rs;../../.tasks/verify-docs.rs;../../.tasks/catalog.rs;../../.tasks/_support/DoinstallTools.rs"
                       LogicalName="RepositoryTasks/%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../build.sh;../../build.cmd"
                       LogicalName="Bootstrap/%(Filename)%(Extension)" />

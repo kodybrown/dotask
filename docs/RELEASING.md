@@ -56,6 +56,10 @@ version/commit/hashes together, then rerun both native gates.
 
 Run from the integration checkout on `develop` (PowerShell):
 The full gate's publisher simulation requires Bash and `jq`; Windows uses Git Bash.
+The commands below explicitly choose the same pinned prebuilt tools as CI.
+For routine local builds, `build.cmd create-dotask-installer` and
+`build.cmd test-all` build DoInstall from the configured source checkout without
+any tool override.
 
 ```powershell
 cd C:\Users\kodyb\Projects\dotask
@@ -74,9 +78,9 @@ declared Ubuntu baseline. Bare `create-dotask-installer` builds/lints/stages fir
 `--reuse-build` requires the existing inspected executable hash and reuses it.
 Both modes assemble and test temporary installations, SDK discovery, Rust/C#/Go
 and YAML task execution, native creator packaging with Rust/Cargo and .NET absent from PATH, and uninstall. They never alter
-persistent PATH or active installations. `--source ../doinstall` preserves the
-explicit local source-development workflow; unpacked tools without their pinned
-archive can also produce development packages. Such packages cannot publish.
+persistent PATH or active installations. Source builds and prebuilt tools
+without their matching pinned archive can produce development packages. Such
+packages cannot publish.
 Only after all acceptance passes is the installer recorded for `build.cmd install`.
 
 Normal build/run/test/package tasks never change SemVer. Before a **new** release,

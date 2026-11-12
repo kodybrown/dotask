@@ -1528,3 +1528,15 @@ acceptance, installation, and publication.
 - Verification: Windows fast and full DoTask gates passed with prebuilt DoInstall
   tools. Focused Go verification and a real Windows junction fixture passed
   after the final path-handling fix.
+
+### 2026-11-12 Build DoInstall from source for local dotask packaging
+
+- Build and stage DoInstall from the configured checkout for the local installer
+  and full verification. Keep prebuilt overrides and CI's checksum-pinned
+  release bundle.
+- Accept the shorter DoInstall 0.2.0 runtime banner when the installed bundle's
+  hashes verify all three tools, or when the source build stages them together.
+  Reject mixed build timestamps, stamps, and executable hashes.
+- Verification: Windows fast checks, release and Go checks, and native packaging
+  with both source-built and installed tools passed. The SDK suite passed
+  385 tests; the updated repository-task fixture passed its focused rerun.

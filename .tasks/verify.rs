@@ -2,11 +2,14 @@
 // description: Run dotask's extra SDK, integration, task-formatting, documentation and catalog checks after native tests.
 // options:
 //   - { name: configuration, alias: c, choices: [Debug, Release], default: Release, description: Build configuration. }
-//   - { name: doinstall-tools, completion: directory, description: 'Prebuilt runtime, builder, and launcher template; otherwise DOINSTALL_TOOL_DIR.' }
+//   - { name: doinstall-tools, completion: directory, description: Use prebuilt DoInstall tools instead of building from source. }
+// requires: [{kind: task, value: _/doinstall/build}, {kind: file, value: _support/DoinstallTools.rs}]
 // remarks: Called by test-all after the shared Rust gate. Every extra check is required; never call test or test-all here.
 // examples: [dotask verify, dotask verify -c Debug]
 // end-dotask
 use dotask_sdk::{json, BuildContext, Result, Value};
+#[path = "_support/DoinstallTools.rs"]
+mod doinstall_tools;
 fn main() {
   dotask_sdk::run(task);
 }
@@ -25,17 +28,9 @@ fn task(project: &BuildContext) -> Result<()> {
     json!({"operation":"test","package":"dotask-release"}),
   )?;
   check(project, "_/rust/clippy", json!({"package":"dotask-release"}))?;
-  let mut tests = json!({"configuration":project.string("configuration")?});
-  if let Ok(tools) = project.string("doinstall-tools")
-    && !tools.is_empty()
-  {
-    tests["doinstall-tools"] = tools.into();
-  }
-  check(
-    project,
-    "test-go",
-    json!({"doinstall-tools":tests.get("doinstall-tools").cloned().unwrap_or_else(|| json!(""))}),
-  )?;
+  let tools = doinstall_tools::Tools::prepare(project)?;
+  let tests = json!({"configuration":project.string("configuration")?,"doinstall-tools":tools.path()});
+  check(project, "test-go", json!({"doinstall-tools":tools.path()}))?;
   check(project, "test-sdks", tests)?;
   check(project, "format-tasks", json!({"check":true}))?;
   check(project, "verify-docs", json!({}))?;

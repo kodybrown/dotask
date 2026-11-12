@@ -459,17 +459,22 @@ cd C:\Users\kodyb\Projects\dotask
 .\build.cmd create-dotask-installer
 ```
 
-Unix uses `./build.sh create-dotask-installer`. Supply a matching native prebuilt
-bundle with `--doinstall-tools PATH` or `DOINSTALL_TOOL_DIR`. Otherwise the task
-asks `doinstall-builder` on PATH for its real adjacent tools. Nothing downloads
-or builds doinstall implicitly. To develop against source explicitly, use
-`--source ../doinstall`; that mode builds/stages the checkout and runs its
-independent verification before dotask's build, ignoring ambient prebuilt tools.
-Do not combine `--source` and `--doinstall-tools`. This task is local to dotask,
-not a shared consumer task.
+Unix uses `./build.sh create-dotask-installer`. This task builds and stages
+DoInstall from `settings.doinstall.source` in `.dotasks.yaml` (normally the
+sibling `../doinstall` checkout). It does not discover installed tools on PATH
+or download them. Use `--source PATH` to select another source checkout, or
+`--doinstall-tools PATH` / `DOINSTALL_TOOL_DIR` to reuse a prebuilt bundle.
+An explicit `--source` overrides the environment; it cannot be combined with
+`--doinstall-tools`. This task is local to dotask, not a shared consumer task.
+
+For prebuilt tools, use the actual directory containing the runtime, builder
+and launcher template. Keep `RELEASE.json` with bundles whose runtime omits the
+full build timestamp (including installed DoInstall 0.2.0). The task verifies all
+three executable hashes against that inventory before accepting the shorter
+runtime version banner.
 
 The task builds/lints/stages dotask, then assembles and tests both a portable
-archive and self-extracting installer. Run `test` beforehand for the complete
+archive and self-extracting installer. Run `test-all` beforehand for the complete
 repository gate; `--reuse-build` packages that exact inspected executable without
 rebuilding it. It records/returns the installer only after native acceptance,
 using temporary app/bin/cache locations with source SDK overrides cleared and
@@ -501,12 +506,11 @@ No language runtime, SDK, Roslyn, or managed support host is bundled.
 
 ```powershell
 .\build.cmd                         # Bootstrap and list available tasks.
-$env:DOINSTALL_TOOL_DIR = 'C:/Tools/doinstall' # Prebuilt runtime, builder, and launcher template.
 .\build.cmd test-all                # Complete gate, including external adapters.
 .\build.cmd verify                  # Extra checks; requires a prior inspected build.
 .\build.cmd create-dotask-installer --reuse-build # Package the inspected build and test both deliveries.
 # Or invoke the optional shared adapter directly with a prebuilt pair:
-.\build.cmd _/doinstall/create-installer --builder "$env:DOINSTALL_TOOL_DIR/doinstall-builder.exe" --installer "$env:DOINSTALL_TOOL_DIR/doinstall.exe"
+.\build.cmd _/doinstall/create-installer --builder C:/Tools/doinstall/doinstall-builder.exe --installer C:/Tools/doinstall/doinstall.exe
 # Use fresh, isolated locations for acceptance:
 # Run the recorded FilePath with --non-interactive --set add-to-path=false
 # --install-dir C:/Temp/dotask-acceptance/apps/dotask --bin-dir C:/Temp/dotask-acceptance/bin
@@ -516,12 +520,11 @@ After creation, `build.cmd install` finds the self-extracting launcher through
 the SDK's separate successful-build record, including its external FilePath.
 It does not need doinstall build tools or source.
 Unix uses actual tool paths without `.exe`.
-`test-all`, `verify` and `test-sdks` accept `--doinstall-tools PATH`, which takes precedence
-over `DOINSTALL_TOOL_DIR`. They require prebuilt runtime, builder, and launcher
-template tools and fail when one is
-absent. If developing against source, explicitly run
-`build.cmd _/doinstall/build --stage-dir C:/Tools/doinstall` first. Release CI uses
-verified published Windows/Linux bundles. macOS has no CI job or release gate.
+`test-all` and `verify` also stage tools from the configured checkout by default.
+They pass the resulting directory to the focused `test-go` and `test-sdks` tasks.
+Use `--doinstall-tools PATH` or `DOINSTALL_TOOL_DIR` to override the default or
+to run those focused tasks directly. Release CI uses verified published
+Windows/Linux bundles. macOS has no CI job or release gate.
 
 Unix uses `./build.sh`. Both launchers forward arbitrary arguments to a temporary
 native runner; no task whitelist is maintained. The Rust source SDK is available

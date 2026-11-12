@@ -70,13 +70,27 @@ pub fn prepare(output: &Path) -> Result<()> {
   );
   extract(archive_entries(&archive)?, &output.join("tools"))?;
   ensure!(
-    tools_identity(&output.join("tools"))?["published"] == true,
+    tools_identity(&output.join("tools"), false)?["published"] == true,
     "Prepared tools failed provenance validation"
   );
   println!("Verified {} {} tools", pin["version"], system);
   Ok(())
 }
-fn tools_identity(tools: &Path) -> Result<Value> {
+fn verify_tool_inventory(files: &Inventory, info: &Value) -> Result<()> {
+  ensure!(info["schema"] == 1, "Unsupported DoInstall RELEASE.json schema");
+  for name in TOOLS {
+    let name = super::executable(name);
+    ensure!(
+      files
+        .get(&name)
+        .is_some_and(|hash| info["files"][&name].as_str() == Some(hash.as_str())),
+      "DoInstall {name} does not match its SHA-256 in RELEASE.json"
+    );
+  }
+  Ok(())
+}
+
+fn tools_identity(tools: &Path, from_source: bool) -> Result<Value> {
   let pin = pin()?;
   let system = platform()?;
   let archive = tools
@@ -84,7 +98,7 @@ fn tools_identity(tools: &Path) -> Result<Value> {
     .context("Missing tools parent")?
     .join(pin[system]["archive"].as_str().unwrap());
   let files = inventory(tools)?;
-  if archive.is_file() {
+  if !from_source && archive.is_file() {
     ensure!(
       sha(&fs::read(&archive)?) == pin[system]["sha256"],
       "Pinned doinstall checksum mismatch"
@@ -106,17 +120,22 @@ fn tools_identity(tools: &Path) -> Result<Value> {
     );
     // Even a previously prepared tools directory must be checked before a
     // version/discovery probe can execute one of its binaries.
-    query_tools(tools)?;
+    query_tools(tools, Some(&info), false)?;
     return Ok(
       json!({"published":true,"release":pin["version"],"source_commit":pin["source_commit"],"archive":pin[system]["archive"],"sha256":pin[system]["sha256"]}),
     );
   }
-  // Explicit --source and existing local prebuilt tools can package a development
-  // delivery, but the collector never publishes one as a pinned release.
-  query_tools(tools)?;
-  Ok(
-    json!({"published":false,"identity":capture(Command::new(tools.join(super::executable("doinstall"))).arg("--version"))?,"files":files}),
-  )
+  // A local installed bundle is not a release pin, but its own manifest can
+  // distinguish two builds whose runtime banners have the same hour stamp.
+  let manifest = if files.contains_key("RELEASE.json") {
+    let info = serde_json::from_slice(&fs::read(tools.join("RELEASE.json"))?)?;
+    verify_tool_inventory(&files, &info)?;
+    Some(info)
+  } else {
+    None
+  };
+  let identity = query_tools(tools, manifest.as_ref(), from_source)?;
+  Ok(json!({"published":false,"identity":identity,"files":files}))
 }
 fn assemble(stage: &Path, tools: &Path, work: &Path, version: &str) -> Result<PathBuf> {
   let mut config: Value = serde_saphyr::from_str(include_str!("../../installer.yaml"))?;
@@ -353,7 +372,7 @@ fn persistent_environment() -> Result<Vec<String>> {
   }
   Ok(result)
 }
-pub fn build(output: &Path, source: &Path, tools: &Path, result_file: Option<&Path>) -> Result<()> {
+pub fn build(output: &Path, source: &Path, tools: &Path, from_source: bool, result_file: Option<&Path>) -> Result<()> {
   let system = platform()?;
   let value = version(None)?;
   let output = fresh(output)?;
@@ -378,7 +397,7 @@ pub fn build(output: &Path, source: &Path, tools: &Path, result_file: Option<&Pa
       );
     }
   }
-  let dependency = tools_identity(tools)?;
+  let dependency = tools_identity(tools, from_source)?;
   let temporary = tempfile::tempdir()?;
   let work = fs::canonicalize(temporary.path())?;
   let stage = work.join("payload");

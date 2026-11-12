@@ -45,6 +45,7 @@ fn main() -> Result<()> {
           "--source",
           "--stage",
           "--tools",
+          "--source-tools",
           "--commit",
           "--result-file"
         ]
@@ -63,12 +64,20 @@ fn main() -> Result<()> {
   match action.as_str() {
     "version" => println!("{}", release::version(None)?),
     "prepare" => release::prepare(std::path::Path::new(get("--output")?))?,
-    "build" => release::build(
-      std::path::Path::new(get("--output")?),
-      std::path::Path::new(get("--stage")?),
-      std::path::Path::new(get("--tools")?),
-      options.get("--result-file").map(std::path::Path::new),
-    )?,
+    "build" => {
+      let (tools, from_source) = match (options.get("--tools"), options.get("--source-tools")) {
+        (Some(path), None) => (*path, false),
+        (None, Some(path)) => (*path, true),
+        _ => bail!("Supply exactly one of --tools or --source-tools"),
+      };
+      release::build(
+        std::path::Path::new(get("--output")?),
+        std::path::Path::new(get("--stage")?),
+        std::path::Path::new(tools),
+        from_source,
+        options.get("--result-file").map(std::path::Path::new),
+      )?;
+    }
     "collect" => release::collect(
       std::path::Path::new(get("--source")?),
       std::path::Path::new(get("--output")?),

@@ -225,7 +225,11 @@ public sealed class RepositoryTaskTests
   {
     using var project = new TestProject();
     Copy(project, "verify.rs");
+    Copy(project, "DoinstallTools.rs", ".tasks/_support/DoinstallTools.rs");
     Copy(project, "test-all.task");
+    foreach (var directory in new[] { "tools with spaces", "tools" })
+      foreach (var tool in new[] { "doinstall", "doinstall-builder", "doinstall-launcher" })
+        project.Write($"{directory}/{tool}{(OperatingSystem.IsWindows() ? ".exe" : "")}", "fixture");
     void Stub( string name, string expression, string options = "[]" ) => project.Target(name,
       "File.AppendAllText(\"order\", " + expression + " + \";\");",
       "// dotask: 1\n// options: " + options + "\n// end-dotask\n");
@@ -247,7 +251,7 @@ public sealed class RepositoryTaskTests
       """);
     Stub("_/rust/clippy", "\"lint:\" + BuildContext.Current.Parameters.Get<string>(\"package\")", "[{name: package}]");
     Stub("test-go", "\"go\"", "[{name: doinstall-tools}]");
-    Stub("test-sdks", "BuildContext.Current.Parameters.Get<string>(\"configuration\") + \":\" + BuildContext.Current.Parameters.Get<string>(\"doinstall-tools\")",
+    Stub("test-sdks", "BuildContext.Current.Parameters.Get<string>(\"configuration\") + \":\" + Path.GetFileName(BuildContext.Current.Parameters.Get<string>(\"doinstall-tools\"))",
       "[{name: configuration, choices: [Debug, Release]}, {name: doinstall-tools}]");
     Stub("format-tasks", "\"format:\" + BuildContext.Current.Parameters.Get<bool>(\"check\")", "[{name: check, type: bool}]");
     Stub("verify-docs", "\"docs\"");

@@ -18,7 +18,7 @@ contracts, and exceptions below are specific to dotask.
   within a date. `docs/VERIFICATION.md` is not a substitute for the changelog.
 - `docs/README.md` is the documentation index; `docs/DESIGN.md` owns design
   decisions. Other project files remain project-owned.
-  No separate source checkout is required to use this repository.
+  Building the CLI and running the fast checks require no separate source checkout.
 - Current native installer task: `create-dotask-installer`. Do not assume the
   preferred generic task name exists before a separately scoped migration.
 - Repository task/help reference: `build.cmd help` or `./build.sh help`.
@@ -130,17 +130,17 @@ the platform acceptance recorded in `docs/VERIFICATION.md`.
 - Doinstall owns installer, builder, shim sources/assets, and behavior verification
   in its independent repository. Do not reintroduce those implementations here.
   Canonical shared `_/doinstall/*` tasks wrap its tools; `_/installer/install`
-  launches generic artifacts. The source checkout for development is selected by
-  `settings.doinstall.source` only for explicit development builds. Packaging uses
-  separately supplied prebuilt tools; never bundle them in dotask's app payload.
+  launches generic artifacts. Dotask's local installer and full verification build
+  tools from `settings.doinstall.source` by default; release CI supplies its pinned
+  prebuilt bundle. Never bundle these tools in dotask's app payload.
   Dotask owns optional task adapters, not doinstall-specific native CLI behavior.
 - The gate tests dotask's Rust CLI/SDK with Rust 1.95+, rustfmt, and clippy, then
   SDK and external-tool adapter integration. Go verification requires an installed
   stable Go 1.22+ compiler and gofmt. Required `test-go` runs the bundled SDK tests
   and the explicit prebuilt-tool native Go installer acceptance. `test-sdks` requires prebuilt
   runtime, builder, and launcher-template tools
-  through `--doinstall-tools` or `DOINSTALL_TOOL_DIR`; source preparation is an
-  explicit development/CI step using the shared build wrapper. Independent doinstall
+  through `--doinstall-tools` or `DOINSTALL_TOOL_DIR`; the full gate prepares and
+  forwards one staged tool directory. Independent doinstall
   tests belong to its own `build.cmd verify`/`./build.sh verify` gate. Keep outputs
   external and query each project's evaluated Cargo target directory.
 - For self-extracting consumer installers, follow the build/gather recipe in

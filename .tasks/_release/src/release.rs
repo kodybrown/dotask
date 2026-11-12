@@ -316,7 +316,52 @@ fn archive_entries(path: &Path) -> Result<Vec<Entry>> {
   validate_entries(&result)?;
   Ok(result)
 }
-fn query_tools(directory: &Path) -> Result<()> {
+fn validate_tool_versions(outputs: [&str; 3], manifest: Option<&Value>, from_source: bool) -> Result<()> {
+  let pattern = Regex::new(r"^v?(\d+\.\d+\.\d+\+\d{4}\.\d{4})(?: \(built (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\))?$")?;
+  let parse = |name, output: &str| -> Result<_> {
+    let rest = output
+      .strip_prefix(name)
+      .and_then(|value| value.strip_prefix(' '))
+      .with_context(|| format!("Missing build identity for {name}"))?;
+    let fields = pattern
+      .captures(rest)
+      .with_context(|| format!("Invalid build identity: {output}"))?;
+    Ok((
+      fields.get(1).unwrap().as_str().to_owned(),
+      fields.get(2).map(|value| value.as_str().to_owned()),
+    ))
+  };
+  let [runtime, builder, launcher] = [
+    parse(TOOLS[0], outputs[0])?,
+    parse(TOOLS[1], outputs[1])?,
+    parse(TOOLS[2], outputs[2])?,
+  ];
+  let built = builder
+    .1
+    .as_deref()
+    .context("DoInstall builder must report its full build timestamp")?;
+  ensure!(
+    builder == launcher && runtime.0 == builder.0 && runtime.1.as_deref().is_none_or(|utc| utc == built),
+    "DoInstall tools report different builds: {}",
+    outputs.join("; ")
+  );
+  if let Some(info) = manifest {
+    ensure!(
+      info["display_version"].as_str() == Some(builder.0.as_str()) && info["built_utc"].as_str() == Some(built),
+      "DoInstall tool versions differ from RELEASE.json"
+    );
+  } else {
+    // The 0.2 runtime banner identifies only the hour. It is sufficient
+    // when the source task just built and staged all three tools together.
+    ensure!(
+      runtime.1.is_some() || from_source,
+      "DoInstall runtime omits its full timestamp. Keep RELEASE.json with the prebuilt tools to verify all three file hashes."
+    );
+  }
+  Ok(())
+}
+
+fn query_tools(directory: &Path, manifest: Option<&Value>, from_source: bool) -> Result<String> {
   let query: Value = serde_json::from_str(&capture(
     Command::new(directory.join(super::executable("doinstall-builder"))).arg("--print-tool-paths"),
   )?)?;
@@ -330,14 +375,10 @@ fn query_tools(directory: &Path) -> Result<()> {
       "Adjacent tool discovery mismatch"
     );
   }
-  let mut identities = BTreeSet::new();
-  for name in TOOLS {
-    let output = capture(Command::new(directory.join(super::executable(name))).arg("--version"))?;
-    ensure!(output.starts_with(&format!("{name} ")), "Missing tool build identity");
-    identities.insert(output[name.len()..].to_owned());
-  }
-  ensure!(identities.len() == 1, "Tools do not share one build identity");
-  Ok(())
+  let output = |name| capture(Command::new(directory.join(super::executable(name))).arg("--version"));
+  let [runtime, builder, launcher] = [output(TOOLS[0])?, output(TOOLS[1])?, output(TOOLS[2])?];
+  validate_tool_versions([&runtime, &builder, &launcher], manifest, from_source)?;
+  Ok(runtime)
 }
 fn inspect_installer(path: &Path, expected: &Inventory, markers: &BTreeSet<String>) -> Result<()> {
   let bytes = fs::read(path)?;
@@ -651,10 +692,49 @@ mod tests {
     .unwrap();
     // There are deliberately no executables to query. Hash failure must precede
     // even an attempted discovery/version command against these inputs.
-    assert!(tools_identity(&tools)
+    assert!(tools_identity(&tools, false)
       .unwrap_err()
       .to_string()
       .contains("Pinned doinstall checksum mismatch"));
+  }
+  #[test]
+  fn doinstall_versions_accept_the_runtime_banner_only_with_build_evidence() {
+    let runtime = "doinstall v0.2.0+2610.2919";
+    let full_runtime = "doinstall 0.2.0+2610.2919 (built 2026-10-29T19:23:41Z)";
+    let builder = "doinstall-builder 0.2.0+2610.2919 (built 2026-10-29T19:23:41Z)";
+    let launcher = "doinstall-launcher 0.2.0+2610.2919 (built 2026-10-29T19:23:41Z)";
+    let manifest = json!({"display_version":"0.2.0+2610.2919","built_utc":"2026-10-29T19:23:41Z"});
+    assert!(validate_tool_versions([full_runtime, builder, launcher], None, false).is_ok());
+    assert!(validate_tool_versions([runtime, builder, launcher], Some(&manifest), false).is_ok());
+    assert!(validate_tool_versions([runtime, builder, launcher], None, true).is_ok());
+    assert!(validate_tool_versions([runtime, builder, launcher], None, false).is_err());
+    let other_second = launcher.replace("23:41", "23:42");
+    let other_hour = runtime.replace("2919", "2918");
+    let other_runtime_second = full_runtime.replace("23:41", "23:42");
+    assert!(validate_tool_versions([runtime, builder, &other_second], Some(&manifest), false).is_err());
+    assert!(validate_tool_versions([&other_hour, builder, launcher], None, true).is_err());
+    assert!(validate_tool_versions([&other_runtime_second, builder, launcher], None, false).is_err());
+  }
+  #[test]
+  #[cfg(any(windows, target_os = "linux"))]
+  fn installed_manifest_rejects_a_swapped_runtime_before_executing_it() -> Result<()> {
+    let temp = tempfile::tempdir().unwrap();
+    let mut hashes = Inventory::new();
+    for name in TOOLS {
+      let file = super::super::executable(name);
+      fs::write(temp.path().join(&file), name)?;
+      hashes.insert(file, sha(name.as_bytes()));
+    }
+    let info = json!({"schema":1,"files":hashes});
+    write_json(&temp.path().join("RELEASE.json"), &info)?;
+    assert!(verify_tool_inventory(&inventory(temp.path())?, &info).is_ok());
+    fs::write(
+      temp.path().join(super::super::executable("doinstall")),
+      b"other build in the same hour",
+    )?;
+    let error = tools_identity(temp.path(), false).unwrap_err();
+    assert!(error.to_string().contains("does not match its SHA-256 in RELEASE.json"));
+    Ok(())
   }
   #[test]
   fn malformed_installer_is_rejected_before_execution() {
