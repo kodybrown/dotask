@@ -1,10 +1,14 @@
 //! HTTP results are published only after every requested page has succeeded.
 use crate::{declarative::keys, project::Target, workflow_values::scalar};
-use anyhow::{bail, ensure, Result};
+use anyhow::{bail, ensure, Context, Result};
 use serde_json::{json, Map, Value};
 use std::{
   collections::BTreeSet,
   io::Read,
+  sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+  },
   time::{Duration, Instant},
 };
 use ureq::http::Uri;
@@ -150,28 +154,49 @@ fn next_link(value: &str) -> Result<Option<String>> {
 }
 
 pub(crate) fn execute(action: Value) -> Result<Value> {
+  let url = scalar(&action["url"])?;
+  let origin = uri(&url)?;
+  // Any path segment or query parameter can contain credentials. Pagination
+  // stays on the same origin, so the page number identifies the failing request.
+  let scheme = origin.scheme_str().unwrap();
+  let host = origin.host().unwrap();
+  let redacted_url = match origin.port_u16() {
+    Some(port) => format!("{scheme}://{host}:{port}/[redacted]"),
+    None => format!("{scheme}://{host}/[redacted]"),
+  };
+  let paginated = action.get("pagination").is_some();
+  let current_page = Arc::new(AtomicU64::new(1));
+  let worker_page = Arc::clone(&current_page);
   // DNS/TLS can block in a synchronous client. Poll a worker so Ctrl+C remains
   // responsive; the worker performs reads only and cannot publish task results.
   let (sender, receiver) = std::sync::mpsc::sync_channel(1);
   let timeout = Duration::from_secs(action["timeout-seconds"].as_u64().unwrap_or(30));
   let started = Instant::now();
   std::thread::spawn(move || {
-    let _ = sender.send(fetch(&action, timeout));
+    let _ = sender.send(fetch(&action, url, &origin, timeout, &worker_page));
   });
-  loop {
+  let result = loop {
     crate::process::check_cancelled()?;
-    ensure!(started.elapsed() < timeout, "HTTP request timed out.");
-    match receiver.recv_timeout(Duration::from_millis(50)) {
-      Ok(result) => return result,
-      Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
-      Err(_) => bail!("HTTP worker stopped unexpectedly."),
+    if started.elapsed() >= timeout {
+      break Err(anyhow::anyhow!("HTTP request timed out."));
     }
-  }
+    match receiver.recv_timeout(Duration::from_millis(50)) {
+      Ok(result) => break result,
+      Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+      Err(_) => break Err(anyhow::anyhow!("HTTP worker stopped unexpectedly.")),
+    }
+  };
+  result.with_context(|| {
+    if paginated {
+      let page = current_page.load(Ordering::Relaxed);
+      format!("request to {redacted_url} (page {page})")
+    } else {
+      format!("request to {redacted_url}")
+    }
+  })
 }
 
-fn fetch(action: &Value, timeout: Duration) -> Result<Value> {
-  let mut url = scalar(&action["url"])?;
-  let origin = uri(&url)?;
+fn fetch(action: &Value, mut url: String, origin: &Uri, timeout: Duration, current_page: &AtomicU64) -> Result<Value> {
   let paginated = action.get("pagination").is_some();
   let max_pages = action["pagination"]["max-pages"].as_u64().unwrap_or(100);
   let started = Instant::now();
@@ -204,6 +229,7 @@ fn fetch(action: &Value, timeout: Duration) -> Result<Value> {
         request = request.header(key, scalar(value)?);
       }
     }
+    current_page.store(page, Ordering::Relaxed);
     // Client errors may contain credential-bearing URLs; report only the stage.
     let mut response = request.call().map_err(|error| match error {
       ureq::Error::StatusCode(code) => anyhow::anyhow!("HTTP GET returned status {code}."),
@@ -211,10 +237,12 @@ fn fetch(action: &Value, timeout: Duration) -> Result<Value> {
       _ => anyhow::anyhow!("HTTP GET failed (transport or request error)."),
     })?;
     let status = response.status().as_u16();
-    ensure!(
-      (200..300).contains(&status) || status == 404 && action["optional"] == true,
-      "HTTP GET returned status {status}; redirects are not followed."
-    );
+    if !(response.status().is_success() || status == 404 && action["optional"] == true) {
+      if matches!(status, 300 | 301 | 302 | 303 | 307 | 308) && response.headers().contains_key("location") {
+        bail!("HTTP GET returned status {status}; redirects are not followed.");
+      }
+      bail!("HTTP GET returned status {status}.");
+    }
     let mut headers = Map::new();
     for name in response.headers().keys() {
       let values = response

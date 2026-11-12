@@ -1552,3 +1552,10 @@ acceptance, installation, and publication.
   an 80-column terminal confirmed wrapping. Default and explicit packaging
   passed native acceptance and checksum checks. A repeat run preserved an
   unrelated file and recorded the delivered installer.
+
+### 2026-11-12 Identify failed HTTP workflow requests
+
+- Report the HTTP step ID or position, redacted request URL, and pagination
+  page on failure. Keep URL paths, query strings, and credentials out of errors.
+- Keep the numeric status and show the redirect note only for redirects with
+  a destination. Optional 404 and redirect handling retain their behavior.

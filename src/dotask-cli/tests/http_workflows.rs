@@ -178,6 +178,87 @@ fn http_errors_never_publish_partial_pages_or_execute_later_steps() {
 }
 
 #[test]
+fn http_status_errors_identify_unnamed_steps_and_real_redirects() {
+  for (status, headers, detail) in [
+    (501, "", "501."),
+    (302, "Location: {base}/redirect-secret\r\n", "302; redirects are not followed."),
+    (302, "", "302."),
+    (304, "", "304."),
+  ] {
+    let root = tempfile::tempdir().unwrap();
+    let (url, server) = fixture(vec![(status, headers.into(), "response-secret".into())]);
+    setup(
+      root.path(),
+      r#"steps:
+  - text: {template: start, values: {}}
+  - http: {method: GET, url: {setting: url}, response-format: json}
+"#,
+      &format!("{url}/path-secret?token=query-secret"),
+    );
+    let output = run(root.path(), &["refresh"]);
+    assert!(!output.status.success(), "{output:?}");
+    assert_eq!(
+      String::from_utf8_lossy(&output.stderr).trim_end(),
+      format!("dotask: HTTP step #2: request to {url}/[redacted]: HTTP GET returned status {detail}")
+    );
+    assert!(server.join().unwrap()[0].starts_with("GET /path-secret?token=query-secret "));
+  }
+}
+
+#[test]
+fn http_status_errors_identify_the_failing_page_without_leaking_request_data() {
+  let root = tempfile::tempdir().unwrap();
+  let (url, server) = fixture(vec![
+    (
+      200,
+      "Link: <{base}/second%2Fsecret?token=second-secret>; rel=\"next\"\r\n".into(),
+      "[]".into(),
+    ),
+    (501, String::new(), "response-secret".into()),
+  ]);
+  setup(
+    root.path(),
+    r#"steps:
+  - id: repositories
+    http:
+      method: GET
+      url: {setting: url}
+      query: {token: first-secret}
+      headers: {Authorization: Bearer header-secret}
+      response-format: json
+      pagination: {mode: link-header, relation: next}
+"#,
+    &format!("{url}/first-secret"),
+  );
+  let output = run(root.path(), &["refresh"]);
+  assert!(!output.status.success(), "{output:?}");
+  assert_eq!(
+    String::from_utf8_lossy(&output.stderr).trim_end(),
+    format!("dotask: HTTP step 'repositories': request to {url}/[redacted] (page 2): HTTP GET returned status 501.")
+  );
+  let requests = server.join().unwrap();
+  assert!(requests[0].starts_with("GET /first-secret?token=first-secret "));
+  assert!(requests[1].starts_with("GET /second%2Fsecret?token=second-secret "));
+  assert!(requests[1].contains("Bearer header-secret"));
+}
+
+#[test]
+fn credentialed_http_urls_are_rejected_without_echoing_them() {
+  let root = tempfile::tempdir().unwrap();
+  setup(
+    root.path(),
+    "steps: [{id: remote, http: {method: GET, url: {setting: url}, response-format: json}}]",
+    "http://username:password-secret@127.0.0.1:1/path-secret?token=query-secret",
+  );
+  let output = run(root.path(), &["refresh"]);
+  assert!(!output.status.success(), "{output:?}");
+  assert_eq!(
+    String::from_utf8_lossy(&output.stderr).trim_end(),
+    "dotask: HTTP step 'remote': HTTP URL must be absolute http/https without embedded credentials."
+  );
+}
+
+#[test]
 fn help_validates_nested_scopes_without_requests_and_loops_do_not_leak_results() {
   let root = tempfile::tempdir().unwrap();
   setup(root.path(), TASK, "http://127.0.0.1:1/not-contacted");

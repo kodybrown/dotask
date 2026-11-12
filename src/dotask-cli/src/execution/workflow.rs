@@ -5,7 +5,7 @@ use crate::{
   project::{arguments, Step},
   workflow_values,
 };
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use serde_json::{json, Map, Value};
 use std::path::Path;
 
@@ -69,7 +69,7 @@ impl Workflow<'_> {
     items: &Map<String, Value>,
   ) -> Result<(i32, usize)> {
     let mut executed = 0;
-    for step in steps {
+    for (index, step) in steps.iter().enumerate() {
       process::check_cancelled()?;
       let bind = |value: &Value| bindings::resolve_scoped(value, results, items);
       let typed = |value: &Value| workflow_values::bind(value, results, items, self.parameters, self.settings);
@@ -121,7 +121,14 @@ impl Workflow<'_> {
         continue;
       } else if let Some(action) = &step.http {
         self.executor.trace("Executing declarative HTTP step");
-        (0, crate::http_steps::execute(self.action("http", action, results, items)?)?)
+        let result = self
+          .action("http", action, results, items)
+          .and_then(crate::http_steps::execute)
+          .with_context(|| match &step.id {
+            Some(id) => format!("HTTP step '{id}'"),
+            None => format!("HTTP step #{}", index + 1),
+          })?;
+        (0, result)
       } else if let Some(action) = &step.json {
         self.executor.trace("Executing declarative JSON step");
         (0, workflow_values::json(&self.action("json", action, results, items)?)?)

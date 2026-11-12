@@ -151,8 +151,13 @@ replacement characters. Without it, invalid UTF-8 remains an error.
 parse the 404 error body. Guard dependent steps with `when: {result: name.found}`.
 Optional requests cannot paginate, so a missing later page can never produce a
 partial collection. Other non-2xx status, invalid JSON/UTF-8, invalid links,
-transport failure, or timeout stop the workflow. Redirects are not followed. Diagnostics
-exclude response bodies, request header values, and runtime URLs.
+transport failure, or timeout stop the workflow. Redirects are not followed.
+
+HTTP errors identify the step by `id` or its one-based position in the containing
+step list. Request errors show the URL's scheme, host, and port, plus the page
+number for paginated requests. Diagnostics omit the path, query, fragment,
+request header values, and response bodies. Status errors include the numeric
+status and mention the redirect policy when a redirect supplies a `Location`.
 
 `timeout-seconds` defaults to 30, accepts 1 through 86400, and covers the entire
 HTTP action, including all pages and body reads. Cancellation remains responsive
