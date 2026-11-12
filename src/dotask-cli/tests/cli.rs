@@ -261,9 +261,17 @@ fn csharp_headers_help_completion_and_private_catalog_need_no_sdk() {
     "// dotask: 1\n// description: Private metadata\n// end-dotask\ninvalid source",
   )
   .unwrap();
+  let archive = project.path().join("private/archive");
+  std::fs::create_dir_all(&archive).unwrap();
+  let long = "package-with-a-name-longer-than-the-task-column";
+  std::fs::write(
+    archive.join(format!("{long}.task")),
+    "description: Archive metadata\nsteps: []\n",
+  )
+  .unwrap();
   let output = Command::new(env!("CARGO_BIN_EXE_dotask"))
     .current_dir(project.path())
-    .args(["--list", "private-tasks/tools/*"])
+    .args(["--list", "private-tasks/*"])
     .env("PATH", "")
     .env_remove("DOTNET_HOST_PATH")
     .env_remove("DOTNET_ROOT")
@@ -272,7 +280,11 @@ fn csharp_headers_help_completion_and_private_catalog_need_no_sdk() {
     .output()
     .unwrap();
   assert!(output.status.success(), "{output:?}");
-  assert!(String::from_utf8_lossy(&output.stdout).contains("Private metadata"));
+  let text = String::from_utf8_lossy(&output.stdout).replace("\r\n", "\n");
+  assert!(text.contains(&format!(
+    "  private-tasks/archive/\n    {long}\n{}—  —  Archive metadata\n\n  private-tasks/tools/\n    {:24}  —  —  Private metadata\n",
+    " ".repeat(30), "check"
+  )), "{text}");
 }
 
 #[test]

@@ -489,10 +489,14 @@ pub fn build(output: &Path, source: &Path, tools: &Path, from_source: bool, resu
   let archive = output.join(format!("{stem}-portable.{}", if cfg!(windows) { "zip" } else { "tar.gz" }));
   archive_tools(&stage, &archive, cfg!(windows))?;
   accept(&archive, &installer, tools, &expected, &markers)?;
-  write_json(&output.join(format!("{stem}-metadata.json")), &metadata)?;
+  let metadata_file = output.join(format!("{stem}-metadata.json"));
+  write_json(&metadata_file, &metadata)?;
   sums(&output)?;
   if let Some(path) = result_file {
-    write_json(path, &json!({"FilePath":installer}))?;
+    write_json(
+      path,
+      &json!({"FilePath":installer,"Files":[installer,archive,metadata_file,output.join("SHA256SUMS")]}),
+    )?;
   }
   println!("Native dotask release acceptance passed: {}", output.display());
   Ok(())

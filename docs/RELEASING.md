@@ -59,7 +59,9 @@ The full gate's publisher simulation requires Bash and `jq`; Windows uses Git Ba
 The commands below explicitly choose the same pinned prebuilt tools as CI.
 For routine local builds, `build.cmd create-dotask-installer` and
 `build.cmd test-all` build DoInstall from the configured source checkout without
-any tool override.
+any tool override. The installer task delivers to
+`artifacts/releases/<os>-<arch>/` by default; the explicit `--output` below
+selects a fresh external directory as in CI.
 
 ```powershell
 cd C:\Users\kodyb\Projects\dotask

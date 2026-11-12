@@ -557,8 +557,9 @@ tracing; verbose project summaries intentionally show configured settings.
 
 ## Shared-task listing status
 
-`dotask --list` aligns descriptions and shows compact `I` (Installed) and
-`M` (Matches cache) indicators with a legend. It compares project task/support
+`dotask --list` groups shared tasks like the project summary, aligns descriptions,
+and wraps long lines to the terminal width. It shows compact `I` (Installed) and
+`M` (Matches cache) indicators with a legend and compares project task/support
 files with downloaded cache files (or private originals), reporting a match,
 difference, or unavailable comparison. See [listing status](SHARED-TASKS.md#shared-task-listing-status)
 for the labels and cache behavior.

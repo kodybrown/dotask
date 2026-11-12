@@ -47,7 +47,9 @@ Run the full `test-all` gate first, then use `--reuse-build` to package its insp
 executable. See [native releases](RELEASING.md) for the Windows/Linux-only
 main-push workflow. Use `--doinstall-tools PATH` or `DOINSTALL_TOOL_DIR` to
 reuse a prebuilt bundle, or `--source PATH` for another checkout.
-The install task uses the successful-build record.
+The installer task delivers to `artifacts/releases/<os>-<arch>/` unless
+`--output PATH` selects a fresh external directory. The install task uses
+the successful-build record.
 It is not a shared consumer task; see
 [installation](INSTALLATION.md#build-and-install-dotask-itself).
 
@@ -382,8 +384,8 @@ Doinstall's standalone Rust installer uses YAML receipts and the `installer/` pl
 `app/<build>/` layout. Older formats are unsupported; use fresh destinations or
 manually remove the old installation first. Its creator copies packages beneath the project-relative
 or absolute `settings.installer.output` directory; dotask supplies a fresh external
-directory beneath Cargo's evaluated target directory,
-without redirecting MSBuild outputs. Use the bootstrap launcher when upgrading an older CLI/library,
+staging directory before copying final files to the checkout's release directory.
+MSBuild outputs stay external. Use the bootstrap launcher when upgrading an older CLI/library,
 and pass explicit temporary absolute install/bin paths via `--installer-args`
 for tests. Never remove ownership/recovery records or overwrite an unrelated
 launcher to bypass conflicts.

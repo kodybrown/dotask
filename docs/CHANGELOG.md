@@ -1540,3 +1540,15 @@ acceptance, installation, and publication.
 - Verification: Windows fast checks, release and Go checks, and native packaging
   with both source-built and installed tools passed. The SDK suite passed
   385 tests; the updated repository-task fixture passed its focused rerun.
+
+### 2026-11-12 Group shared task listings and deliver local release files
+
+- Group `dotask --list` by catalog path and reuse project-summary wrapping,
+  keeping the installed and cache-match columns.
+- Deliver finished local packages to `artifacts/releases/<os>-<arch>/` and
+  record the delivered installer. Explicit `--output` keeps the fresh external
+  delivery used by CI.
+- Verification: Windows `build.cmd test` and `build.cmd test-all` passed, and
+  an 80-column terminal confirmed wrapping. Default and explicit packaging
+  passed native acceptance and checksum checks. A repeat run preserved an
+  unrelated file and recorded the delivered installer.

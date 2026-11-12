@@ -156,12 +156,7 @@ pub(crate) fn project(catalog: &Catalog, directory: &Directory, verbose: bool) {
   }
   out.line("Targets:", 0);
   let rows = target_rows(catalog);
-  let width = rows
-    .iter()
-    .map(|(_, _, name)| name.chars().count())
-    .max()
-    .unwrap_or(0)
-    .min(TARGET_NAME_MAX_WIDTH);
+  let width = task_name_width(rows.iter().map(|(_, _, name)| *name));
   let mut previous = None;
   for (scope, target, name) in &rows {
     if previous != Some(scope) {
@@ -186,9 +181,7 @@ pub(crate) fn project(catalog: &Catalog, directory: &Directory, verbose: bool) {
     let description = unavailable
       .map(|reason| format!("{description} [unavailable: {reason}]"))
       .unwrap_or_else(|| description.into());
-    for line in target_lines(&out, name, &description, width) {
-      println!("{line}");
-    }
+    task_row(&out, name, "", &description, width);
   }
   if catalog.targets.is_empty() {
     out.line("  (no targets)", 0);
@@ -244,15 +237,29 @@ fn target_rows(catalog: &Catalog) -> Vec<(String, &Target, &str)> {
   rows
 }
 
-fn target_lines(out: &Text, name: &str, description: &str, width: usize) -> Vec<String> {
+pub(crate) fn task_name_width<'a>(names: impl Iterator<Item = &'a str>) -> usize {
+  names
+    .map(|name| name.chars().count())
+    .max()
+    .unwrap_or(0)
+    .min(TARGET_NAME_MAX_WIDTH)
+}
+
+pub(crate) fn task_row(out: &Text, name: &str, columns: &str, description: &str, width: usize) {
+  for line in task_lines(out, name, columns, description, width) {
+    println!("{line}");
+  }
+}
+
+fn task_lines(out: &Text, name: &str, columns: &str, description: &str, width: usize) -> Vec<String> {
   if name.chars().count() > width {
     let mut lines = out.lines(&format!("    {name}"), 4);
-    if !description.is_empty() {
-      lines.extend(out.row_lines(&" ".repeat(width + 6), description).0);
+    if !columns.is_empty() || !description.is_empty() {
+      lines.extend(out.row_lines(&format!("{}{columns}", " ".repeat(width + 6)), description).0);
     }
     lines
   } else {
-    out.row_lines(&format!("    {name:width$}  "), description).0
+    out.row_lines(&format!("    {name:width$}  {columns}"), description).0
   }
 }
 pub(crate) fn target(catalog: &Catalog, target: &Target, directory: &Directory) {
@@ -576,7 +583,7 @@ mod tests {
         "x".repeat(50),
         "é".repeat(24),
       ] {
-        let lines = target_lines(&out, &name, &description, TARGET_NAME_MAX_WIDTH);
+        let lines = task_lines(&out, &name, "", &description, TARGET_NAME_MAX_WIDTH);
         let own_line = name.chars().count() > TARGET_NAME_MAX_WIDTH;
         let descriptions = &lines[usize::from(own_line)..];
         assert!(descriptions.iter().skip(1).all(|line| line.starts_with(&" ".repeat(30))));
@@ -603,6 +610,23 @@ mod tests {
     }
   }
 
+  #[test]
+  fn shared_task_status_columns_stay_aligned_when_the_description_wraps() {
+    let out = Text { width: Some(60) };
+    let description = "Use the current installer tools to package this project.";
+    let columns = "✓  X  ";
+    let lines = task_lines(&out, "build", columns, description, 24);
+    assert!(lines[0].starts_with(&format!("    {:24}  {columns}", "build")));
+    assert!(lines.iter().all(|line| line.chars().count() <= 60));
+    assert_eq!(
+      lines
+        .iter()
+        .map(|line| line.chars().skip(36).collect::<String>())
+        .collect::<Vec<_>>()
+        .join(" "),
+      description
+    );
+  }
   #[test]
   fn wrapping_preserves_words_and_aligned_continuations() {
     let prefix = "  --configuration, -c <Debug|Release>  ";

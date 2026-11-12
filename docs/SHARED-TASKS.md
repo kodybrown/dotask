@@ -138,7 +138,9 @@ No migration or adoption of an untracked declarative file occurs.
 
 ## Shared-task listing status
 
-`dotask --list` aligns task names, compact `I` and `M` indicators, and descriptions.
+`dotask --list` groups tasks by catalog path and aligns task names, compact
+`I` and `M` indicators, and descriptions. Long lines wrap to the terminal width
+as in bare `dotask`; redirected output stays unwrapped.
 The legend below the list defines `I = Installed` and `M = Matches cache`
 (or matches the original for private tasks).
 

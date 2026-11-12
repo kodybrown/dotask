@@ -476,7 +476,7 @@ runtime version banner.
 The task builds/lints/stages dotask, then assembles and tests both a portable
 archive and self-extracting installer. Run `test-all` beforehand for the complete
 repository gate; `--reuse-build` packages that exact inspected executable without
-rebuilding it. It records/returns the installer only after native acceptance,
+rebuilding it. It records/returns the delivered installer after native acceptance,
 using temporary app/bin/cache locations with source SDK overrides cleared and
 persistent PATH unchanged. No active installation is changed.
 
@@ -496,10 +496,16 @@ task; `_/dotnet/pack` remains a NuGet task for consumers.
 
 `build-sdks` publishes the maintained C# helper using evaluated MSBuild
 `PublishDir`, then copies the Rust SDK selections from `.tasks/sdks.yaml`.
-Compiler output stays external. Local installers default to a fresh directory
-under Cargo's evaluated `target_directory/installers`; optional `--output PATH`
-selects a fresh package parent. Repeating packaging does not increment the
-version or overwrite previous output. Destination machines need
+Build and staging output stay external. By default, the installer task delivers
+the finished files to `artifacts/releases/<os>-<arch>/` in the checkout, for
+example `artifacts/releases/windows-x64/`. On Windows and Linux, this includes
+the installer, portable archive, release metadata and `SHA256SUMS`. On those
+platforms a repeat run replaces the files with matching names, and the checksum
+file covers the latest delivery. Files with other names, including older
+versions, stay in place. The macOS source workflow keeps the shared builder's
+versioned package directory under its platform directory. An explicit
+`--output PATH` keeps the external output contract and skips the local copy.
+Packaging does not increment the version. Destination machines need
 Rust/Cargo to execute Rust tasks and the .NET SDK to execute C# tasks; neither is
 needed for metadata, help, initialization, completion, or installer execution.
 No language runtime, SDK, Roslyn, or managed support host is bundled.
@@ -517,7 +523,7 @@ No language runtime, SDK, Roslyn, or managed support host is bundled.
 ```
 
 After creation, `build.cmd install` finds the self-extracting launcher through
-the SDK's separate successful-build record, including its external FilePath.
+the SDK's separate successful-build record, including the delivered FilePath.
 It does not need doinstall build tools or source.
 Unix uses actual tool paths without `.exe`.
 `test-all` and `verify` also stage tools from the configured checkout by default.

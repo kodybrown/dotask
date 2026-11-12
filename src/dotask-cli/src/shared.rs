@@ -1,5 +1,6 @@
 use crate::{
   cli::Arguments,
+  help::{self, Text},
   project::Directory,
   shared_files as files,
   transaction::{Change, Transaction},
@@ -1087,10 +1088,32 @@ fn listing(
     None
   };
   let tracking = Tracking::read(bytes.as_deref(), &prefix)?;
-  let width = tasks.keys().map(String::len).max().unwrap_or(4).max(4);
-  println!("{:width$}  I  M  Description", "Task");
-  for (id, task) in tasks {
+  let mut rows: Vec<_> = tasks
+    .iter()
+    .map(|(id, task)| {
+      let display = id
+        .strip_prefix("_/")
+        .filter(|name| !name.split('/').next().unwrap_or_default().eq_ignore_ascii_case("private-tasks"))
+        .unwrap_or(id);
+      let (group, name) = display.rsplit_once('/').unwrap();
+      (group, name, id, task)
+    })
+    .collect();
+  rows.sort_by_cached_key(|(group, name, _, _)| (group.to_lowercase(), *group, name.to_lowercase()));
+  let width = help::task_name_width(rows.iter().map(|(_, name, _, _)| *name)).max(4);
+  let out = Text::new();
+  out.line("Shared tasks:", 0);
+  out.row(&format!("    {:width$}  I  M  ", "Task"), "Description");
+  let mut previous = None;
+  for (group, name, id, task) in rows {
     crate::process::check_cancelled()?;
+    if previous != Some(group) {
+      if previous.is_some() {
+        out.line("", 0);
+      }
+      out.line(&format!("  {group}/"), 2);
+      previous = Some(group);
+    }
     let source = id.split('/').next().unwrap();
     let installed = tracking
       .owner(source, &task.entry_point)
@@ -1130,8 +1153,15 @@ fn listing(
         "X"
       };
     }
-    println!("{id:width$}  {status}  {comparison}  {}", task.description);
+    help::task_row(&out, name, &format!("{status}  {comparison}  "), &task.description, width);
   }
-  println!("\nI = Installed\nM = Matches cache (private tasks: matches original)\n✓ = Yes; X = Differs; ? = Unknown/untracked; — = Not applicable");
+  out.line("", 0);
+  for line in [
+    "I = Installed",
+    "M = Matches cache (private tasks: matches original)",
+    "✓ = Yes; X = Differs; ? = Unknown/untracked; — = Not applicable",
+  ] {
+    out.line(line, 0);
+  }
   Ok(())
 }
