@@ -297,7 +297,7 @@ Target:
                   Source: ./.tasks/_/dotnet/build.cs
 
 Options:
-  --configuration, -c <Debug|Release>  Build configuration. (default: Debug)
+  --configuration, -c <Debug|Release>  Override settings.configuration; defaults to Debug when neither is set.
   --dotnet <string>                    .NET CLI executable name or path. (default: dotnet)
 
 Requires:
@@ -395,6 +395,11 @@ You do not register targets in YAML. Add a `targets` entry to configure that
 target's settings or option defaults. Setting `settings.configuration` does not automatically set
 the `configuration` parameter. Likewise, `configuration=Release` changes a
 parameter for that invocation; it does not edit YAML or override a shared setting.
+The shared `dotnet/build` task explicitly falls back to the resolved
+`settings.configuration` when no configuration parameter/default was supplied,
+then to Debug if the setting is absent. See
+[build configuration](TARGETS.md#net-build-configuration).
+
 There is no environment-variable interpolation in YAML.
 
 Top-level `settings` contains values shared by tasks. `targets.<full-name>.settings`

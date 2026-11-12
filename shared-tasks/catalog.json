@@ -113,7 +113,7 @@
       "files": [
         {
           "path": "dotnet/build.cs",
-          "sha256": "d35b521ca6edf3ed694befcf40b79418f868edcb5ad50e26dee5591db4cced2c"
+          "sha256": "db1b8363f011529932d39e9d0913fa88c717df641023fa0a816bce3fa2f7b49f"
         }
       ],
       "requires": [

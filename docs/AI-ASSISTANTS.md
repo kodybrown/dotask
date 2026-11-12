@@ -76,6 +76,12 @@ only missing hooks are skipped, and hooks must never call `test`. Use
 Extra product checks, packaging and release triggers remain project policy.
 See the [Rust group contract](../shared-tasks/rust/README.md).
 
+The shared `dotnet/build` task uses `settings.configuration` when its optional
+`-c` / `--configuration` parameter is omitted, falling back to Debug only when
+neither is supplied. Explicit CLI input overrides a configured target parameter
+default, which overrides the project setting. Do not add a fixed metadata default
+that masks the setting. See [build configuration](TARGETS.md#net-build-configuration).
+
 For .NET tests, use the shared dotnet/test task rather than duplicating process
 guards in each consumer. Configure timeout-seconds, memory-limit-mb and lock-name
 under targets._/dotnet/test.defaults; zero memory cap is the generic default.

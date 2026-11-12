@@ -675,6 +675,26 @@ target is not a standalone SDK installer or bootstrap command. The .NET CLI
 documents [SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json)
 and [formatter version queries](https://learn.microsoft.com/en-us/dotnet/core/tools/dotnet-format).
 
+### .NET build configuration
+
+`_/dotnet/build` restores the configured solution, then builds it. With no
+configuration parameter it uses `settings.configuration`; an absent or null
+setting falls back to `Debug`. For example:
+
+```yaml
+settings:
+  solution: MyApp.slnx
+  configuration: Release
+```
+
+`dotask build` selects Release, while `dotask build -c Debug` selects Debug for
+that invocation without editing YAML. `--configuration` is the long form of `-c`.
+An explicit CLI value wins over `targets._/dotnet/build.defaults.configuration`,
+which wins over the resolved project setting. The option intentionally has no
+metadata default, so it cannot mask that setting. Invalid or missing CLI values
+fail before restore. `--dotnet` selects the executable for both restore and build;
+paths and configuration values remain separate process arguments.
+
 ### Guarded .NET tests
 
 `dotask test` uses `settings.solution`, or `--solution PATH` to select a test

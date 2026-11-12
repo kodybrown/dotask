@@ -1584,3 +1584,15 @@ acceptance, installation, and publication.
   `--sync` can save conflict comparisons in deeply nested caches.
 - Verification: Windows fast and full gates and native packaging passed.
   Conflict review and merge acceptance preserved edits at a 317-character path.
+### 2026-11-12 Inherit project configuration in the shared .NET build task
+
+- Use the resolved project configuration when `dotnet/build` has no configuration
+  parameter, falling back to Debug only when that setting is absent. Preserve
+  explicit CLI and target-default precedence without rewriting project YAML.
+- Keep short/long parameter validation, custom configured values, and the selected
+  dotnet executable and argument boundaries through restore and build. Document
+  the contract and regenerate the canonical shared-task catalog.
+- Verification: Windows producer build and fast gate passed. Nine native CLI
+  regressions pass; the project Release/custom cases failed against the old task.
+  Scoped C# formatting, catalog, documentation and whitespace checks pass, and
+  evaluated Rust/.NET outputs remain external. The comprehensive suite was not run.

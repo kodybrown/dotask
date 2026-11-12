@@ -4,6 +4,73 @@ namespace DoTask.Tests;
 
 public sealed class SharedDotNetTaskTests
 {
+
+  [Theory]
+  [InlineData(null, null, null, null, "Debug")]
+  [InlineData("Release", null, null, null, "Release")]
+  [InlineData("Release", null, "-c", "Debug", "Debug")]
+  [InlineData("Debug", null, "--configuration", "Release", "Release")]
+  [InlineData("Release", "Debug", null, null, "Debug")]
+  [InlineData("Release", "Debug", "-c", "Release", "Release")]
+  [InlineData("Custom Build", null, null, null, "Custom Build")]
+  public async Task BuildResolvesConfigurationAndForwardsDotnetWithoutChangingSettings(
+    string? projectConfiguration, string? targetDefault, string? option, string? value, string expected )
+  {
+    using var project = new TestProject();
+    CopyShared(project, "dotnet/build.cs", ".tasks");
+    CopyShared(project, "dotnet/restore.cs", ".tasks");
+    var solution = project.Write("solution with spaces.slnx", "<Solution />");
+    var yaml = "version: 1\nsettings:\n  solution: solution with spaces.slnx\n";
+    if (projectConfiguration is not null) {
+      yaml += "  configuration: " + System.Text.Json.JsonSerializer.Serialize(projectConfiguration) + "\n";
+    }
+
+    if (targetDefault is not null) {
+      yaml += "targets:\n  _/dotnet/build:\n    defaults:\n      configuration: " + targetDefault + "\n";
+    }
+
+    var configuration = project.Write(".dotasks.yaml", yaml);
+    var before = File.ReadAllBytes(configuration);
+    var output = Path.Combine(project.Root, "build-arguments.jsonl");
+    var probe = await project.BuildProcessProbeAsync("File.AppendAllText(" + System.Text.Json.JsonSerializer.Serialize(output)
+      + ", System.Text.Json.JsonSerializer.Serialize(args) + \"\\n\");");
+    var executable = Path.ChangeExtension(probe, OperatingSystem.IsWindows() ? ".exe" : null);
+    string[] arguments = option is null ? [] : [option, value!];
+
+    var result = await project.RunAsync(["build", "--dotnet", executable, .. arguments]);
+
+    Assert.True(result.ExitCode == 0, result.StandardOutput + result.StandardError);
+    var calls = File.ReadAllLines(output).Select(line => System.Text.Json.JsonSerializer.Deserialize<string[]>(line)!).ToArray();
+    Assert.Equal(2, calls.Length);
+    Assert.Equal(new[] { "restore", solution }, calls[0]);
+    Assert.Equal(new[] { "build", solution, "--configuration", expected, "--no-restore" }, calls[1]);
+    Assert.Equal(before, File.ReadAllBytes(configuration));
+  }
+
+  [Theory]
+  [InlineData("Invalid")]
+  [InlineData(null)]
+  public async Task BuildRejectsInvalidOrMissingConfigurationBeforeRestore( string? value )
+  {
+    using var project = new TestProject();
+    CopyShared(project, "dotnet/build.cs", ".tasks");
+    CopyShared(project, "dotnet/restore.cs", ".tasks");
+    project.Write("Sample.slnx", "<Solution />");
+    var configuration = project.Write(".dotasks.yaml", "settings:\n  solution: Sample.slnx\n  configuration: Release\n");
+    var before = File.ReadAllBytes(configuration);
+    var output = Path.Combine(project.Root, "unexpected-process-call");
+    var probe = await project.BuildProcessProbeAsync("File.WriteAllText(" + System.Text.Json.JsonSerializer.Serialize(output) + ", \"called\");");
+    var executable = Path.ChangeExtension(probe, OperatingSystem.IsWindows() ? ".exe" : null);
+    string[] arguments = value is null ? ["--configuration"] : ["--configuration", value];
+
+    var result = await project.RunAsync(["build", "--dotnet", executable, .. arguments]);
+
+    Assert.Equal(1, result.ExitCode);
+    Assert.Contains("configuration", result.StandardError, StringComparison.OrdinalIgnoreCase);
+    Assert.False(File.Exists(output));
+    Assert.Equal(before, File.ReadAllBytes(configuration));
+  }
+
   [Fact]
   public async Task PackCreatesConfiguredNuGetPackageInRequestedDirectory()
   {
@@ -132,8 +199,9 @@ public sealed class SharedDotNetTaskTests
     Assert.True(refresh.ExitCode == 0, refresh.StandardError);
     // For the same Utah hour, refreshing a four-component version is a byte no-op.
     var refreshed = System.Xml.Linq.XDocument.Load(manifest).Descendants("Version").Single().Value;
-    if (refreshed == expected)
+    if (refreshed == expected) {
       Assert.Equal(stableBytes, File.ReadAllBytes(manifest));
+    }
   }
 
   [Theory]
@@ -193,7 +261,8 @@ public sealed class SharedDotNetTaskTests
     using var stream = typeof(SharedDotNetTaskTests).Assembly.GetManifestResourceStream("Shared/" + relative)!;
     using var reader = new StreamReader(stream);
     project.Write(directory + "/_/" + relative, reader.ReadToEnd());
-    if (relative == "dotnet/update-version.cs")
+    if (relative == "dotnet/update-version.cs") {
       CopyShared(project, "dotnet/_support/CalendarVersion.cs", directory);
+    }
   }
 }
