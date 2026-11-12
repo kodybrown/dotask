@@ -1569,3 +1569,11 @@ acceptance, installation, and publication.
   the root.
 - Verification: Windows fast and full gates passed with the pinned DoInstall
   bundle. The 0.1.5 portable archive and installer passed native acceptance.
+
+### 2026-11-12 Isolate the .NET SDK on release runners
+
+- Install the SDK pinned by `global.json` into a dedicated CI directory and
+  verify SDK selection from a temporary working directory. Native C# task
+  tests and package checks use the pinned SDK even when the runner image
+  includes a newer major version.
+- Verification: release workflow tests and the Windows fast gate passed.

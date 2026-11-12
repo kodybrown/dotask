@@ -38,8 +38,21 @@ jobs:
           go-version: '1.26.6'
           cache: false
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        env:
+          # Integration tests and package checks run from temporary projects
+          # outside this checkout's global.json.
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/dotnet
         with:
           global-json-file: global.json
+      - name: Verify the pinned .NET SDK outside the checkout
+        shell: pwsh
+        working-directory: ${{ runner.temp }}
+        run: |
+          $pin = Get-Content -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'global.json') -Raw | ConvertFrom-Json
+          $selected = dotnet --version
+          if ($LASTEXITCODE -ne 0 -or $selected -ne $pin.sdk.version) {
+            throw "Expected .NET SDK $($pin.sdk.version) outside the checkout, selected $selected."
+          }
       - name: Prepare external .NET output policy for this ephemeral runner
         shell: pwsh
         run: |

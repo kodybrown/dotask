@@ -39,6 +39,19 @@ fn main_pushes_publish_manual_runs_only_build_and_only_publisher_can_write() {
     .collect();
   assert_eq!(platforms, ["windows", "linux"]);
   assert_eq!(data["jobs"]["publish"]["needs"], "collect");
+  let steps = data["jobs"]["native"]["steps"].as_array().unwrap();
+  let sdk = steps
+    .iter()
+    .position(|step| {
+      step["uses"]
+        .as_str()
+        .is_some_and(|action| action.starts_with("actions/setup-dotnet@"))
+    })
+    .unwrap();
+  assert_eq!(steps[sdk]["with"]["global-json-file"], "global.json");
+  assert_eq!(steps[sdk]["env"]["DOTNET_INSTALL_DIR"], "${{ runner.temp }}/dotnet");
+  assert_eq!(steps[sdk + 1]["working-directory"], "${{ runner.temp }}");
+  assert!(steps[sdk + 1]["run"].as_str().unwrap().contains("dotnet --version"));
   // A fast local test pass cannot authorize release packaging. Both native
   // platforms must continue to run every language/installer integration check.
   for command in ["build.cmd test-all", "./build.sh test-all"] {
